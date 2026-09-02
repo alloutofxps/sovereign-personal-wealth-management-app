@@ -1,0 +1,18 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# public/icons/ and public/favicon.svg ARE committed on purpose: the build
+# references them, so a fresh clone must not need `npm run icons` first.
+
+# Vite / PWA build output
+dev-dist/
+.vite/
+
+# Editor
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json

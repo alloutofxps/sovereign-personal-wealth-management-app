@@ -1,0 +1,120 @@
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
+import globals from 'globals';
+
+/* ===========================================================================
+ * Architectural boundaries, enforced.
+ * ---------------------------------------------------------------------------
+ * The layering is core < app < design < features, and it only runs one way:
+ *
+ *   core     pure arithmetic and domain rules. No React, no DOM, no storage.
+ *            Runs in Node under Vitest with no browser at all — which is what
+ *            makes the ledger testable at the volume this domain needs.
+ *   app      configuration and the React bindings over core.
+ *   design   tokens and UI primitives.
+ *   features vertical slices. May use everything below.
+ *
+ * A comment saying so decays. These rules do not.
+ * ======================================================================== */
+
+const LAYERS = [
+  { target: './src/core', from: ['./src/app', './src/design', './src/features'] },
+  { target: './src/app', from: ['./src/design', './src/features'] },
+  { target: './src/design', from: ['./src/features'] },
+];
+
+export default tseslint.config(
+  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'public/**'] },
+
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { import: importPlugin },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.es2022 },
+    },
+    settings: {
+      'import/resolver': {
+        typescript: { project: './tsconfig.json' },
+      },
+    },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: LAYERS.flatMap(({ target, from }) =>
+            from.map((f) => ({
+              target,
+              from: f,
+              message: `Dependencies run one way: core < app < design < features. ${target} may not import from ${f}.`,
+            })),
+          ),
+        },
+      ],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+      ],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+
+  /* --- the core layer is held to a stricter contract -------------------- */
+  {
+    files: ['src/core/**/*.ts'],
+    ignores: ['src/core/**/*.test.ts'],
+    languageOptions: {
+      // No browser globals here at all. `Intl` is ECMA-402, not DOM, so
+      // currency metadata still resolves.
+      globals: { ...globals.es2022 },
+    },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'react', message: 'core is pure — no React below src/core.' },
+            { name: 'react-dom', message: 'core is pure — no React below src/core.' },
+            { name: 'motion', message: 'core is pure — no animation below src/core.' },
+            { name: 'motion/react', message: 'core is pure — no animation below src/core.' },
+            { name: 'zustand', message: 'core is pure — no store below src/core.' },
+            { name: 'clsx', message: 'core renders nothing.' },
+          ],
+          patterns: [
+            { group: ['@/app/*', '@/design/*', '@/features/*'], message: 'core imports nothing from the app.' },
+          ],
+        },
+      ],
+      'no-restricted-globals': [
+        'error',
+        { name: 'window', message: 'core must run in a worker and in Node — no DOM.' },
+        { name: 'document', message: 'core must run in a worker and in Node — no DOM.' },
+        { name: 'navigator', message: 'core must run in a worker and in Node — no DOM.' },
+        { name: 'localStorage', message: 'core does not persist — that is the data layer.' },
+        { name: 'sessionStorage', message: 'core does not persist — that is the data layer.' },
+        { name: 'fetch', message: 'core does no I/O.' },
+      ],
+    },
+  },
+
+  /* --- tests and node scripts ------------------------------------------- */
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', 'scripts/**/*.mjs', '*.config.ts', '*.config.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.es2022 } },
+    rules: {
+      'no-console': 'off',
+      'no-restricted-globals': 'off',
+      'no-restricted-imports': 'off',
+    },
+  },
+);
