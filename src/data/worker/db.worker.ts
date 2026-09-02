@@ -1,0 +1,196 @@
+/// <reference lib="webworker" />
+/* ===========================================================================
+ * THE DATABASE WORKER
+ * ---------------------------------------------------------------------------
+ * SQLite compiled to WebAssembly, owning the whole database on a thread of its
+ * own. Nothing else in the app ever touches SQLite directly.
+ *
+ * Storage uses the OPFS SyncAccessHandle pool VFS. That choice matters:
+ *
+ *   · It is genuinely durable — the database is a real file in the origin's
+ *     private file system, not a blob in memory.
+ *   · It does not require SharedArrayBuffer, so it works whether or not the
+ *     page is cross-origin isolated. (We set COOP/COEP anyway, so the classic
+ *     OPFS VFS stays available as an option later.)
+ *   · It must run in a worker, which is where we want it regardless: the whole
+ *     point is to keep query and ledger work off the thread that paints.
+ *
+ * Where OPFS is unavailable — older iOS, some private-browsing modes — the
+ * same SQLite build runs in memory instead. Identical SQL, identical schema,
+ * one honest difference: the data does not survive the tab closing. The app is
+ * told which mode it is in so it can say so plainly rather than pretending.
+ * ======================================================================== */
+
+import sqlite3InitModule, { type Database, type Sqlite3Static } from '@sqlite.org/sqlite-wasm';
+import { DDL, SCHEMA_VERSION } from '../schema/ddl';
+import {
+  isWrite,
+  tablesWrittenBy,
+  type SqlMethod,
+  type StorageStatus,
+  type WorkerRequest,
+  type WorkerResponse,
+} from './protocol';
+
+const DB_FILENAME = 'sovereign.sqlite3';
+const OPFS_POOL_NAME = 'sovereign-opfs';
+
+let sqlite3: Sqlite3Static | null = null;
+let db: Database | null = null;
+let status: StorageStatus | null = null;
+/** Kept so `reset` can wipe the file rather than just the rows. */
+let poolUtil: { wipeFiles: () => Promise<void> } | null = null;
+
+/**
+ * The single in-flight open.
+ *
+ * Opening is asynchronous, so two messages arriving close together — which is
+ * exactly what React's development double-effect does — would both find `db`
+ * unset and both try to claim the OPFS file. The second claim fails, and the
+ * old code then quietly replaced a perfectly good durable database with an
+ * in-memory one. Memoising the promise means open happens once, ever.
+ */
+let opening: Promise<StorageStatus> | null = null;
+
+const post = (message: WorkerResponse) => self.postMessage(message);
+
+function open(): Promise<StorageStatus> {
+  opening ??= doOpen();
+  return opening;
+}
+
+async function doOpen(): Promise<StorageStatus> {
+  sqlite3 ??= await sqlite3InitModule();
+
+  let vfs: StorageStatus['vfs'] = 'memory';
+  let explanation: string;
+
+  try {
+    const pool = await sqlite3.installOpfsSAHPoolVfs({ name: OPFS_POOL_NAME });
+    poolUtil = pool as unknown as { wipeFiles: () => Promise<void> };
+    db = new pool.OpfsSAHPoolDb(`/${DB_FILENAME}`);
+    vfs = 'opfs-sahpool';
+    explanation = 'Your data is saved on this device and will be here when you come back.';
+  } catch (error) {
+    // A supported, degraded mode — but the reason matters, because the two
+    // causes need completely different things from the user.
+    db = new sqlite3.oo1.DB(':memory:', 'c');
+    explanation = explainFallback(error);
+  }
+
+  for (const statement of DDL) db.exec(statement);
+
+  status = {
+    vfs,
+    durable: vfs !== 'memory',
+    // Asked for separately by the main thread; the worker cannot request it.
+    persisted: false,
+    explanation,
+    schemaVersion: SCHEMA_VERSION,
+  };
+  return status;
+}
+
+function explainFallback(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  // The OPFS pool can only be held by one tab at a time.
+  if (/access handle|createSyncAccessHandle/i.test(message)) {
+    return (
+      'Sovereign is already open in another tab, and only one can use your saved ' +
+      'data at a time. Close the other tab and reload this one to carry on where ' +
+      'you left off. Anything you add here meanwhile will not be saved.'
+    );
+  }
+
+  return (
+    'This browser will not let Sovereign save anything to your device, so your ' +
+    'data will only last until you close this tab. Private browsing is the usual ' +
+    'reason. Opening Sovereign in a normal window will fix it.'
+  );
+}
+
+function requireDb(): Database {
+  if (!db) throw new Error('The database has not been opened yet.');
+  return db;
+}
+
+/** Run one statement and return rows as arrays, which is what Drizzle wants. */
+function exec(sql: string, params: unknown[], method: SqlMethod): unknown[][] {
+  const rows = requireDb().exec({
+    sql,
+    bind: params as never,
+    rowMode: 'array',
+    returnValue: 'resultRows',
+  }) as unknown[][];
+
+  if (method === 'get') return rows.length > 0 ? [rows[0] as unknown[]] : [];
+  return rows;
+}
+
+function announce(tables: string[]): void {
+  if (tables.length > 0) post({ id: -1, event: 'invalidate', tables });
+}
+
+self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
+  const request = event.data;
+
+  try {
+    switch (request.op) {
+      case 'open':
+      case 'status': {
+        post({ id: request.id, ok: true, status: await open() });
+        break;
+      }
+
+      case 'exec': {
+        await open();
+        const rows = exec(request.sql, request.params, request.method);
+        post({ id: request.id, ok: true, rows });
+        if (isWrite(request.sql)) announce(tablesWrittenBy(request.sql));
+        break;
+      }
+
+      case 'batch': {
+        await open();
+        const database = requireDb();
+        const touched = new Set<string>();
+
+        // All or nothing. A half-written journal entry is worse than none.
+        database.exec('BEGIN');
+        try {
+          for (const statement of request.statements) {
+            database.exec({ sql: statement.sql, bind: statement.params as never });
+            for (const table of tablesWrittenBy(statement.sql)) touched.add(table);
+          }
+          database.exec('COMMIT');
+        } catch (error) {
+          database.exec('ROLLBACK');
+          throw error;
+        }
+
+        post({ id: request.id, ok: true, rows: [] });
+        announce([...touched]);
+        break;
+      }
+
+      case 'reset': {
+        db?.close();
+        db = null;
+        status = null;
+        opening = null;
+        await poolUtil?.wipeFiles();
+        await open();
+        post({ id: request.id, ok: true });
+        announce(['accounts', 'entries', 'postings', 'meta']);
+        break;
+      }
+    }
+  } catch (error) {
+    post({
+      id: request.id,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};

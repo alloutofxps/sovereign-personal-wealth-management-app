@@ -59,7 +59,9 @@ export function StatPill({ label, value, detail, tone = 'neutral', dot, classNam
         </span>
       </div>
       <div className={clsx('truncate text-lead font-medium tnum', t.text)}>{value}</div>
-      {detail && <div className="truncate text-caption text-ink-3">{detail}</div>}
+      {/* Wraps rather than truncating: this line is usually the explanation,
+          and half a sentence is worse than two lines. */}
+      {detail && <div className="text-caption leading-snug text-ink-3">{detail}</div>}
     </div>
   );
 }

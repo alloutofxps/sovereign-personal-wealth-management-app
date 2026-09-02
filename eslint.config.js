@@ -6,12 +6,13 @@ import globals from 'globals';
 /* ===========================================================================
  * Architectural boundaries, enforced.
  * ---------------------------------------------------------------------------
- * The layering is core < app < design < features, and it only runs one way:
+ * The layering is core < data < app < design < features, and it only runs one way:
  *
  *   core     pure arithmetic and domain rules. No React, no DOM, no storage.
  *            Runs in Node under Vitest with no browser at all — which is what
  *            makes the ledger testable at the volume this domain needs.
- *   app      configuration and the React bindings over core.
+ *   data     SQLite in a worker, repositories, and the live-query bus.
+ *   app      configuration and the React bindings over core and data.
  *   design   tokens and UI primitives.
  *   features vertical slices. May use everything below.
  *
@@ -19,7 +20,8 @@ import globals from 'globals';
  * ======================================================================== */
 
 const LAYERS = [
-  { target: './src/core', from: ['./src/app', './src/design', './src/features'] },
+  { target: './src/core', from: ['./src/data', './src/app', './src/design', './src/features'] },
+  { target: './src/data', from: ['./src/app', './src/design', './src/features'] },
   { target: './src/app', from: ['./src/design', './src/features'] },
   { target: './src/design', from: ['./src/features'] },
 ];
@@ -51,7 +53,7 @@ export default tseslint.config(
             from.map((f) => ({
               target,
               from: f,
-              message: `Dependencies run one way: core < app < design < features. ${target} may not import from ${f}.`,
+              message: `Dependencies run one way: core < data < app < design < features. ${target} may not import from ${f}.`,
             })),
           ),
         },
@@ -91,7 +93,10 @@ export default tseslint.config(
             { name: 'clsx', message: 'core renders nothing.' },
           ],
           patterns: [
-            { group: ['@/app/*', '@/design/*', '@/features/*'], message: 'core imports nothing from the app.' },
+            {
+              group: ['@/data/*', '@/app/*', '@/design/*', '@/features/*'],
+              message: 'core imports nothing from the app.',
+            },
           ],
         },
       ],

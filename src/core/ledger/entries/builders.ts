@@ -84,7 +84,9 @@ export interface SpendParams extends EntryBase {
   envelopeId: AccountId;
   funding: Funding;
   /** Where the money went, as the person would say it: "Albert Heijn". */
-  payee: string;
+  payee?: string;
+  /** Used to describe the entry when there is no payee to name. */
+  categoryName?: string;
   system: SystemAccounts;
 }
 
@@ -105,7 +107,13 @@ export function spend(p: SpendParams): JournalEntry {
       ? [debit(BUD, p.envelopeId, amount), credit(BUD, p.funding.paymentEnvelopeId, amount)]
       : [debit(BUD, p.envelopeId, amount), credit(BUD, p.system.budgetableCash, amount)];
 
-  return buildEntry(p, 'SPEND', `Paid ${p.payee}.`, [
+  const description = p.payee
+    ? `Paid ${p.payee}.`
+    : p.categoryName
+      ? `Spent on ${p.categoryName.toLowerCase()}.`
+      : 'Money spent.';
+
+  return buildEntry(p, 'SPEND', description, [
     debit(FIN, p.categoryId, amount),
     credit(FIN, p.funding.accountId, amount),
     ...budget,

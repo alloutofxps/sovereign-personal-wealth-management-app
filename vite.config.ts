@@ -30,6 +30,10 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: { headers: CROSS_ORIGIN_ISOLATION },
+  // The SQLite WASM binary must not be pre-bundled — esbuild rewrites the
+  // module in a way that breaks its worker and OPFS entry points.
+  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
+  worker: { format: 'es' },
   preview: { headers: CROSS_ORIGIN_ISOLATION },
   plugins: [
     react(),
