@@ -8,6 +8,7 @@ import {
   fromDecimalString,
   minor,
   mulDivRound,
+  neg,
   sub,
   sum,
   toDecimalString,
@@ -20,6 +21,13 @@ describe('construction', () => {
   it('rejects a float — the value that must never enter the ledger', () => {
     expect(() => minor(10.5)).toThrow(MoneyError);
     expect(() => minor(0.1 + 0.2)).toThrow(MoneyError);
+  });
+
+  it('normalises negative zero, which would otherwise print as minus nothing', () => {
+    expect(Object.is(minor(-0), 0)).toBe(true);
+    expect(Object.is(neg(minor(0)), 0)).toBe(true);
+    expect(Object.is(sub(minor(5), minor(5)), 0)).toBe(true);
+    expect(Object.is(sum([minor(5), minor(-5)]), 0)).toBe(true);
   });
 
   it('rejects values beyond exact integer range', () => {

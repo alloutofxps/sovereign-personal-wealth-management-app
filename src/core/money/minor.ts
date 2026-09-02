@@ -30,7 +30,11 @@ export function minor(value: number): Minor {
         `A fractional value here means a float leaked into the ledger.`,
     );
   }
-  return value as Minor;
+  // Normalise negative zero. `-0` is a real JS value that survives negation
+  // and summing, and it leaks in two ways: a balance of -0 renders with a
+  // minus sign in front of zero, and `-0 === 0` is true while
+  // `Object.is(-0, 0)` is false, so equality checks disagree with each other.
+  return (value === 0 ? 0 : value) as Minor;
 }
 
 export const ZERO: Minor = 0 as Minor;
