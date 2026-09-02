@@ -32,6 +32,7 @@
   --color-ink: #e9edec;
   --color-ink-2: #98a3a1;
   --color-ink-3: #7a8482; /* AA on --color-base at 11-13px */
+  --color-ink-4: #4e5654; /* muted fills — the neutral half of a paired bar */
 
   /* --- liquid: emerald, the primary accent ------------------------------ */
   --color-liquid: #34d8a0;
@@ -67,6 +68,7 @@
   --text-anchor--line-height: 1;
 
   /* --- radii ----------------------------------------------------------- */
+  --radius-pill: 999px;
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.875rem;

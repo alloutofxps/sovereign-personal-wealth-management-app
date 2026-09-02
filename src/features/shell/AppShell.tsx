@@ -14,7 +14,7 @@ import type { StorageStatus } from '@/data/worker/protocol';
 import { useRoute, type Route } from '@/app/router';
 import { AddPaymentSheet } from '@/features/entry/AddPaymentSheet';
 import { Gallery } from '@/features/gallery/Gallery';
-import { HomeView } from '@/features/home/HomeView';
+import { Dashboard } from '@/features/dashboard/Dashboard';
 import { TriageView } from '@/features/triage/TriageView';
 import { AccountsView } from '@/features/accounts/AccountsView';
 import { SettingsView } from '@/features/settings/SettingsView';
@@ -80,7 +80,7 @@ export function AppShell() {
 function View({ route, onAdd }: { route: Route; onAdd: () => void }) {
   switch (route) {
     case 'home':
-      return <HomeView onAdd={onAdd} />;
+      return <Dashboard onAdd={onAdd} />;
     case 'triage':
       return <TriageView />;
     case 'accounts':

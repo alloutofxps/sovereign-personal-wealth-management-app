@@ -264,5 +264,51 @@ export async function spendingBetween(from: IsoDate, to: IsoDate): Promise<Minor
   return minor(Number(row?.total ?? 0));
 }
 
+/**
+ * Spending per day across a range, net of refunds.
+ *
+ * One grouped aggregate rather than a fold over every posting — this is the
+ * query behind the cumulative curve, and it stays fast as the ledger grows.
+ */
+export async function spendByDay(from: IsoDate, to: IsoDate): Promise<Map<string, Minor>> {
+  const rows = await db
+    .select({ date: entries.date, total: sql<number>`sum(${postings.amount})` })
+    .from(postings)
+    .innerJoin(accounts, eq(accounts.id, postings.accountId))
+    .innerJoin(entries, eq(entries.id, postings.entryId))
+    .where(sql`${accounts.type} = 'EXPENSE' AND ${entries.date} >= ${from} AND ${entries.date} <= ${to}`)
+    .groupBy(entries.date);
+
+  return new Map(rows.map((row) => [row.date, minor(Number(row.total))]));
+}
+
+/** Presented balances for every account of a given type. */
+export async function balancesByType(
+  type: 'LIABILITY' | 'ENVELOPE' | 'ASSET',
+): Promise<{ id: AccountId; name: string; amount: Minor; role: string | null }[]> {
+  const rows = await db
+    .select({
+      id: accounts.id,
+      name: accounts.name,
+      role: accounts.envelopeRole,
+      normal: accounts.normal,
+      total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+    })
+    .from(accounts)
+    .leftJoin(postings, eq(postings.accountId, accounts.id))
+    .where(eq(accounts.type, type))
+    .groupBy(accounts.id, accounts.name, accounts.envelopeRole, accounts.normal);
+
+  return rows.map((row) => {
+    const raw = Number(row.total);
+    return {
+      id: row.id as AccountId,
+      name: row.name,
+      amount: minor(row.normal === 'CREDIT' ? -raw : raw),
+      role: row.role,
+    };
+  });
+}
+
 /** Every table this repository reads, for `useLiveQuery` subscriptions. */
 export const LEDGER_TABLES = ['accounts', 'entries', 'postings'] as const;

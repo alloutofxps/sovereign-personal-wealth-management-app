@@ -14,16 +14,18 @@ import globals from 'globals';
  *   data     SQLite in a worker, repositories, and the live-query bus.
  *   app      configuration and the React bindings over core and data.
  *   design   tokens and UI primitives.
+ *   charts   bespoke SVG charts over d3-shape and d3-scale.
  *   features vertical slices. May use everything below.
  *
  * A comment saying so decays. These rules do not.
  * ======================================================================== */
 
 const LAYERS = [
-  { target: './src/core', from: ['./src/data', './src/app', './src/design', './src/features'] },
-  { target: './src/data', from: ['./src/app', './src/design', './src/features'] },
-  { target: './src/app', from: ['./src/design', './src/features'] },
-  { target: './src/design', from: ['./src/features'] },
+  { target: './src/core', from: ['./src/data', './src/app', './src/design', './src/charts', './src/features'] },
+  { target: './src/data', from: ['./src/app', './src/design', './src/charts', './src/features'] },
+  { target: './src/app', from: ['./src/design', './src/charts', './src/features'] },
+  { target: './src/design', from: ['./src/charts', './src/features'] },
+  { target: './src/charts', from: ['./src/features'] },
 ];
 
 export default tseslint.config(
@@ -94,7 +96,7 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@/data/*', '@/app/*', '@/design/*', '@/features/*'],
+              group: ['@/data/*', '@/app/*', '@/design/*', '@/charts/*', '@/features/*'],
               message: 'core imports nothing from the app.',
             },
           ],

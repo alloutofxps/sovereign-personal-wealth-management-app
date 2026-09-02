@@ -11,7 +11,7 @@
  * again inside the transaction that writes it.
  * ======================================================================== */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const DDL: readonly string[] = [
   `PRAGMA foreign_keys = ON;`,
@@ -62,9 +62,25 @@ export const DDL: readonly string[] = [
      sequence   INTEGER NOT NULL
    );`,
 
+  // Regular payments in and out. These are what make "safe to spend" mean
+  // anything: money already promised to a bill is not money you can spend.
+  `CREATE TABLE IF NOT EXISTS scheduled_items (
+     id          TEXT PRIMARY KEY,
+     kind        TEXT NOT NULL CHECK (kind IN ('bill','income')),
+     name        TEXT NOT NULL,
+     amount      INTEGER NOT NULL CHECK (amount > 0),
+     next_due    TEXT NOT NULL CHECK (next_due LIKE '____-__-__'),
+     cadence     TEXT NOT NULL CHECK (cadence IN ('weekly','fortnightly','monthly','yearly')),
+     account_id  TEXT REFERENCES accounts(id),
+     category_id TEXT REFERENCES accounts(id),
+     active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
+   );`,
+
+  `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS entries_date_idx ON entries(date);`,
   `CREATE INDEX IF NOT EXISTS postings_account_idx ON postings(account_id);`,
   `CREATE INDEX IF NOT EXISTS postings_entry_idx ON postings(entry_id);`,
 
-  `INSERT OR IGNORE INTO meta (key, value) VALUES ('schema_version', '${SCHEMA_VERSION}');`,
+  `INSERT INTO meta (key, value) VALUES ('schema_version', '${SCHEMA_VERSION}')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
 ];

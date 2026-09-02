@@ -44,3 +44,10 @@ export function describeDate(iso: string, locale: string, now: Date = new Date()
     ...(sameYear ? {} : { year: 'numeric' }),
   }).format(date);
 }
+
+/** A compact date for chart axes and dense lists: "1 Sep". */
+export function shortDate(iso: string, locale: string): string {
+  const date = parseIsoDate(iso);
+  if (!date) return iso;
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date);
+}

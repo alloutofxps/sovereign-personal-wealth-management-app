@@ -61,11 +61,27 @@ export const postings = sqliteTable(
   ],
 );
 
+export const scheduledItems = sqliteTable(
+  'scheduled_items',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    amount: integer('amount').notNull(),
+    nextDue: text('next_due').notNull(),
+    cadence: text('cadence').notNull(),
+    accountId: text('account_id'),
+    categoryId: text('category_id'),
+    active: integer('active').notNull().default(1),
+  },
+  (t) => [index('scheduled_due_idx').on(t.nextDue)],
+);
+
 /** Schema version and one-off flags, so migrations know where they are. */
 export const meta = sqliteTable('meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
 
-export const TABLES = ['accounts', 'entries', 'postings', 'meta'] as const;
+export const TABLES = ['accounts', 'entries', 'postings', 'scheduled_items', 'meta'] as const;
 export type TableName = (typeof TABLES)[number];

@@ -23,6 +23,9 @@ import {
 export const DEFAULT_CURRENCY: CurrencyCode = 'EUR';
 export const DEFAULT_LOCALE = 'en-GB';
 
+/** A sensible starting cushion. Changed in Settings. */
+export const DEFAULT_BUFFER_MINOR = 20_000;
+
 export interface AppConfig {
   /** ISO-4217 base currency for the entire ledger. */
   currencyCode: CurrencyCode;
@@ -32,12 +35,18 @@ export interface AppConfig {
   weekStartsOn: 0 | 1;
   /** Day the weekly reset ritual is offered. 0 = Sunday, per the research. */
   weeklyReviewDay: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  /**
+   * The cushion that is never counted as safe to spend, in minor units.
+   * It exists so a forgotten direct debit cannot tip an account overdrawn.
+   */
+  bufferMinor: number;
 }
 
 interface AppConfigStore extends AppConfig {
   setCurrency: (code: string) => void;
   setLocale: (locale: string) => void;
   setWeeklyReviewDay: (day: AppConfig['weeklyReviewDay']) => void;
+  setBuffer: (minorAmount: number) => void;
 }
 
 function detectLocale(): string {
@@ -52,6 +61,7 @@ export const useAppConfig = create<AppConfigStore>()(
       locale: detectLocale(),
       weekStartsOn: 1,
       weeklyReviewDay: 0,
+      bufferMinor: DEFAULT_BUFFER_MINOR,
 
       setCurrency: (code) => {
         const normalised = code.toUpperCase();
@@ -68,6 +78,9 @@ export const useAppConfig = create<AppConfigStore>()(
       },
 
       setWeeklyReviewDay: (weeklyReviewDay) => set({ weeklyReviewDay }),
+
+      setBuffer: (minorAmount) =>
+        set({ bufferMinor: Math.max(0, Math.round(minorAmount)) }),
     }),
     {
       name: 'sovereign.config',
@@ -97,8 +110,9 @@ function isValid(code: string): boolean {
 
 /** Read config outside React — workers, the ledger core, event handlers. */
 export const getAppConfig = (): AppConfig => {
-  const { currencyCode, locale, weekStartsOn, weeklyReviewDay } = useAppConfig.getState();
-  return { currencyCode, locale, weekStartsOn, weeklyReviewDay };
+  const { currencyCode, locale, weekStartsOn, weeklyReviewDay, bufferMinor } =
+    useAppConfig.getState();
+  return { currencyCode, locale, weekStartsOn, weeklyReviewDay, bufferMinor };
 };
 
 /**
