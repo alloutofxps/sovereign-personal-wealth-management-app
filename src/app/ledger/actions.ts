@@ -10,20 +10,29 @@ import { minor, type Minor } from '@/core/money';
 import {
   assign,
   cardPayment,
-  income as incomeEntry,
+  entryFromStatementLine,
   claimId as makeClaimId,
   entryId,
+  fundingFor,
   isoDate,
   reimbursable,
   reimbursement,
+  reverseEntry,
   spend,
   writeOff,
   type AccountId,
+  type EntryId,
   type Funding,
+  type IsoDate,
   type JournalEntry,
 } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
-import { saveEntry } from '@/data/repositories/ledgerRepo';
+import {
+  accountsById,
+  entryById,
+  isReversed,
+  saveEntry,
+} from '@/data/repositories/ledgerRepo';
 import {
   openClaim,
   settleClaimStatement,
@@ -31,11 +40,38 @@ import {
   type Claim,
   type ClaimKind,
 } from '@/data/repositories/claimsRepo';
-import { markReviewedStatement, type StagedRow } from '@/data/repositories/stagingRepo';
+import {
+  markReviewedStatement,
+  returnToQueueStatement,
+  type StagedRow,
+} from '@/data/repositories/stagingRepo';
 import { ACCOUNT_IDS, SYSTEM_ACCOUNTS } from '@/data/seed';
 
 const today = () => isoDate(toIsoDate(new Date()));
-const newEntry = () => ({ id: entryId(crypto.randomUUID()), date: today() });
+
+/**
+ * A fresh id and a date.
+ *
+ * The date is now the caller's to choose. It used to be hardcoded to today,
+ * which meant there was no way at all to record yesterday's coffee — you
+ * either entered it against the wrong day or did not enter it.
+ */
+const newEntry = (date?: IsoDate) => ({ id: entryId(crypto.randomUUID()), date: date ?? today() });
+
+/**
+ * Work out how a payment from this account is funded.
+ *
+ * Every path that spends money goes through here, so the card-versus-cash
+ * decision is made once, from the account itself, rather than assumed
+ * separately at each call site.
+ */
+async function fundedFrom(accountId: AccountId): Promise<Funding> {
+  const account = (await accountsById()).get(accountId);
+  if (!account) {
+    throw new Error('That account could not be found, so nothing has been recorded.');
+  }
+  return fundingFor(account);
+}
 
 /** Attach a claim to an entry on its way to storage. */
 type WithClaim = JournalEntry & { claimId?: string };
@@ -47,23 +83,30 @@ export interface RecordSpendInput {
   categoryId: AccountId;
   envelopeId: AccountId;
   categoryName: string;
-  funding: Funding;
+  /** The account or card it was paid from. How it is funded follows from it. */
+  paidFrom: AccountId;
   payee?: string;
+  /** Defaults to today. */
+  date?: IsoDate;
+  /** The person's own note about it. */
+  memo?: string;
 }
 
-export async function recordSpend(input: RecordSpendInput): Promise<void> {
-  await saveEntry(
-    spend({
-      ...newEntry(),
-      amount: input.amount,
-      categoryId: input.categoryId,
-      envelopeId: input.envelopeId,
-      funding: input.funding,
-      ...(input.payee ? { payee: input.payee } : {}),
-      categoryName: input.categoryName,
-      system: SYSTEM_ACCOUNTS,
-    }),
-  );
+/** Returns the new entry's id, so the caller can offer to undo it. */
+export async function recordSpend(input: RecordSpendInput): Promise<EntryId> {
+  const entry = spend({
+    ...newEntry(input.date),
+    amount: input.amount,
+    categoryId: input.categoryId,
+    envelopeId: input.envelopeId,
+    funding: await fundedFrom(input.paidFrom),
+    ...(input.payee ? { payee: input.payee } : {}),
+    ...(input.memo ? { memo: input.memo } : {}),
+    categoryName: input.categoryName,
+    system: SYSTEM_ACCOUNTS,
+  });
+  await saveEntry(entry);
+  return entry.id;
 }
 
 /**
@@ -76,47 +119,84 @@ export async function recordSpend(input: RecordSpendInput): Promise<void> {
 export async function confirmStagedRow(
   row: StagedRow,
   choice: { categoryId: AccountId; envelopeId: AccountId; categoryName: string },
-): Promise<void> {
-  const id = entryId(crypto.randomUUID());
-  const date = isoDate(row.date);
-  const outgoing = row.amount < 0;
+): Promise<EntryId> {
+  const account = (await accountsById()).get(row.accountId);
+  if (!account) {
+    throw new Error('The account that row came from could not be found.');
+  }
 
-  const entry = outgoing
-    ? spend({
-        id,
-        date,
-        amount: minor(-row.amount),
-        categoryId: choice.categoryId,
-        envelopeId: choice.envelopeId,
-        funding: { via: 'cash', accountId: row.accountId },
-        payee: row.description,
-        categoryName: choice.categoryName,
-        system: SYSTEM_ACCOUNTS,
-      })
-    : incomeEntry({
-        id,
-        date,
-        amount: row.amount,
-        sourceId: ACCOUNT_IDS.otherIncome,
-        depositAccountId: row.accountId,
-        countsAsBudgetableCash: true,
-        payer: row.description,
-        system: SYSTEM_ACCOUNTS,
-      });
+  const entry = entryFromStatementLine({
+    id: entryId(crypto.randomUUID()),
+    line: { date: isoDate(row.date), amount: row.amount, description: row.description },
+    account,
+    category: choice,
+    incomeAccountId: ACCOUNT_IDS.otherIncome,
+    system: SYSTEM_ACCOUNTS,
+  });
 
-  const update = markReviewedStatement(row.id, id);
+  const update = markReviewedStatement(row.id, entry.id);
   await saveEntry(entry, [{ sql: update.sql, params: update.params }]);
+  return entry.id;
+}
+
+/* --- undoing something --------------------------------------------------- */
+
+/**
+ * Undo an entry by posting its mirror image.
+ *
+ * Nothing is edited and nothing is deleted: a correction is two entries that
+ * cancel out, and both stay visible. That is what makes the history worth
+ * trusting — a figure that changed can always be explained.
+ *
+ * A row that came from a statement goes back to the review queue, because
+ * undoing the filing should leave it waiting rather than losing it.
+ */
+export async function voidEntry(id: EntryId, reason?: string): Promise<void> {
+  const original = await entryById(id);
+  if (!original) {
+    throw new Error('That payment could not be found, so nothing has been changed.');
+  }
+  if (original.kind === 'REVERSAL') {
+    throw new Error(
+      'That entry is itself a correction. Undoing it would put back what it undid, ' +
+        'so record the payment again instead.',
+    );
+  }
+  if (await isReversed(id)) {
+    throw new Error('That has already been undone, so nothing has been changed.');
+  }
+  if (original.claimId) {
+    throw new Error(
+      'That one is tied to money somebody owes you. Settle it or write it off from ' +
+        'the claim itself, so the two cannot end up disagreeing.',
+    );
+  }
+
+  const reversal = reverseEntry(
+    original,
+    entryId(crypto.randomUUID()),
+    today(),
+    reason ?? `Undid: ${original.description}`,
+  );
+
+  const back = returnToQueueStatement(id);
+  await saveEntry(reversal, [{ sql: back.sql, params: back.params }]);
 }
 
 /* --- money you fronted for somebody else --------------------------------- */
 
 export interface RecordFrontedInput {
   amount: Minor;
-  funding: Funding;
+  /** The account or card it was paid from. */
+  paidFrom: AccountId;
   /** Who will pay you back. */
   counterparty: string;
   kind: ClaimKind;
   note?: string;
+  /** Defaults to today. */
+  date?: IsoDate;
+  /** The person's own note about it. */
+  memo?: string;
 }
 
 /**
@@ -128,13 +208,14 @@ export interface RecordFrontedInput {
  */
 export async function recordFronted(input: RecordFrontedInput): Promise<void> {
   const claim = makeClaimId(crypto.randomUUID());
-  const base = newEntry();
+  const base = newEntry(input.date);
 
   const entry: WithClaim = {
     ...reimbursable({
       ...base,
       amount: input.amount,
-      funding: input.funding,
+      funding: await fundedFrom(input.paidFrom),
+      ...(input.memo ? { memo: input.memo } : {}),
       counterparty: input.counterparty,
       system: SYSTEM_ACCOUNTS,
     }),

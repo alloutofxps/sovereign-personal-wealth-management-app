@@ -26,6 +26,8 @@ import {
   totalSpending,
   transfer,
   type AccountId,
+  fundingFor,
+  assertFundingMatchesAccount,
   type Funding,
   type JournalEntry,
   type LedgerAccount,
@@ -115,8 +117,11 @@ let seq = 0;
 const nextId = () => entryId(`e${(seq += 1)}`);
 const base = () => ({ id: nextId(), date: DATE });
 
-const CASH: Funding = { via: 'cash', accountId: A.checking };
-const CARD: Funding = { via: 'card', accountId: A.card, paymentEnvelopeId: A.vCardPay };
+// Derived from the accounts themselves, which is the only sanctioned way to
+// build funding — `fundingFor` is what makes 'via' and the account type one
+// fact rather than two that can drift apart.
+const CASH: Funding = fundingFor(ACCOUNTS.get(A.checking)!);
+const CARD: Funding = fundingFor(ACCOUNTS.get(A.card)!);
 
 const m = (major: number): Minor => minor(Math.round(major * 100));
 
@@ -627,5 +632,98 @@ describe('property: any sequence of real-world events keeps the books sound', ()
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+/* ===========================================================================
+ * FUNDING MUST MATCH THE ACCOUNT IT CAME FROM
+ * ---------------------------------------------------------------------------
+ * Spending on a card and spending cash produce identical FINANCIAL postings
+ * and completely different BUDGET ones. Both balance, so no invariant can tell
+ * them apart — which is how statement import spent cash that never moved for
+ * a year's worth of card purchases. These are the checks that make the mistake
+ * throw instead of post.
+ * ======================================================================== */
+
+describe('funding has to agree with the account', () => {
+  const checking = ACCOUNTS.get(A.checking)!;
+  const card = ACCOUNTS.get(A.card)!;
+
+  it('derives cash funding from an account you hold', () => {
+    const funding = fundingFor(checking);
+    expect(funding.via).toBe('cash');
+    expect(funding.account.id).toBe(A.checking);
+  });
+
+  it('derives card funding, and the pot to reserve into, from a card', () => {
+    const funding = fundingFor(card);
+    expect(funding.via).toBe('card');
+    expect(funding.via === 'card' && funding.paymentEnvelopeId).toBe(A.vCardPay);
+  });
+
+  it('refuses to treat spending on a card as cash leaving', () => {
+    // The defect, stated as a test: this is what import used to build.
+    expect(() =>
+      assertFundingMatchesAccount(card, { via: 'cash', account: card }),
+    ).toThrow(/card or loan/i);
+  });
+
+  it('refuses to reserve against an account that is not a card', () => {
+    expect(() =>
+      assertFundingMatchesAccount(checking, {
+        via: 'card',
+        account: checking,
+        paymentEnvelopeId: A.vCardPay,
+      }),
+    ).toThrow(/money you have, not money you owe/i);
+  });
+
+  it('refuses a card whose reserve would go into the wrong pot', () => {
+    expect(() =>
+      assertFundingMatchesAccount(card, {
+        via: 'card',
+        account: card,
+        paymentEnvelopeId: A.vGroceries,
+      }),
+    ).toThrow(/wrong pot/i);
+  });
+
+  it('refuses funding that names a different account than it is recorded against', () => {
+    expect(() => assertFundingMatchesAccount(card, fundingFor(checking))).toThrow(
+      /need to be the same account/i,
+    );
+  });
+
+  it('refuses to pay out of somewhere money cannot come from', () => {
+    expect(() => fundingFor(ACCOUNTS.get(A.salary)!)).toThrow(/not somewhere money can be paid/i);
+  });
+
+  it('stops a mismatched payment at the builder, not just at the helper', () => {
+    // The guard runs inside spend(), so nothing hand-assembled can slip past.
+    expect(() =>
+      spend({
+        ...base(),
+        amount: m(50),
+        categoryId: A.groceries,
+        envelopeId: A.vGroceries,
+        funding: { via: 'cash', account: card },
+        payee: 'a shop',
+        system: SYSTEM,
+      }),
+    ).toThrow(/card or loan/i);
+  });
+
+  it('carries a note onto the entry it belongs to', () => {
+    const entry = spend({
+      ...base(),
+      amount: m(50),
+      categoryId: A.groceries,
+      envelopeId: A.vGroceries,
+      funding: CASH,
+      payee: 'a shop',
+      memo: "Sam's half",
+      system: SYSTEM,
+    });
+    expect(entry.postings[0]?.memo).toBe("Sam's half");
   });
 });

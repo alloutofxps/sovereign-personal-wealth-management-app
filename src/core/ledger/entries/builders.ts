@@ -9,7 +9,14 @@
  * ======================================================================== */
 
 import type { Minor } from '@/core/money';
-import { LedgerError, type AccountId, type JournalEntry, type SystemAccounts } from '../types';
+import {
+  LedgerError,
+  type AccountId,
+  type Funding,
+  type JournalEntry,
+  type SystemAccounts,
+} from '../types';
+import { assertFundingMatchesAccount } from '../funding';
 import {
   buildEntry,
   credit,
@@ -20,17 +27,6 @@ import {
 
 const FIN = 'FINANCIAL' as const;
 const BUD = 'BUDGET' as const;
-
-/**
- * How a payment was funded.
- *
- * `card` is the case that breaks naive budgeting apps: no cash moves, but the
- * envelope must still go down and cash must be set aside for the eventual
- * bill. Making it a distinct shape means a caller cannot forget the reserve.
- */
-export type Funding =
-  | { via: 'cash'; accountId: AccountId }
-  | { via: 'card'; accountId: AccountId; paymentEnvelopeId: AccountId };
 
 /* --- opening balance ----------------------------------------------------- */
 
@@ -101,6 +97,7 @@ export interface SpendParams extends EntryBase {
  */
 export function spend(p: SpendParams): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'A payment');
+  assertFundingMatchesAccount(p.funding.account, p.funding);
 
   const budget =
     p.funding.via === 'card'
@@ -115,7 +112,7 @@ export function spend(p: SpendParams): JournalEntry {
 
   return buildEntry(p, 'SPEND', description, [
     debit(FIN, p.categoryId, amount),
-    credit(FIN, p.funding.accountId, amount),
+    credit(FIN, p.funding.account.id, amount),
     ...budget,
   ]);
 }
@@ -247,6 +244,7 @@ export interface ReimbursableParams extends EntryBase {
  */
 export function reimbursable(p: ReimbursableParams): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'Money you fronted');
+  assertFundingMatchesAccount(p.funding.account, p.funding);
 
   const budget =
     p.funding.via === 'card'
@@ -265,7 +263,7 @@ export function reimbursable(p: ReimbursableParams): JournalEntry {
     `Paid for something ${p.counterparty} will pay back.`,
     [
       debit(FIN, p.system.receivables, amount),
-      credit(FIN, p.funding.accountId, amount),
+      credit(FIN, p.funding.account.id, amount),
       ...budget,
     ],
   );
@@ -349,6 +347,7 @@ export interface RefundParams extends EntryBase {
  */
 export function refund(p: RefundParams): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'A refund');
+  assertFundingMatchesAccount(p.refundedTo.account, p.refundedTo);
 
   const budget =
     p.refundedTo.via === 'card'
@@ -356,7 +355,7 @@ export function refund(p: RefundParams): JournalEntry {
       : [debit(BUD, p.system.budgetableCash, amount), credit(BUD, p.envelopeId, amount)];
 
   return buildEntry(p, 'REFUND', `${p.payee} refunded you.`, [
-    debit(FIN, p.refundedTo.accountId, amount),
+    debit(FIN, p.refundedTo.account.id, amount),
     credit(FIN, p.categoryId, amount),
     ...budget,
   ]);

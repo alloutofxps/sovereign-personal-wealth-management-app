@@ -130,6 +130,21 @@ export function markReviewedStatement(id: string, entryId: string) {
     .toSQL();
 }
 
+/**
+ * Put a row back in the queue after the entry it became was undone.
+ *
+ * Matched on the entry rather than the row, because the caller is undoing an
+ * entry and may not know whether it came from a statement at all. Rows that
+ * were typed in by hand simply match nothing.
+ */
+export function returnToQueueStatement(entryId: string) {
+  return db
+    .update(stagedTransactions)
+    .set({ status: 'unreviewed', entryId: null })
+    .where(eq(stagedTransactions.entryId, entryId))
+    .toSQL();
+}
+
 /** Set aside a row without recording it — a duplicate, or something not yours. */
 export async function ignoreRow(id: string): Promise<void> {
   const statement = db

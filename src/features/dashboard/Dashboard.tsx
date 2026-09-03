@@ -19,6 +19,7 @@ import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
+import { PaymentDetailsSheet } from '@/features/entry/PaymentDetailsSheet';
 import { AddBillSheet } from './AddBillSheet';
 import { BalanceCard } from './BalanceCard';
 import { GettingStarted } from './GettingStarted';
@@ -37,6 +38,7 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
 
   const data = dashboard.data;
   const recent = entries.data ?? [];
+  const [looking, setLooking] = useState<(typeof recent)[number] | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,15 +102,23 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
                 const spent = entry.postings.find(
                   (p) => p.book === 'FINANCIAL' && p.amount > 0 && p.accountId.startsWith('cat-'),
                 );
+                const undone = entry.kind === 'REVERSAL';
                 return (
-                  <li key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-body text-ink">{entry.description}</p>
-                      <p className="truncate pt-0.5 text-caption text-ink-3">
-                        {describeDate(entry.date, locale)}
-                      </p>
-                    </div>
-                    {spent && <Money value={spent.amount} size="lead" />}
+                  <li key={entry.id}>
+                    <button
+                      type="button"
+                      onClick={() => setLooking(entry)}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors active:bg-raised"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-body text-ink">{entry.description}</p>
+                        <p className="truncate pt-0.5 text-caption text-ink-3">
+                          {describeDate(entry.date, locale)}
+                          {undone ? ' · a correction' : ''}
+                        </p>
+                      </div>
+                      {spent && <Money value={spent.amount} size="lead" />}
+                    </button>
                   </li>
                 );
               })}
@@ -119,6 +129,7 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
 
       <SafeToSpendSheet open={explaining} onClose={() => setExplaining(false)} data={data} />
       <AddBillSheet open={addingBill} onClose={() => setAddingBill(false)} />
+      <PaymentDetailsSheet entry={looking} onClose={() => setLooking(null)} />
     </div>
   );
 }

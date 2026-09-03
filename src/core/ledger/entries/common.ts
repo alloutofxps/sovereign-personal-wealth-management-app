@@ -44,6 +44,15 @@ export interface EntryBase {
   /** Defaults to 'cleared'. Set 'pending' for a card authorisation. */
   clearance?: Clearance;
   sourceTransactionId?: string | null;
+  /**
+   * A note in the person's own words: "Sam's half", "warranty until 2029".
+   *
+   * Postings carry memos line by line, which is what splits will need later.
+   * A note about the whole transaction has to live on one of those lines, so
+   * it rides on the first — which every builder writes as the FINANCIAL line
+   * saying what the money was actually for.
+   */
+  memo?: string;
 }
 
 /** Record a debit: an increase in an asset or expense, or a reduction of a
@@ -99,7 +108,8 @@ export function buildEntry(
     accountId: spec.accountId,
     amount: spec.amount,
     clearance: spec.clearance ?? defaultClearance,
-    memo: spec.memo ?? null,
+    // A line's own memo wins; the entry's note falls to the first line.
+    memo: spec.memo ?? (index === 0 ? (base.memo ?? null) : null),
     sequence: index,
   }));
 

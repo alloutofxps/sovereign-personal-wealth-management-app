@@ -130,6 +130,25 @@ export interface LedgerAccount {
 }
 
 /**
+ * How a payment was funded.
+ *
+ * `card` is the case that breaks naive budgeting apps: no cash moves, but the
+ * envelope must still go down and cash must be set aside for the eventual
+ * bill. Making it a distinct shape means a caller cannot forget the reserve.
+ *
+ * It carries the whole account rather than an id on purpose. `via` and the
+ * account's type are two statements about the same fact, and when a caller
+ * supplies them separately they can disagree — which is exactly how imported
+ * card spending came to be recorded as cash. Holding the account here lets
+ * `assertFundingMatchesAccount` check the two against each other, and lets
+ * `fundingFor` derive the whole thing from the account so there is nothing
+ * left to get wrong.
+ */
+export type Funding =
+  | { via: 'cash'; account: LedgerAccount }
+  | { via: 'card'; account: LedgerAccount; paymentEnvelopeId: AccountId };
+
+/**
  * The handful of accounts the builders need to know by name rather than by
  * lookup. Passing them explicitly keeps every builder a pure function.
  */

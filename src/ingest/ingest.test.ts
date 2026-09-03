@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { minor } from '@/core/money';
+import {
+  BOOK_BY_TYPE,
+  NORMAL_BY_TYPE,
+  accountId,
+  entryFromStatementLine,
+  entryId,
+  isoDate,
+  presentedBalance,
+  type AccountId,
+  type JournalEntry,
+  type LedgerAccount,
+  type LedgerAccountType,
+  type SystemAccounts,
+} from '@/core/ledger';
 import { detectDelimiter, findHeaderRow, guessColumns, parseDelimited } from './csv';
 import { dedupeKey, detectDateFormat, parseAmount, parseDate } from './values';
 import { buildCandidates, describeImport, inspectFile } from './import';
@@ -276,5 +290,161 @@ describe('what the person is told afterwards', () => {
 
   it('says so plainly when there is nothing new', () => {
     expect(describeImport({ rows: [], rejected: [] }, 0)).toMatch(/Nothing new/);
+  });
+});
+
+/* ===========================================================================
+ * THE CARD-IMPORT REGRESSION
+ * ---------------------------------------------------------------------------
+ * A statement row says nothing about what kind of account it came from, and
+ * for a long time the confirm step did not ask: every imported row was filed
+ * as cash leaving. On a credit card that is wrong twice over — it takes money
+ * out of what you can spend, when nothing left your account, and it leaves the
+ * bill with nothing set aside for it.
+ *
+ * Both books balanced either way, so no invariant caught it and no test failed.
+ * This one drives the whole path — CSV text through to postings — and asserts
+ * the thing that actually matters: which pot the money lands in.
+ * ======================================================================== */
+
+const CARD_STATEMENT = `Date,Description,Amount
+03/09/2026,CARD SHOP,-50.00`;
+
+const ID = {
+  card: accountId('acc-card'),
+  everyday: accountId('acc-everyday'),
+  cardPot: accountId('pot-card-bill'),
+  groceries: accountId('cat-groceries'),
+  potGroceries: accountId('pot-groceries'),
+  spendable: accountId('bud-spendable'),
+  rta: accountId('bud-ready-to-assign'),
+  opening: accountId('acc-opening'),
+  owed: accountId('acc-owed'),
+  fronted: accountId('pot-fronted'),
+  otherIncome: accountId('inc-other'),
+};
+
+const SYS: SystemAccounts = {
+  readyToAssign: ID.rta,
+  budgetableCash: ID.spendable,
+  openingBalances: ID.opening,
+  receivables: ID.owed,
+  reimbursementsEnvelope: ID.fronted,
+};
+
+function acct(
+  id: AccountId,
+  type: LedgerAccountType,
+  name: string,
+  extra: Partial<LedgerAccount> = {},
+): LedgerAccount {
+  return {
+    id,
+    book: BOOK_BY_TYPE[type],
+    type,
+    name,
+    normal: NORMAL_BY_TYPE[type],
+    parentId: null,
+    status: 'active',
+    onBudget: false,
+    liquid: false,
+    paymentEnvelopeId: null,
+    envelopeRole: null,
+    ...extra,
+  };
+}
+
+const CARD_ACCOUNT = acct(ID.card, 'LIABILITY', 'Credit card', {
+  paymentEnvelopeId: ID.cardPot,
+});
+const EVERYDAY_ACCOUNT = acct(ID.everyday, 'ASSET', 'Everyday account', {
+  onBudget: true,
+  liquid: true,
+});
+
+const CHART = new Map<AccountId, LedgerAccount>(
+  [
+    CARD_ACCOUNT,
+    EVERYDAY_ACCOUNT,
+    acct(ID.groceries, 'EXPENSE', 'Food shopping'),
+    acct(ID.potGroceries, 'ENVELOPE', 'Food shopping', { envelopeRole: 'category' }),
+    acct(ID.cardPot, 'ENVELOPE', 'Set aside for your card bill', { envelopeRole: 'card_payment' }),
+    acct(ID.spendable, 'BUDGETABLE_CASH', 'Money you can spend'),
+    acct(ID.rta, 'READY_TO_ASSIGN', 'Not given a job yet'),
+    acct(ID.opening, 'EQUITY', 'Starting balances'),
+    acct(ID.owed, 'ASSET', 'Money you are owed'),
+    acct(ID.fronted, 'ENVELOPE', 'Money you fronted', { envelopeRole: 'reimbursements' }),
+    acct(ID.otherIncome, 'INCOME', 'Other money in'),
+  ].map((a) => [a.id, a]),
+);
+
+/** Parse the statement and file its one row against the given account. */
+function fileOneRow(account: LedgerAccount): JournalEntry {
+  const parsed = inspectFile(CARD_STATEMENT);
+  const result = buildCandidates(
+    parsed,
+    { ...parsed.suggested, dateOrder: 'dmy', outflowIsPositive: false },
+    account.id,
+    2,
+  );
+  expect(result.rejected).toEqual([]);
+  expect(result.rows).toHaveLength(1);
+
+  const row = result.rows[0]!;
+  return entryFromStatementLine({
+    id: entryId('e-import'),
+    line: { date: isoDate(row.date), amount: row.amount, description: row.description },
+    account,
+    category: {
+      categoryId: ID.groceries,
+      envelopeId: ID.potGroceries,
+      categoryName: 'Food shopping',
+    },
+    incomeAccountId: ID.otherIncome,
+    system: SYS,
+  });
+}
+
+const shown = (entry: JournalEntry, id: AccountId): number =>
+  presentedBalance({ accounts: CHART, entries: [entry] }, id);
+
+describe('importing a credit card statement', () => {
+  it('adds to what the card owes and sets the money aside for the bill', () => {
+    const entry = fileOneRow(CARD_ACCOUNT);
+
+    // What you owe on the card goes up by the purchase.
+    expect(shown(entry, ID.card)).toBe(5000);
+    // And the same amount is reserved against the bill that will arrive.
+    expect(shown(entry, ID.cardPot)).toBe(5000);
+    // The spending itself is counted exactly once.
+    expect(shown(entry, ID.groceries)).toBe(5000);
+  });
+
+  it('does not touch the money you can spend, because no cash moved', () => {
+    // This is the assertion the defect would fail: it used to take €50 out of
+    // spendable cash for a purchase that removed nothing from any account.
+    const entry = fileOneRow(CARD_ACCOUNT);
+    expect(shown(entry, ID.spendable)).toBe(0);
+  });
+
+  it('still spends cash when the statement is from an account you hold', () => {
+    // The other half of the pair: the fix must not turn every import into a
+    // card purchase.
+    const entry = fileOneRow(EVERYDAY_ACCOUNT);
+
+    expect(shown(entry, ID.everyday)).toBe(-5000);
+    expect(shown(entry, ID.spendable)).toBe(-5000);
+    // Nothing is reserved, because there is no bill coming.
+    expect(shown(entry, ID.cardPot)).toBe(0);
+  });
+
+  it('balances both books whichever account it came from', () => {
+    for (const account of [CARD_ACCOUNT, EVERYDAY_ACCOUNT]) {
+      const entry = fileOneRow(account);
+      for (const book of ['FINANCIAL', 'BUDGET'] as const) {
+        const lines = entry.postings.filter((p) => p.book === book);
+        expect(lines.reduce((sum, p) => sum + p.amount, 0)).toBe(0);
+      }
+    }
   });
 });

@@ -8,6 +8,7 @@ export type {
   EntryId,
   EntryKind,
   EnvelopeRole,
+  Funding,
   IsoDate,
   JournalEntry,
   LedgerAccount,
@@ -45,7 +46,6 @@ export {
 export type {
   AssignParams,
   CardPaymentParams,
-  Funding,
   IncomeParams,
   OpeningBalanceParams,
   RefundParams,
@@ -67,6 +67,11 @@ export {
   transfer,
   writeOff,
 } from './entries/builders';
+
+export { assertFundingMatchesAccount, fundingFor } from './funding';
+
+export type { StatementFiling, StatementLine } from './entries/fromStatement';
+export { entryFromStatementLine } from './entries/fromStatement';
 
 export type { BalanceFilter } from './balances';
 export {

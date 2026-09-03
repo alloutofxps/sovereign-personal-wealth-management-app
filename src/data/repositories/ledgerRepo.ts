@@ -171,6 +171,8 @@ function claimIdOf(entry: JournalEntry & { claimId?: string | null }): string | 
 
 export interface EntryWithPostings extends JournalEntry {
   createdAt: string;
+  /** Set when the entry opened or settled money somebody owes you. */
+  claimId?: string | null;
 }
 
 /** Most recent entries first, with their lines attached. */
@@ -213,6 +215,52 @@ export async function listRecentEntries(limit = 50): Promise<EntryWithPostings[]
     sealed: row.sealed === 1,
     createdAt: row.createdAt,
   }));
+}
+
+/** One entry with its lines, or null. Used before undoing something. */
+export async function entryById(id: EntryId): Promise<EntryWithPostings | null> {
+  const [row] = await db.select().from(entries).where(eq(entries.id, id)).limit(1);
+  if (!row) return null;
+
+  const postingRows = await db.select().from(postings).where(eq(postings.entryId, id));
+
+  return {
+    id: row.id as EntryId,
+    kind: row.kind as EntryKind,
+    date: row.date as IsoDate,
+    description: row.description,
+    postings: postingRows
+      .map((p) => ({
+        id: p.id as PostingId,
+        entryId: p.entryId as EntryId,
+        book: p.book as Book,
+        accountId: p.accountId as AccountId,
+        amount: minor(p.amount),
+        clearance: p.clearance as Clearance,
+        memo: p.memo,
+        sequence: p.sequence,
+      }))
+      .sort((a, b) => a.sequence - b.sequence),
+    sourceTransactionId: row.sourceTransactionId,
+    reversesEntryId: (row.reversesEntryId as EntryId | null) ?? null,
+    sealed: row.sealed === 1,
+    claimId: row.claimId,
+    createdAt: row.createdAt,
+  };
+}
+
+/**
+ * Has this entry already been undone?
+ *
+ * Undoing twice would post the mirror image twice and leave every balance
+ * wrong by the amount of the original, so it is checked rather than assumed.
+ */
+export async function isReversed(id: EntryId): Promise<boolean> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(entries)
+    .where(eq(entries.reversesEntryId, id));
+  return Number(row?.n ?? 0) > 0;
 }
 
 export async function countEntries(): Promise<number> {

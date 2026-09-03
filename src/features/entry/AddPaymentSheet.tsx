@@ -9,10 +9,11 @@
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
-import type { AccountId, Funding } from '@/core/ledger';
+import { isoDate, type AccountId } from '@/core/ledger';
+import { toIsoDate } from '@/core/liquidity';
 import { ACCOUNT_IDS, CATEGORIES } from '@/data/seed';
 import { CLAIM_KIND_LABELS, type ClaimKind } from '@/data/repositories/claimsRepo';
-import { recordFronted, recordSpend } from '@/app/ledger/actions';
+import { recordFronted, recordSpend, voidEntry } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
 import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
@@ -37,6 +38,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [categoryId, setCategoryId] = useState<AccountId | null>(null);
   const [paidWith, setPaidWith] = useState<PaidWith>('everyday');
   const [payee, setPayee] = useState('');
+  const [when, setWhen] = useState(() => toIsoDate(new Date()));
+  const [note, setNote] = useState('');
   /** Money paid out for somebody else never counts as your spending. */
   const [fronted, setFronted] = useState(false);
   const [claimKind, setClaimKind] = useState<ClaimKind>('work_expense');
@@ -52,6 +55,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setCategoryId(null);
     setPaidWith('everyday');
     setPayee('');
+    setWhen(toIsoDate(new Date()));
+    setNote('');
     setFronted(false);
     setClaimKind('work_expense');
     setOwedBy('');
@@ -70,18 +75,20 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setProblem(null);
 
     const method = PAYMENT_METHODS.find((m) => m.key === paidWith)!;
-    const funding: Funding =
-      paidWith === 'card'
-        ? { via: 'card', accountId: method.accountId, paymentEnvelopeId: ACCOUNT_IDS.potCardBill }
-        : { via: 'cash', accountId: method.accountId };
+    // How this is funded is not ours to decide any more: it follows from the
+    // account, worked out once in the ledger actions. Saying it twice is how
+    // imported card spending came to be recorded as cash.
+    const date = isoDate(when);
 
     try {
       if (fronted) {
         await recordFronted({
           amount,
-          funding,
+          paidFrom: method.accountId,
           counterparty: owedBy.trim(),
           kind: claimKind,
+          date,
+          ...(note.trim() ? { memo: note.trim() } : {}),
           ...(payee.trim() ? { note: `Paid ${payee.trim()}` } : {}),
         });
         toast(
@@ -94,18 +101,28 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
 
       if (!category) return;
 
-      await recordSpend({
+      const id = await recordSpend({
         amount,
         categoryId: category.categoryId,
         envelopeId: category.envelopeId,
         categoryName: category.name,
-        funding,
+        paidFrom: method.accountId,
+        date,
+        ...(note.trim() ? { memo: note.trim() } : {}),
         ...(payee.trim() ? { payee: payee.trim() } : {}),
       });
 
       toast(
         `Saved. You spent ${money.format(amount)} on ${category.name.toLowerCase()}` +
           `${paidWith === 'card' ? ', and the money for your card bill is set aside' : ''}.`,
+        {
+          action: {
+            label: 'Undo',
+            run: () => {
+              void undoJustSaved(id);
+            },
+          },
+        },
       );
       onClose();
     } catch (error) {
@@ -293,7 +310,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </div>
           </Field>
 
-          <Field label={fronted ? 'Who did you pay? (optional)' : 'Who did you pay? (optional)'}>
+          <Field label="Who did you pay? (optional)">
             <input
               type="text"
               value={payee}
@@ -302,10 +319,55 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
             />
           </Field>
+
+          <Field label="When was it?">
+            <input
+              type="date"
+              value={when}
+              max={toIsoDate(new Date())}
+              onChange={(e) => setWhen(e.target.value || toIsoDate(new Date()))}
+              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
+            />
+            {when !== toIsoDate(new Date()) && (
+              <p className="text-caption text-ink-3">
+                This will be counted on that day rather than today.
+              </p>
+            )}
+          </Field>
+
+          <Field label="Notes (optional)">
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Anything you want to remember about it"
+              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
+            />
+          </Field>
         </div>
       )}
     </BottomSheet>
   );
+}
+
+/**
+ * Undo straight after saving.
+ *
+ * The entry is not deleted — its mirror image is posted, so both stay in the
+ * history and every balance goes back exactly where it was.
+ */
+async function undoJustSaved(id: Parameters<typeof voidEntry>[0]) {
+  try {
+    await voidEntry(id);
+    toast('Undone. Everything is back where it was.');
+  } catch (error) {
+    toast(
+      error instanceof Error
+        ? error.message
+        : 'That could not be undone, so nothing has been changed.',
+      { tone: 'attention' },
+    );
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

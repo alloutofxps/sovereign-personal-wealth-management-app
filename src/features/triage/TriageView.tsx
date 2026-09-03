@@ -15,7 +15,7 @@ import {
   listUnreviewed,
   type StagedRow,
 } from '@/data/repositories/stagingRepo';
-import { confirmStagedRow } from '@/app/ledger/actions';
+import { confirmStagedRow, voidEntry } from '@/app/ledger/actions';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
@@ -37,12 +37,30 @@ export function TriageView() {
     const category = CATEGORIES.find((c) => c.categoryId === categoryId);
     if (!category) return;
     try {
-      await confirmStagedRow(row, {
+      const id = await confirmStagedRow(row, {
         categoryId: category.categoryId,
         envelopeId: category.envelopeId,
         categoryName: category.name,
       });
       setChoosing(null);
+      toast(`Filed under ${category.name.toLowerCase()}.`, {
+        action: {
+          label: 'Undo',
+          run: () => {
+            // Undoing puts the row back in the queue rather than losing it.
+            void voidEntry(id)
+              .then(() => toast('Undone. It is back in your queue to review.'))
+              .catch((error: unknown) =>
+                toast(
+                  error instanceof Error
+                    ? error.message
+                    : 'That could not be undone, so nothing has been changed.',
+                  { tone: 'attention' },
+                ),
+              );
+          },
+        },
+      });
     } catch (error) {
       toast(
         error instanceof Error
