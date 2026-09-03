@@ -70,7 +70,8 @@ export function BottomNav({
             // Pots live under Accounts, so that tab stays lit while you are there.
             active={
               route === tab.route ||
-              (tab.route === 'accounts' && (route === 'pots' || route === 'triage'))
+              (tab.route === 'accounts' &&
+                (route === 'pots' || route === 'triage' || route === 'transactions'))
             }
             onNavigate={onNavigate}
           />

@@ -21,7 +21,9 @@ export interface LiveQueryResult<T> {
 }
 
 /**
- * @param query   the read to run. Must be stable or wrapped in useCallback.
+ * @param query   the read to run. Must be stable or wrapped in useCallback —
+ *                the query re-runs whenever this identity changes, so an
+ *                inline closure would re-run on every render.
  * @param tables  which tables this query reads; it re-runs when they change.
  */
 export function useLiveQuery<T>(
@@ -66,13 +68,24 @@ export function useLiveQuery<T>(
 
   useEffect(() => {
     alive.current = true;
-    run();
     const unsubscribe = subscribe(tableKey.split(','), run);
     return () => {
       alive.current = false;
       unsubscribe();
     };
   }, [tableKey, run]);
+
+  /**
+   * Re-run when the question changes, not only when the data does.
+   *
+   * This used to live in the subscription effect above, which depended only on
+   * the table list — so a query whose *parameters* moved on kept returning the
+   * answer to the previous question. Nothing caught it for five slices because
+   * every caller until search had fixed parameters for its whole lifetime.
+   */
+  useEffect(() => {
+    run();
+  }, [query, run]);
 
   return { data, loading, error, refresh: run };
 }

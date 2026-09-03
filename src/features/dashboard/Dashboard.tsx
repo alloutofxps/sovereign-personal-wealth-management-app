@@ -92,9 +92,18 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
 
       {recent.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
-            What you have recorded
-          </h2>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+              What you have recorded
+            </h2>
+            <button
+              type="button"
+              onClick={() => navigate('transactions')}
+              className="text-caption text-liquid"
+            >
+              See everything
+            </button>
+          </div>
 
           <Card padding="none">
             <ul className="divide-y divide-line-faint">

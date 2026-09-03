@@ -70,8 +70,16 @@ export {
 
 export { assertFundingMatchesAccount, fundingFor } from './funding';
 
-export type { StatementFiling, StatementLine } from './entries/fromStatement';
-export { entryFromStatementLine } from './entries/fromStatement';
+export type { SplitLine, SpendSplitParams } from './entries/spendSplit';
+export { spendSplit, splitTotal } from './entries/spendSplit';
+
+export type {
+  CardCredit,
+  CardCreditKind,
+  StatementFiling,
+  StatementLine,
+} from './entries/fromStatement';
+export { entryFromStatementLine, needsCardCreditChoice } from './entries/fromStatement';
 
 export type { BalanceFilter } from './balances';
 export {

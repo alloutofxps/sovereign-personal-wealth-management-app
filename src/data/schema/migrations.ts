@@ -11,6 +11,10 @@
  * financial history.
  * ======================================================================== */
 
+import { V7, type SchemaCapabilities } from './migrations/v7';
+
+export type { SchemaCapabilities };
+
 export interface MigrationStep {
   /** The version this step takes the database *to*. */
   to: number;
@@ -20,8 +24,21 @@ export interface MigrationStep {
   addColumns?: { table: string; column: string; declaration: string }[];
   /** Statements run in order, after any columns are added. */
   statements?: string[];
+  /**
+   * Statements that depend on what this SQLite build can actually do.
+   *
+   * Full-text search is the first thing here that is not guaranteed to exist,
+   * so the runner probes the engine once and hands the answer to each step
+   * rather than every step probing for itself.
+   */
+  plan?: (capabilities: SchemaCapabilities) => string[];
 }
 
+/**
+ * From v7 onward each version lives in its own file under `migrations/`. The
+ * earlier steps stay inline: they are short, they have shipped, and moving
+ * them would churn history for no gain.
+ */
 export const MIGRATIONS: readonly MigrationStep[] = [
   {
     to: 2,
@@ -103,6 +120,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
       `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
     ],
   },
+  V7,
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, step) => Math.max(max, step.to), 1);

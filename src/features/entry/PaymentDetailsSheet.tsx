@@ -14,6 +14,7 @@ import { useState } from 'react';
 import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 import { voidEntry } from '@/app/ledger/actions';
 import { useAccounts } from '@/app/ledger/useLedger';
+import { presentEntry } from '@/app/ledger/present';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
@@ -39,7 +40,10 @@ export function PaymentDetailsSheet({
   // The note rides on the entry's first line, so this finds it wherever a
   // builder happened to put it.
   const note = entry?.postings.find((p) => p.memo)?.memo ?? null;
-  const amount = entry?.postings.find((p) => p.book === 'FINANCIAL' && p.amount > 0)?.amount ?? null;
+  const byId = new Map((accounts.data ?? []).map((a) => [a.id, a]));
+  const shown = entry ? presentEntry(entry, byId) : null;
+  // A split is worth the sum of its parts, not the size of its first line.
+  const amount = shown?.amount ?? null;
 
   async function undo() {
     if (!entry) return;
@@ -85,6 +89,26 @@ export function PaymentDetailsSheet({
           {note && (
             <Detail label="Your note">
               <p className="text-body text-ink">{note}</p>
+            </Detail>
+          )}
+
+          {shown && shown.categories.length > 1 && (
+            <Detail label={`Split across ${shown.categories.length} categories`}>
+              <ul className="flex flex-col gap-2">
+                {shown.categories.map((part) => (
+                  <li key={part.accountId} className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-body text-ink">{part.name}</span>
+                      {part.memo && (
+                        <span className="block truncate text-caption text-ink-3">
+                          {part.memo}
+                        </span>
+                      )}
+                    </span>
+                    <Money value={part.amount} size="body" />
+                  </li>
+                ))}
+              </ul>
             </Detail>
           )}
 

@@ -10,6 +10,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 export const ROUTES = [
   'home',
   'triage',
+  'transactions',
   'accounts',
   'pots',
   'forecast',

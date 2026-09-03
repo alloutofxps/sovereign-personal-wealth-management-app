@@ -28,6 +28,8 @@ import {
   type AccountId,
   fundingFor,
   assertFundingMatchesAccount,
+  spendSplit,
+  splitTotal,
   type Funding,
   type JournalEntry,
   type LedgerAccount,
@@ -725,5 +727,152 @@ describe('funding has to agree with the account', () => {
       system: SYSTEM,
     });
     expect(entry.postings[0]?.memo).toBe("Sam's half");
+  });
+});
+
+/* ===========================================================================
+ * SPLITTING ONE PAYMENT ACROSS SEVERAL CATEGORIES
+ * ---------------------------------------------------------------------------
+ * The storage could always hold this; there was simply no builder that laid
+ * the lines down in both books at once. The interesting property is not that
+ * a split balances — I1 would catch that — but that the two books carry the
+ * *same* allocation. A split of 80/40 financially and 60/60 in the budget
+ * balances perfectly and means nothing.
+ * ======================================================================== */
+
+describe('splitting a payment', () => {
+  const twoWays = [
+    { categoryId: A.groceries, envelopeId: A.vGroceries, amount: m(100) },
+    { categoryId: A.transport, envelopeId: A.vTransport, amount: m(50) },
+  ];
+
+  it('adds up to the whole payment', () => {
+    expect(splitTotal(twoWays)).toBe(m(150));
+  });
+
+  it('debits each category and credits the card once, for the total', () => {
+    const entry = spendSplit({ ...base(), funding: CARD, lines: twoWays, payee: 'Costco', system: SYSTEM });
+
+    expect(bal([entry], A.groceries)).toBe(m(100));
+    expect(bal([entry], A.transport)).toBe(m(50));
+    // What you owe on the card goes up once, by the whole amount.
+    expect(bal([entry], A.card)).toBe(m(150));
+    // And the reserve for the bill matches it exactly.
+    expect(bal([entry], A.vCardPay)).toBe(m(150));
+  });
+
+  it('takes cash out once when it was not a card', () => {
+    const entry = spendSplit({ ...base(), funding: CASH, lines: twoWays, payee: 'Costco', system: SYSTEM });
+    expect(bal([entry], A.checking)).toBe(-m(150));
+    expect(bal([entry], A.cash)).toBe(-m(150));
+    expect(bal([entry], A.vCardPay)).toBe(0);
+  });
+
+  it('moves each envelope down by its own share', () => {
+    const entry = spendSplit({ ...base(), funding: CASH, lines: twoWays, payee: 'Costco', system: SYSTEM });
+    expect(bal([entry], A.vGroceries)).toBe(-m(100));
+    expect(bal([entry], A.vTransport)).toBe(-m(50));
+  });
+
+  it('keeps a note against the line it belongs to', () => {
+    const entry = spendSplit({
+      ...base(),
+      funding: CASH,
+      payee: 'Costco',
+      lines: [
+        { ...twoWays[0]!, memo: 'the weekly shop' },
+        { ...twoWays[1]!, memo: 'petrol' },
+      ],
+      system: SYSTEM,
+    });
+    const memos = entry.postings.filter((p) => p.memo).map((p) => p.memo);
+    expect(memos).toContain('the weekly shop');
+    expect(memos).toContain('petrol');
+  });
+
+  it('refuses a split of one, which is just a payment', () => {
+    expect(() =>
+      spendSplit({ ...base(), funding: CASH, lines: [twoWays[0]!], system: SYSTEM }),
+    ).toThrow(/at least two categories/i);
+  });
+
+  it('refuses a line worth nothing', () => {
+    expect(() =>
+      spendSplit({
+        ...base(),
+        funding: CASH,
+        lines: [twoWays[0]!, { ...twoWays[1]!, amount: minor(0) }],
+        system: SYSTEM,
+      }),
+    ).toThrow(/more than zero/i);
+  });
+
+  it('refuses a card split funded as cash, like every other builder', () => {
+    expect(() =>
+      spendSplit({ ...base(), funding: { via: 'cash', account: ACCOUNTS.get(A.card)! }, lines: twoWays, system: SYSTEM }),
+    ).toThrow(/card or loan/i);
+  });
+
+  it('balances both books for any split at all', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 1, max: 500_000 }), { minLength: 2, maxLength: 8 }),
+        fc.boolean(),
+        (amounts, byCard) => {
+          const pots = [
+            { categoryId: A.groceries, envelopeId: A.vGroceries },
+            { categoryId: A.transport, envelopeId: A.vTransport },
+          ];
+          const lines = amounts.map((amount, index) => ({
+            ...pots[index % pots.length]!,
+            amount: minor(amount),
+          }));
+
+          const entry = spendSplit({
+            ...base(),
+            funding: byCard ? CARD : CASH,
+            lines,
+            system: SYSTEM,
+          });
+
+          for (const book of ['FINANCIAL', 'BUDGET'] as const) {
+            const total = entry.postings
+              .filter((p) => p.book === book)
+              .reduce((sum, p) => sum + p.amount, 0);
+            expect(total).toBe(0);
+          }
+
+          // I3 restored: the same allocation, whichever book you read it in.
+          const debitedFin = entry.postings
+            .filter((p) => p.book === 'FINANCIAL' && p.amount > 0)
+            .reduce((sum, p) => sum + p.amount, 0);
+          const debitedBud = entry.postings
+            .filter((p) => p.book === 'BUDGET' && p.amount > 0)
+            .reduce((sum, p) => sum + p.amount, 0);
+          expect(debitedFin).toBe(debitedBud);
+          expect(debitedFin).toBe(splitTotal(lines));
+        },
+      ),
+      { numRuns: 500 },
+    );
+  });
+
+  it('I3 catches a split whose two books disagree', () => {
+    // Hand-built damage of exactly the kind the builder prevents.
+    const good = spendSplit({ ...base(), funding: CASH, lines: twoWays, payee: 'Costco', system: SYSTEM });
+    const tampered: JournalEntry = {
+      ...good,
+      postings: good.postings.map((p) =>
+        p.book === 'BUDGET' && p.accountId === A.vGroceries
+          ? { ...p, amount: m(90) }
+          : p.book === 'BUDGET' && p.accountId === A.vTransport
+            ? { ...p, amount: m(60) }
+            : p,
+      ),
+    };
+
+    const violations = checkInvariant('I3', snapshot([tampered]));
+    expect(violations.length).toBeGreaterThan(0);
+    expect(violations[0]?.message).toMatch(/shares have to match|add up to the same total/i);
   });
 });

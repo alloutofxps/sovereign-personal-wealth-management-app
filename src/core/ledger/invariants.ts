@@ -14,7 +14,11 @@
  *   I2   was "the FX residual is posted explicitly".
  *        Now: every amount is an exact integer in the one ledger currency.
  *   I3   was "split amounts sum to the parent transaction".
- *        Now: every entry is structurally well formed against the chart.
+ *        Restored in Slice 6.2, now that splits exist — and in the stronger
+ *        form the two-book model makes possible: the split must add up to the
+ *        payment in *both* books, and to the same allocation in each. A split
+ *        of 80/40 financially and 60/60 in the budget balances perfectly and
+ *        is nonsense, and nothing else here would catch it.
  *   I10  was "an FX round trip drifts by at most one minor unit".
  *        Now: an entry and its reversal cancel exactly, on every account.
  *
@@ -111,11 +115,65 @@ const i2: Check = (snapshot) => {
   return violations;
 };
 
-/* --- I3: entries are well formed against the chart of accounts ---------- */
+/* --- I3: entries are well formed, and splits agree across both books ---- */
+
+/** Total debited to a book, which for a split is what its lines add up to. */
+function debitsIn(entry: JournalEntry, book: Book): number {
+  return entry.postings
+    .filter((p) => p.book === book && p.amount > 0)
+    .reduce((sum, p) => sum + p.amount, 0);
+}
 
 const i3: Check = (snapshot) => {
   const violations: InvariantViolation[] = [];
   for (const entry of snapshot.entries) {
+    // The restored half of I3. A split records the same allocation twice, once
+    // per book; if the two ever disagree the money has been categorised one
+    // way and budgeted another, and every figure downstream is wrong.
+    if (entry.kind === 'SPEND_SPLIT') {
+      const financial = debitsIn(entry, 'FINANCIAL');
+      const budget = debitsIn(entry, 'BUDGET');
+      if (financial !== budget) {
+        violations.push({
+          code: 'I3',
+          rule: 'A split adds up to the same payment in both books',
+          message:
+            `"${entry.description}" splits into ${financial} one way and ${budget} the ` +
+            `other. The parts of a payment have to add up to the same total however ` +
+            `they are looked at.`,
+          entryId: entry.id,
+        });
+      }
+
+      // Matching totals are not enough: 80/40 and 60/60 both come to 120.
+      // The shares themselves have to correspond, so compare the two books'
+      // allocations as multisets — sorted, because order is a convention of
+      // the builder rather than something stored data can be trusted to keep.
+      const categories = entry.postings
+        .filter((p) => p.book === 'FINANCIAL' && p.amount > 0)
+        .map((p) => p.amount)
+        .sort((a, b) => a - b);
+      const envelopes = entry.postings
+        .filter((p) => p.book === 'BUDGET' && p.amount > 0)
+        .map((p) => p.amount)
+        .sort((a, b) => a - b);
+
+      const sameShares =
+        categories.length === envelopes.length &&
+        categories.every((amount, index) => amount === envelopes[index]);
+
+      if (!sameShares) {
+        violations.push({
+          code: 'I3',
+          rule: 'A split adds up to the same payment in both books',
+          message:
+            `"${entry.description}" divides the payment one way against your categories ` +
+            `and a different way against your pots. The shares have to match.`,
+          entryId: entry.id,
+        });
+      }
+    }
+
     const booksTouched = new Set(entry.postings.map((p) => p.book));
 
     for (const book of booksTouched) {

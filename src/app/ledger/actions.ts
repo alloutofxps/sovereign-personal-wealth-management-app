@@ -19,12 +19,15 @@ import {
   reimbursement,
   reverseEntry,
   spend,
+  spendSplit,
   writeOff,
   type AccountId,
+  type CardCredit,
   type EntryId,
   type Funding,
   type IsoDate,
   type JournalEntry,
+  type SplitLine,
 } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
 import {
@@ -109,6 +112,33 @@ export async function recordSpend(input: RecordSpendInput): Promise<EntryId> {
   return entry.id;
 }
 
+export interface RecordSplitInput {
+  lines: SplitLine[];
+  paidFrom: AccountId;
+  payee?: string;
+  date?: IsoDate;
+  memo?: string;
+}
+
+/**
+ * One payment across several categories.
+ *
+ * The lines are the person's own allocation — the editor will not let them
+ * submit until the parts add up to the whole — so nothing is inferred here.
+ */
+export async function recordSplitSpend(input: RecordSplitInput): Promise<EntryId> {
+  const entry = spendSplit({
+    ...newEntry(input.date),
+    lines: input.lines,
+    funding: await fundedFrom(input.paidFrom),
+    ...(input.payee ? { payee: input.payee } : {}),
+    ...(input.memo ? { memo: input.memo } : {}),
+    system: SYSTEM_ACCOUNTS,
+  });
+  await saveEntry(entry);
+  return entry.id;
+}
+
 /**
  * Confirming a row from the review queue.
  *
@@ -116,23 +146,49 @@ export async function recordSpend(input: RecordSpendInput): Promise<EntryId> {
  * show as reviewed without the entry existing — and confirming the same row
  * twice cannot produce two entries.
  */
+export interface StagedChoice {
+  categoryId: AccountId;
+  envelopeId: AccountId;
+  categoryName: string;
+  /** Set when the person split this row across several categories. */
+  split?: SplitLine[];
+  /** Required for a positive row on a card statement. */
+  cardCredit?: CardCredit;
+}
+
 export async function confirmStagedRow(
   row: StagedRow,
-  choice: { categoryId: AccountId; envelopeId: AccountId; categoryName: string },
+  choice: StagedChoice,
 ): Promise<EntryId> {
   const account = (await accountsById()).get(row.accountId);
   if (!account) {
     throw new Error('The account that row came from could not be found.');
   }
 
-  const entry = entryFromStatementLine({
-    id: entryId(crypto.randomUUID()),
-    line: { date: isoDate(row.date), amount: row.amount, description: row.description },
-    account,
-    category: choice,
-    incomeAccountId: ACCOUNT_IDS.otherIncome,
-    system: SYSTEM_ACCOUNTS,
-  });
+  const id = entryId(crypto.randomUUID());
+  const date = isoDate(row.date);
+
+  // A split from the queue takes the same path as a split typed by hand, so
+  // the two cannot drift apart in how they post.
+  const entry =
+    choice.split && choice.split.length > 1 && row.amount < 0
+      ? spendSplit({
+          id,
+          date,
+          lines: choice.split,
+          funding: fundingFor(account),
+          payee: row.description,
+          system: SYSTEM_ACCOUNTS,
+        })
+      : entryFromStatementLine({
+          id,
+          line: { date, amount: row.amount, description: row.description },
+          account,
+          category: choice,
+          incomeAccountId: ACCOUNT_IDS.otherIncome,
+          ...(choice.cardCredit ? { cardCredit: choice.cardCredit } : {}),
+          system: SYSTEM_ACCOUNTS,
+        });
 
   const update = markReviewedStatement(row.id, entry.id);
   await saveEntry(entry, [{ sql: update.sql, params: update.params }]);

@@ -170,6 +170,7 @@ export interface SystemAccounts {
 export type EntryKind =
   | 'OPENING_BALANCE'
   | 'SPEND'
+  | 'SPEND_SPLIT'
   | 'INCOME'
   | 'TRANSFER'
   | 'CC_PAYMENT'

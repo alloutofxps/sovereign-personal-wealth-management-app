@@ -41,6 +41,11 @@ import { Toasts } from './Toasts';
 const TriageView = lazy(() =>
   import('@/features/triage/TriageView').then((m) => ({ default: m.TriageView })),
 );
+const TransactionsView = lazy(() =>
+  import('@/features/transactions/TransactionsView').then((m) => ({
+    default: m.TransactionsView,
+  })),
+);
 const PotsView = lazy(() =>
   import('@/features/goals/PotsView').then((m) => ({ default: m.PotsView })),
 );
@@ -151,6 +156,8 @@ function View({
       return <Dashboard onAdd={onAdd} unreviewed={unreviewed} />;
     case 'triage':
       return <TriageView />;
+    case 'transactions':
+      return <TransactionsView />;
     case 'accounts':
       return <AccountsView />;
     case 'pots':

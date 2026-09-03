@@ -6,6 +6,7 @@ import {
   NORMAL_BY_TYPE,
   accountId,
   entryFromStatementLine,
+  needsCardCreditChoice,
   entryId,
   isoDate,
   presentedBalance,
@@ -441,6 +442,106 @@ describe('importing a credit card statement', () => {
   it('balances both books whichever account it came from', () => {
     for (const account of [CARD_ACCOUNT, EVERYDAY_ACCOUNT]) {
       const entry = fileOneRow(account);
+      for (const book of ['FINANCIAL', 'BUDGET'] as const) {
+        const lines = entry.postings.filter((p) => p.book === book);
+        expect(lines.reduce((sum, p) => sum + p.amount, 0)).toBe(0);
+      }
+    }
+  });
+});
+
+/* ===========================================================================
+ * MONEY ARRIVING ON A CREDIT CARD
+ * ---------------------------------------------------------------------------
+ * A positive row on a card statement is one of two completely different
+ * things: you paying the bill, or a shop giving something back. Until now both
+ * were filed as income, which inflates what somebody appears to earn and — for
+ * a bill payment — counts money that only moved between their own accounts.
+ *
+ * The file cannot tell them apart. Only the person can, so the queue asks.
+ * ======================================================================== */
+
+const CARD_CREDIT_STATEMENT = `Date,Description,Amount
+03/09/2026,PAYMENT THANK YOU,150.00`;
+
+function fileCardCredit(cardCredit?: Parameters<typeof entryFromStatementLine>[0]['cardCredit']) {
+  const parsed = inspectFile(CARD_CREDIT_STATEMENT);
+  const result = buildCandidates(
+    parsed,
+    { ...parsed.suggested, dateOrder: 'dmy', outflowIsPositive: false },
+    CARD_ACCOUNT.id,
+    2,
+  );
+  const row = result.rows[0]!;
+  return entryFromStatementLine({
+    id: entryId('e-card-credit'),
+    line: { date: isoDate(row.date), amount: row.amount, description: row.description },
+    account: CARD_ACCOUNT,
+    category: {
+      categoryId: ID.groceries,
+      envelopeId: ID.potGroceries,
+      categoryName: 'Food shopping',
+    },
+    incomeAccountId: ID.otherIncome,
+    ...(cardCredit ? { cardCredit } : {}),
+    system: SYS,
+  });
+}
+
+describe('a positive row on a card statement', () => {
+  it('is recognised as needing the person to say what it was', () => {
+    expect(needsCardCreditChoice(CARD_ACCOUNT, minor(15000))).toBe(true);
+    // Money into an ordinary account is just income, and needs no question.
+    expect(needsCardCreditChoice(EVERYDAY_ACCOUNT, minor(15000))).toBe(false);
+    // Money going out of a card is a purchase, and needs no question either.
+    expect(needsCardCreditChoice(CARD_ACCOUNT, minor(-15000))).toBe(false);
+  });
+
+  it('refuses to guess, and says why in a sentence', () => {
+    expect(() => fileCardCredit()).toThrow(/either you paying the bill or a shop/i);
+  });
+
+  it('filed as a bill payment, reduces the debt without creating income', () => {
+    const entry = fileCardCredit({
+      kind: 'bill_payment',
+      paidFromAccountId: ID.everyday,
+      paidFromName: 'your everyday account',
+    });
+
+    expect(entry.kind).toBe('CC_PAYMENT');
+    // Debt down, cash down, nothing invented.
+    expect(shown(entry, ID.card)).toBe(-15000);
+    expect(shown(entry, ID.everyday)).toBe(-15000);
+    // Not a penny of income, and no category was touched.
+    expect(shown(entry, ID.otherIncome)).toBe(0);
+    expect(shown(entry, ID.groceries)).toBe(0);
+    // The reserve is released, because the bill it was held for is paid.
+    expect(shown(entry, ID.cardPot)).toBe(-15000);
+  });
+
+  it('filed as a refund, reduces what was spent in that category', () => {
+    const entry = fileCardCredit({ kind: 'refund' });
+
+    expect(entry.kind).toBe('REFUND');
+    // Spending in the category goes down rather than income going up.
+    expect(shown(entry, ID.groceries)).toBe(-15000);
+    expect(shown(entry, ID.otherIncome)).toBe(0);
+    // What you owe on the card goes down too.
+    expect(shown(entry, ID.card)).toBe(-15000);
+    // And the envelope gets its money back to spend again.
+    expect(shown(entry, ID.potGroceries)).toBe(15000);
+  });
+
+  it('balances both books whichever the person chooses', () => {
+    const entries = [
+      fileCardCredit({ kind: 'refund' }),
+      fileCardCredit({
+        kind: 'bill_payment',
+        paidFromAccountId: ID.everyday,
+        paidFromName: 'your everyday account',
+      }),
+    ];
+    for (const entry of entries) {
       for (const book of ['FINANCIAL', 'BUDGET'] as const) {
         const lines = entry.postings.filter((p) => p.book === book);
         expect(lines.reduce((sum, p) => sum + p.amount, 0)).toBe(0);

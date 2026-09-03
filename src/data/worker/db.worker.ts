@@ -23,6 +23,12 @@
 
 import sqlite3InitModule, { type Database, type Sqlite3Static } from '@sqlite.org/sqlite-wasm';
 import { BOOTSTRAP_DDL, DDL, SCHEMA_VERSION } from '../schema/ddl';
+import {
+  COMPILE_OPTIONS_SQL,
+  detectFts5,
+  searchSchemaStatements,
+  type SchemaCapabilities,
+} from '../schema/migrations/v7';
 import { MIGRATIONS } from '../schema/migrations';
 import {
   isWrite,
@@ -101,9 +107,18 @@ async function doOpen(): Promise<StorageStatus> {
   // Somebody's financial history is the only copy there is. Take one before
   // changing the shape of it, so a migration that goes wrong is recoverable
   // rather than final.
+  // Ask the engine what it can do before anything depends on the answer.
+  const capabilities = probeCapabilities(db);
+
   if (!fresh && currentVersion(db) < SCHEMA_VERSION) await backupBeforeMigrating(db);
-  if (!fresh) migrate(db);
+  if (!fresh) migrate(db, capabilities);
   for (const statement of DDL) db.exec(statement);
+
+  // The search schema is capability-dependent, so it cannot live in the static
+  // DDL. Running it here covers a fresh database; the v7 step covers one being
+  // upgraded. Every statement is safe to run twice, so both is fine.
+  for (const statement of searchSchemaStatements(capabilities)) db.exec(statement);
+
   setVersion(db, SCHEMA_VERSION);
 
   status = {
@@ -134,6 +149,27 @@ function explainFallback(error: unknown): string {
     'data will only last until you close this tab. Private browsing is the usual ' +
     'reason. Opening Sovereign in a normal window will fix it.'
   );
+}
+
+/**
+ * What this SQLite build supports.
+ *
+ * Read once per open and passed down, rather than probed at each use — the
+ * answer cannot change while the database is open, and a pragma per query
+ * would be a silly thing to pay for.
+ */
+function probeCapabilities(database: Database): SchemaCapabilities {
+  try {
+    const rows = database.exec({
+      sql: COMPILE_OPTIONS_SQL,
+      rowMode: 'array',
+      returnValue: 'resultRows',
+    }) as unknown[][];
+    return { fts5: detectFts5(rows) };
+  } catch {
+    // A build that will not even answer the question gets the slow path.
+    return { fts5: false };
+  }
 }
 
 /* --- schema versioning --------------------------------------------------- */
@@ -182,7 +218,7 @@ function setVersion(database: Database, version: number): void {
  * transaction. Somebody's financial history is the only copy there is, so a
  * failure part-way leaves it exactly where it started rather than half-done.
  */
-function migrate(database: Database): void {
+function migrate(database: Database, capabilities: SchemaCapabilities): void {
   const from = currentVersion(database);
   const pending = MIGRATIONS.filter((step) => step.to > from).sort((a, b) => a.to - b.to);
   if (pending.length === 0) return;
@@ -197,6 +233,7 @@ function migrate(database: Database): void {
         );
       }
       for (const statement of step.statements ?? []) database.exec(statement);
+      for (const statement of step.plan?.(capabilities) ?? []) database.exec(statement);
       setVersion(database, step.to);
     }
     database.exec('COMMIT');

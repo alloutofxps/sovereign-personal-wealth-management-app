@@ -22,8 +22,9 @@ import type {
   LedgerAccount,
   SystemAccounts,
 } from '../types';
+import { LedgerError } from '../types';
 import { fundingFor } from '../funding';
-import { income, spend } from './builders';
+import { cardPayment, income, refund, spend } from './builders';
 
 /** One row of a statement, signed the way the bank wrote it. */
 export interface StatementLine {
@@ -31,6 +32,27 @@ export interface StatementLine {
   /** Negative is money leaving the account. */
   amount: Minor;
   description: string;
+}
+
+/**
+ * What a *positive* row on a card statement actually was.
+ *
+ * Money arriving on a credit card is never income, and treating it as such
+ * inflates what somebody earns. It is one of two quite different things, and
+ * the file cannot tell them apart — only the person can, which is why this is
+ * asked in the review queue rather than guessed at here.
+ */
+export type CardCreditKind =
+  /** You paid the bill: cash down, debt down, the reserve released. */
+  | 'bill_payment'
+  /** A shop gave money back: the category's spending goes down. */
+  | 'refund';
+
+export interface CardCredit {
+  kind: CardCreditKind;
+  /** Which account the bill was paid from. Only for a bill payment. */
+  paidFromAccountId?: AccountId;
+  paidFromName?: string;
 }
 
 export interface StatementFiling {
@@ -42,7 +64,14 @@ export interface StatementFiling {
   category: { categoryId: AccountId; envelopeId: AccountId; categoryName: string };
   /** Where money arriving is recorded as having come from. */
   incomeAccountId: AccountId;
+  /** Required when a card statement row is positive. */
+  cardCredit?: CardCredit;
   system: SystemAccounts;
+}
+
+/** Does this row need the person to say what it was before it can be filed? */
+export function needsCardCreditChoice(account: LedgerAccount, amount: Minor): boolean {
+  return account.type === 'LIABILITY' && amount > 0;
 }
 
 /**
@@ -72,6 +101,12 @@ export function entryFromStatementLine(f: StatementFiling): JournalEntry {
     });
   }
 
+  // Money arriving on a card is not income. It is either the bill being paid
+  // or a shop giving something back, and those post completely differently.
+  if (needsCardCreditChoice(f.account, f.line.amount)) {
+    return cardCreditEntry(f);
+  }
+
   return income({
     id: f.id,
     date: f.line.date,
@@ -82,6 +117,56 @@ export function entryFromStatementLine(f: StatementFiling): JournalEntry {
     // tracking account — moves net worth without becoming money to assign.
     countsAsBudgetableCash: f.account.onBudget,
     payer: f.line.description,
+    system: f.system,
+  });
+}
+
+function cardCreditEntry(f: StatementFiling): JournalEntry {
+  const choice = f.cardCredit;
+  if (!choice) {
+    throw new LedgerError(
+      `Money arriving on ${f.account.name} is either you paying the bill or a shop ` +
+        `giving something back, and those are recorded differently. Please say which ` +
+        `this was.`,
+    );
+  }
+
+  if (choice.kind === 'bill_payment') {
+    if (!f.account.paymentEnvelopeId) {
+      throw new LedgerError(
+        `${f.account.name} has no pot set up for its bill, so there is nothing to ` +
+          `release when the bill is paid.`,
+      );
+    }
+    if (!choice.paidFromAccountId) {
+      throw new LedgerError('Please say which account the bill was paid from.');
+    }
+
+    // Cash down, debt down, reserve released. No expense account is touched,
+    // because the spending was already counted when the card was used.
+    return cardPayment({
+      id: f.id,
+      date: f.line.date,
+      amount: f.line.amount,
+      cardAccountId: f.account.id,
+      cardName: f.account.name,
+      paymentEnvelopeId: f.account.paymentEnvelopeId,
+      fromAccountId: choice.paidFromAccountId,
+      fromName: choice.paidFromName ?? 'your account',
+      system: f.system,
+    });
+  }
+
+  // A refund reduces what was spent in that category. Counting it as earnings
+  // would inflate income and quietly overstate the savings rate.
+  return refund({
+    id: f.id,
+    date: f.line.date,
+    amount: f.line.amount,
+    categoryId: f.category.categoryId,
+    envelopeId: f.category.envelopeId,
+    refundedTo: fundingFor(f.account),
+    payee: f.line.description,
     system: f.system,
   });
 }

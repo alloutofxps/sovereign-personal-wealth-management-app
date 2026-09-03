@@ -13,10 +13,17 @@ import { isoDate, type AccountId } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
 import { ACCOUNT_IDS, CATEGORIES } from '@/data/seed';
 import { CLAIM_KIND_LABELS, type ClaimKind } from '@/data/repositories/claimsRepo';
-import { recordFronted, recordSpend, voidEntry } from '@/app/ledger/actions';
+import { recordFronted, recordSpend, recordSplitSpend, voidEntry } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
 import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
+import {
+  SplitEditor,
+  allocated,
+  newDraftLine,
+  toSplitLines,
+  type DraftLine,
+} from './SplitEditor';
 
 type PaidWith = 'everyday' | 'savings' | 'card';
 
@@ -40,6 +47,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [payee, setPayee] = useState('');
   const [when, setWhen] = useState(() => toIsoDate(new Date()));
   const [note, setNote] = useState('');
+  const [splitting, setSplitting] = useState(false);
+  const [splitLines, setSplitLines] = useState<DraftLine[]>([]);
   /** Money paid out for somebody else never counts as your spending. */
   const [fronted, setFronted] = useState(false);
   const [claimKind, setClaimKind] = useState<ClaimKind>('work_expense');
@@ -57,6 +66,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setPayee('');
     setWhen(toIsoDate(new Date()));
     setNote('');
+    setSplitting(false);
+    setSplitLines([]);
     setFronted(false);
     setClaimKind('work_expense');
     setOwedBy('');
@@ -66,8 +77,17 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
 
   const category = CATEGORIES.find((c) => c.categoryId === categoryId) ?? null;
   const canContinue = amount > 0;
+  // A split is only saveable when every last unit is accounted for. Letting a
+  // remainder through would post a payment whose parts do not add up to it.
+  const splitExact = splitting && allocated(splitLines) === amount && amount > 0;
   const canSave =
-    canContinue && !saving && (fronted ? owedBy.trim().length > 0 : category !== null);
+    canContinue &&
+    !saving &&
+    (fronted
+      ? owedBy.trim().length > 0
+      : splitting
+        ? splitExact && toSplitLines(splitLines).length >= 2
+        : category !== null);
 
   async function save() {
     if (amount <= 0) return;
@@ -94,6 +114,23 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         toast(
           `Saved. ${money.format(amount)} is down as money ${owedBy.trim()} owes you, so it is ` +
             `not counted as your spending.`,
+        );
+        onClose();
+        return;
+      }
+
+      if (splitting) {
+        const id = await recordSplitSpend({
+          lines: toSplitLines(splitLines),
+          paidFrom: method.accountId,
+          date,
+          ...(note.trim() ? { memo: note.trim() } : {}),
+          ...(payee.trim() ? { payee: payee.trim() } : {}),
+        });
+        toast(
+          `Saved. ${money.format(amount)} split across ${toSplitLines(splitLines).length} ` +
+            `categories${paidWith === 'card' ? ', with the money for your card bill set aside' : ''}.`,
+          { action: { label: 'Undo', run: () => void undoJustSaved(id) } },
         );
         onClose();
         return;
@@ -262,6 +299,32 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               </Field>
             </>
           ) : (
+            <>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+              {splitting ? 'Split across categories' : 'What was it for?'}
+            </span>
+            {!fronted && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSplitting((was) => !was);
+                  setSplitLines((lines) =>
+                    lines.length >= 2 ? lines : [newDraftLine(), newDraftLine()],
+                  );
+                }}
+                className="text-caption text-liquid"
+              >
+                {splitting ? 'It was all one thing' : 'Split across categories'}
+              </button>
+            )}
+          </div>
+
+          {splitting && !fronted && (
+            <SplitEditor total={amount} lines={splitLines} onChange={setSplitLines} />
+          )}
+
+          {!splitting && (
           <Field label="What was it for?">
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((c) => (
@@ -282,6 +345,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               ))}
             </div>
           </Field>
+          )}
+            </>
           )}
 
           <Field label="How did you pay?">
