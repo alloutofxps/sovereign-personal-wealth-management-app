@@ -24,6 +24,10 @@ export const accounts = sqliteTable('accounts', {
   paymentEnvelopeId: text('payment_envelope_id'),
   envelopeRole: text('envelope_role'),
   sortOrder: integer('sort_order').notNull().default(0),
+  /** Pots saving up for something carry their own target and date. */
+  targetAmount: integer('target_amount'),
+  targetDate: text('target_date'),
+  targetRecurring: integer('target_recurring').notNull().default(0),
 });
 
 export const entries = sqliteTable(
@@ -38,6 +42,8 @@ export const entries = sqliteTable(
     reversesEntryId: text('reverses_entry_id'),
     sealed: integer('sealed').notNull().default(0),
     createdAt: text('created_at').notNull(),
+    /** Set on the entries that open and settle money you fronted. */
+    claimId: text('claim_id'),
   },
   (t) => [index('entries_date_idx').on(t.date)],
 );
@@ -77,11 +83,34 @@ export const scheduledItems = sqliteTable(
   (t) => [index('scheduled_due_idx').on(t.nextDue)],
 );
 
+/** Money you paid out that somebody else owes you back. */
+export const claims = sqliteTable(
+  'claims',
+  {
+    id: text('id').primaryKey(),
+    counterparty: text('counterparty').notNull(),
+    kind: text('kind').notNull(),
+    expected: integer('expected').notNull(),
+    settled: integer('settled').notNull().default(0),
+    status: text('status').notNull(),
+    openedOn: text('opened_on').notNull(),
+    note: text('note'),
+  },
+  (t) => [index('claims_status_idx').on(t.status)],
+);
+
 /** Schema version and one-off flags, so migrations know where they are. */
 export const meta = sqliteTable('meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
 
-export const TABLES = ['accounts', 'entries', 'postings', 'scheduled_items', 'meta'] as const;
+export const TABLES = [
+  'accounts',
+  'entries',
+  'postings',
+  'scheduled_items',
+  'claims',
+  'meta',
+] as const;
 export type TableName = (typeof TABLES)[number];

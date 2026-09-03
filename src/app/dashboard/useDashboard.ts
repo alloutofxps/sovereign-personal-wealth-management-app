@@ -26,10 +26,15 @@ import {
   LEDGER_TABLES,
   balancesByType,
   countEntries,
+  netWorthAsOf,
   spendByDay,
+  totalAssets,
   spendableCash,
 } from '@/data/repositories/ledgerRepo';
 import { listScheduled, occurrencesWithin } from '@/data/repositories/scheduleRepo';
+import { potTargets } from '@/data/repositories/potsRepo';
+import { totalOwedToYou } from '@/data/repositories/claimsRepo';
+import { planFor, reservedForPots, type PotPlan } from '@/core/goals';
 import { useAppConfig } from '@/app/config/store';
 
 /** How far ahead "already promised" reaches. */
@@ -71,6 +76,13 @@ export interface DashboardData {
   /** Everything due inside the horizon, for the breakdown sheet. */
   upcoming: UpcomingBill[];
   hasSchedule: boolean;
+  /** Every pot saving up for something, with what it needs this month. */
+  pots: PotPlan[];
+  /** Money you fronted that has not come back yet. */
+  owedToYou: Minor;
+  /** What you were worth at the end of last month, and the change since. */
+  netWorthLastMonth: Minor;
+  netWorthChange: Minor;
   /**
    * Whether there is anything in the ledger at all.
    *
@@ -90,14 +102,23 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
     const cycle = monthCycle(today);
     const horizonEnd = addDaysIso(today, HORIZON_DAYS);
 
-    const [cash, liabilities, envelopes, byDay, scheduled, entryCount] = await Promise.all([
-      spendableCash(),
-      balancesByType('LIABILITY'),
-      balancesByType('ENVELOPE'),
-      spendByDay(isoDate(cycle.start), isoDate(cycle.end)),
-      listScheduled(),
-      countEntries(),
-    ]);
+    const [cash, liabilities, envelopes, byDay, scheduled, entryCount, targets, owedToYou] =
+      await Promise.all([
+        spendableCash(),
+        balancesByType('LIABILITY'),
+        balancesByType('ENVELOPE'),
+        spendByDay(isoDate(cycle.start), isoDate(cycle.end)),
+        listScheduled(),
+        countEntries(),
+        potTargets(isoDate(cycle.start), isoDate(cycle.end)),
+        totalOwedToYou(),
+      ]);
+
+    const assets = await totalAssets();
+
+    const netWorthLastMonth = await netWorthAsOf(isoDate(addDaysIso(cycle.start, -1)));
+
+    const pots = targets.map((target) => planFor(target, today));
 
     /* --- what is already promised --------------------------------------- */
 
@@ -132,15 +153,12 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
 
     /* --- money already spoken for --------------------------------------- */
 
-    // Money in a goal or sinking-fund pot is earmarked, so it is not spare.
-    // Card-bill and reimbursement pots are excluded: those are the mirror of
-    // debts already counted above, and taking them off twice would understate
-    // what is safe to spend.
-    const goalFunding = minor(
-      envelopes
-        .filter((e) => e.role === 'goal' || e.role === 'sinking_fund')
-        .reduce((total, e) => total + Math.max(0, e.amount), 0),
-    );
+    // What the pots take out: the money already in them, which is sitting in
+    // the bank account and would be raided by spending it, plus whatever still
+    // has to go in this month. Card-bill and reimbursement pots are excluded
+    // here — those mirror debts already counted above, and taking them off
+    // twice would understate what is safe to spend.
+    const goalFunding = reservedForPots(pots);
 
     const reserved = minor(
       envelopes
@@ -188,16 +206,22 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
       totalDebt,
       reserved,
       billsCovered: totalDebt === 0 || reserved >= totalDebt,
-      netWorth: minor(cash - totalDebt),
+      // Everything you own, less everything you owe — money other people owe
+      // you back is still yours, so it belongs here.
+      netWorth: minor(assets - totalDebt),
       buffer: minor(bufferMinor),
       dueSoon: upcoming.filter((b) => b.daysAway * 24 <= SOON_HOURS),
       upcoming,
       hasSchedule: scheduled.length > 0,
       hasActivity: entryCount > 0,
+      pots,
+      owedToYou,
+      netWorthLastMonth,
+      netWorthChange: minor(assets - totalDebt - netWorthLastMonth),
     };
   }, [bufferMinor]);
 
-  return useLiveQuery(query, [...LEDGER_TABLES, 'scheduled_items']);
+  return useLiveQuery(query, [...LEDGER_TABLES, 'scheduled_items', 'claims']);
 }
 
 function addDaysIso(iso: string, days: number): string {

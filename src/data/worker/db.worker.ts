@@ -22,7 +22,8 @@
  * ======================================================================== */
 
 import sqlite3InitModule, { type Database, type Sqlite3Static } from '@sqlite.org/sqlite-wasm';
-import { DDL, SCHEMA_VERSION } from '../schema/ddl';
+import { BOOTSTRAP_DDL, DDL, SCHEMA_VERSION } from '../schema/ddl';
+import { MIGRATIONS } from '../schema/migrations';
 import {
   isWrite,
   tablesWrittenBy,
@@ -78,7 +79,28 @@ async function doOpen(): Promise<StorageStatus> {
     explanation = explainFallback(error);
   }
 
+  // Order matters here. An existing database must be brought up to date
+  // *before* the rest of the DDL runs, because the DDL creates indexes over
+  // columns that a migration is responsible for adding. Getting this the
+  // wrong way round works perfectly on a fresh install and breaks every
+  // upgrade, which is the worst possible way for it to fail.
+  for (const statement of BOOTSTRAP_DDL) db.exec(statement);
+  const fresh = !tableExists(db, 'accounts');
+
+  // Refuse to touch a database written by a newer version of Sovereign.
+  // Opening it would be one thing; writing to it with older code that does
+  // not understand its shape is how records get quietly mangled.
+  const found = currentVersion(db);
+  if (!fresh && found > SCHEMA_VERSION) {
+    throw new Error(
+      `Your data was saved by a newer version of Sovereign than the one running here. ` +
+        `Nothing has been changed. Reload the page to pick up the newer version.`,
+    );
+  }
+
+  if (!fresh) migrate(db);
   for (const statement of DDL) db.exec(statement);
+  setVersion(db, SCHEMA_VERSION);
 
   status = {
     vfs,
@@ -108,6 +130,79 @@ function explainFallback(error: unknown): string {
     'data will only last until you close this tab. Private browsing is the usual ' +
     'reason. Opening Sovereign in a normal window will fix it.'
   );
+}
+
+/* --- schema versioning --------------------------------------------------- */
+
+function tableExists(database: Database, table: string): boolean {
+  const rows = database.exec({
+    sql: `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    bind: [table],
+    rowMode: 'array',
+    returnValue: 'resultRows',
+  }) as unknown[][];
+  return rows.length > 0;
+}
+
+function columnExists(database: Database, table: string, column: string): boolean {
+  const rows = database.exec({
+    sql: `SELECT 1 FROM pragma_table_info(?) WHERE name = ?`,
+    bind: [table, column],
+    rowMode: 'array',
+    returnValue: 'resultRows',
+  }) as unknown[][];
+  return rows.length > 0;
+}
+
+function currentVersion(database: Database): number {
+  if (!tableExists(database, 'meta')) return 0;
+  const rows = database.exec({
+    sql: `SELECT value FROM meta WHERE key = 'schema_version'`,
+    rowMode: 'array',
+    returnValue: 'resultRows',
+  }) as unknown[][];
+  const raw = rows[0]?.[0];
+  return raw === undefined ? 0 : Number(raw);
+}
+
+function setVersion(database: Database, version: number): void {
+  database.exec({
+    sql: `INSERT INTO meta (key, value) VALUES ('schema_version', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    bind: [String(version)],
+  });
+}
+
+/**
+ * Step an existing database forward, one version at a time, in one
+ * transaction. Somebody's financial history is the only copy there is, so a
+ * failure part-way leaves it exactly where it started rather than half-done.
+ */
+function migrate(database: Database): void {
+  const from = currentVersion(database);
+  const pending = MIGRATIONS.filter((step) => step.to > from).sort((a, b) => a.to - b.to);
+  if (pending.length === 0) return;
+
+  database.exec('BEGIN');
+  try {
+    for (const step of pending) {
+      for (const column of step.addColumns ?? []) {
+        if (columnExists(database, column.table, column.column)) continue;
+        database.exec(
+          `ALTER TABLE ${column.table} ADD COLUMN ${column.column} ${column.declaration}`,
+        );
+      }
+      for (const statement of step.statements ?? []) database.exec(statement);
+      setVersion(database, step.to);
+    }
+    database.exec('COMMIT');
+  } catch (error) {
+    database.exec('ROLLBACK');
+    throw new Error(
+      `Sovereign could not update the shape of your saved data, so nothing has been ` +
+        `changed. ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 function requireDb(): Database {

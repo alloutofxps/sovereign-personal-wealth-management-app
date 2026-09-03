@@ -11,15 +11,27 @@
  * again inside the transaction that writes it.
  * ======================================================================== */
 
-export const SCHEMA_VERSION = 2;
+import { LATEST_VERSION } from './migrations';
 
-export const DDL: readonly string[] = [
+export const SCHEMA_VERSION = LATEST_VERSION;
+
+/**
+ * Run before anything else, including before migrations.
+ *
+ * Migrations need somewhere to read and write the version number, and the
+ * rest of the DDL cannot run until an older database has been brought up to
+ * date — a new index over a column a migration is about to add would fail.
+ */
+export const BOOTSTRAP_DDL: readonly string[] = [
   `PRAGMA foreign_keys = ON;`,
-
   `CREATE TABLE IF NOT EXISTS meta (
      key   TEXT PRIMARY KEY,
      value TEXT NOT NULL
    );`,
+];
+
+export const DDL: readonly string[] = [
+  ...BOOTSTRAP_DDL,
 
   `CREATE TABLE IF NOT EXISTS accounts (
      id                  TEXT PRIMARY KEY,
@@ -36,7 +48,11 @@ export const DDL: readonly string[] = [
      liquid              INTEGER NOT NULL DEFAULT 0 CHECK (liquid IN (0,1)),
      payment_envelope_id TEXT REFERENCES accounts(id),
      envelope_role       TEXT,
-     sort_order          INTEGER NOT NULL DEFAULT 0
+     sort_order          INTEGER NOT NULL DEFAULT 0,
+     -- Pots that are saving up for something carry their own target.
+     target_amount       INTEGER,
+     target_date         TEXT,
+     target_recurring    INTEGER NOT NULL DEFAULT 0
    );`,
 
   `CREATE TABLE IF NOT EXISTS entries (
@@ -47,7 +63,9 @@ export const DDL: readonly string[] = [
      source_transaction_id TEXT,
      reverses_entry_id     TEXT REFERENCES entries(id),
      sealed                INTEGER NOT NULL DEFAULT 0 CHECK (sealed IN (0,1)),
-     created_at            TEXT NOT NULL
+     created_at            TEXT NOT NULL,
+     -- Set on the two entries that open and settle money you fronted.
+     claim_id              TEXT
    );`,
 
   `CREATE TABLE IF NOT EXISTS postings (
@@ -76,7 +94,23 @@ export const DDL: readonly string[] = [
      active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
    );`,
 
+  // Money you paid out that somebody else owes you back.
+  `CREATE TABLE IF NOT EXISTS claims (
+     id           TEXT PRIMARY KEY,
+     counterparty TEXT NOT NULL,
+     kind         TEXT NOT NULL CHECK (kind IN
+                    ('work_expense','shared_with_friends','insurance','other')),
+     expected     INTEGER NOT NULL CHECK (expected > 0),
+     settled      INTEGER NOT NULL DEFAULT 0,
+     status       TEXT NOT NULL CHECK (status IN
+                    ('open','partly_settled','settled','written_off')),
+     opened_on    TEXT NOT NULL CHECK (opened_on LIKE '____-__-__'),
+     note         TEXT
+   );`,
+
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
+  `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,
+  `CREATE INDEX IF NOT EXISTS entries_claim_idx ON entries(claim_id);`,
   `CREATE INDEX IF NOT EXISTS entries_date_idx ON entries(date);`,
   `CREATE INDEX IF NOT EXISTS postings_account_idx ON postings(account_id);`,
   `CREATE INDEX IF NOT EXISTS postings_entry_idx ON postings(entry_id);`,

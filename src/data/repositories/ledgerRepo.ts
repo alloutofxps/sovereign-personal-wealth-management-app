@@ -115,7 +115,15 @@ export async function saveAccounts(list: readonly LedgerAccount[]): Promise<void
  * it, because this is the last point before the data becomes permanent and an
  * entry could have been assembled by something other than a builder.
  */
-export async function saveEntry(entry: JournalEntry): Promise<void> {
+export async function saveEntry(
+  entry: JournalEntry,
+  /**
+   * Extra statements committed in the same transaction — the claim row that
+   * goes with money you fronted, for instance. Either both land or neither
+   * does, so a claim can never disagree with the ledger behind it.
+   */
+  alongside: { sql: string; params: unknown[] }[] = [],
+): Promise<void> {
   assertBalanced(entry.id, entry.kind, entry.postings);
 
   const entryStatement = db
@@ -129,6 +137,7 @@ export async function saveEntry(entry: JournalEntry): Promise<void> {
       reversesEntryId: entry.reversesEntryId,
       sealed: entry.sealed ? 1 : 0,
       createdAt: new Date().toISOString(),
+      claimId: claimIdOf(entry),
     })
     .toSQL();
 
@@ -148,9 +157,16 @@ export async function saveEntry(entry: JournalEntry): Promise<void> {
       .toSQL(),
   );
 
-  await runBatch(
-    [entryStatement, ...postingStatements].map((s) => ({ sql: s.sql, params: s.params })),
-  );
+  await runBatch([
+    ...[entryStatement, ...postingStatements].map((s) => ({ sql: s.sql, params: s.params })),
+    ...alongside,
+  ]);
+}
+
+/** Claims are attached to an entry through an optional field on the domain
+ *  object, so the ledger core stays unaware that claims exist at all. */
+function claimIdOf(entry: JournalEntry & { claimId?: string | null }): string | null {
+  return entry.claimId ?? null;
 }
 
 export interface EntryWithPostings extends JournalEntry {
@@ -308,6 +324,39 @@ export async function balancesByType(
       role: row.role,
     };
   });
+}
+
+/**
+ * What you were worth at the end of a given day.
+ *
+ * Used for the calm month-on-month line under net worth. Assets carry debit
+ * balances and debts carry credit balances, so adding the two raw totals
+ * already subtracts what is owed.
+ */
+export async function netWorthAsOf(date: IsoDate): Promise<Minor> {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .from(postings)
+    .innerJoin(accounts, eq(accounts.id, postings.accountId))
+    .innerJoin(entries, eq(entries.id, postings.entryId))
+    // Opening balances count whenever they were typed in. They record what was
+    // already there, so treating one as this month's growth would tell someone
+    // they had gained their entire savings in a fortnight.
+    .where(
+      sql`${accounts.type} IN ('ASSET','LIABILITY')
+          AND (${entries.date} <= ${date} OR ${entries.kind} = 'OPENING_BALANCE')`,
+    );
+  return minor(Number(row?.total ?? 0));
+}
+
+/** Everything you own, including money other people owe you. */
+export async function totalAssets(): Promise<Minor> {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .from(postings)
+    .innerJoin(accounts, eq(accounts.id, postings.accountId))
+    .where(eq(accounts.type, 'ASSET'));
+  return minor(Number(row?.total ?? 0));
 }
 
 /** Every table this repository reads, for `useLiveQuery` subscriptions. */

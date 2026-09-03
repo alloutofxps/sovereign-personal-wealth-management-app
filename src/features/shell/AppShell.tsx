@@ -17,6 +17,7 @@ import { Gallery } from '@/features/gallery/Gallery';
 import { Dashboard } from '@/features/dashboard/Dashboard';
 import { TriageView } from '@/features/triage/TriageView';
 import { AccountsView } from '@/features/accounts/AccountsView';
+import { PotsView } from '@/features/goals/PotsView';
 import { SettingsView } from '@/features/settings/SettingsView';
 import { BottomNav } from './BottomNav';
 import { Toasts } from './Toasts';
@@ -85,6 +86,8 @@ function View({ route, onAdd }: { route: Route; onAdd: () => void }) {
       return <TriageView />;
     case 'accounts':
       return <AccountsView />;
+    case 'pots':
+      return <PotsView />;
     case 'settings':
       return <SettingsView />;
     case 'gallery':

@@ -56,7 +56,13 @@ export function BottomNav({
         </div>
 
         {tabs.slice(2).map((tab) => (
-          <NavButton key={tab.route} tab={tab} active={route === tab.route} onNavigate={onNavigate} />
+          <NavButton
+            key={tab.route}
+            tab={tab}
+            // Pots live under Accounts, so that tab stays lit while you are there.
+            active={route === tab.route || (tab.route === 'accounts' && route === 'pots')}
+            onNavigate={onNavigate}
+          />
         ))}
       </div>
     </nav>

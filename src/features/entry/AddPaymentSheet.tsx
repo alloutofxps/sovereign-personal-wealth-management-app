@@ -9,9 +9,10 @@
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
-import { entryId, isoDate, spend, type AccountId, type Funding } from '@/core/ledger';
-import { ACCOUNT_IDS, CATEGORIES, SYSTEM_ACCOUNTS } from '@/data/seed';
-import { saveEntry } from '@/data/repositories/ledgerRepo';
+import type { AccountId, Funding } from '@/core/ledger';
+import { ACCOUNT_IDS, CATEGORIES } from '@/data/seed';
+import { CLAIM_KIND_LABELS, type ClaimKind } from '@/data/repositories/claimsRepo';
+import { recordFronted, recordSpend } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
 import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
@@ -23,8 +24,6 @@ const PAYMENT_METHODS: { key: PaidWith; label: string; accountId: AccountId }[] 
   { key: 'card', label: 'Credit card', accountId: ACCOUNT_IDS.card },
   { key: 'savings', label: 'Savings', accountId: ACCOUNT_IDS.savings },
 ];
-
-const today = () => isoDate(new Date().toISOString().slice(0, 10));
 
 export interface AddPaymentSheetProps {
   open: boolean;
@@ -38,6 +37,10 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [categoryId, setCategoryId] = useState<AccountId | null>(null);
   const [paidWith, setPaidWith] = useState<PaidWith>('everyday');
   const [payee, setPayee] = useState('');
+  /** Money paid out for somebody else never counts as your spending. */
+  const [fronted, setFronted] = useState(false);
+  const [claimKind, setClaimKind] = useState<ClaimKind>('work_expense');
+  const [owedBy, setOwedBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -49,16 +52,20 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setCategoryId(null);
     setPaidWith('everyday');
     setPayee('');
+    setFronted(false);
+    setClaimKind('work_expense');
+    setOwedBy('');
     setProblem(null);
     setSaving(false);
   }, [open]);
 
   const category = CATEGORIES.find((c) => c.categoryId === categoryId) ?? null;
   const canContinue = amount > 0;
-  const canSave = canContinue && category !== null && !saving;
+  const canSave =
+    canContinue && !saving && (fronted ? owedBy.trim().length > 0 : category !== null);
 
   async function save() {
-    if (!category || amount <= 0) return;
+    if (amount <= 0) return;
     setSaving(true);
     setProblem(null);
 
@@ -69,19 +76,32 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         : { via: 'cash', accountId: method.accountId };
 
     try {
-      const entry = spend({
-        id: entryId(crypto.randomUUID()),
-        date: today(),
+      if (fronted) {
+        await recordFronted({
+          amount,
+          funding,
+          counterparty: owedBy.trim(),
+          kind: claimKind,
+          ...(payee.trim() ? { note: `Paid ${payee.trim()}` } : {}),
+        });
+        toast(
+          `Saved. ${money.format(amount)} is down as money ${owedBy.trim()} owes you, so it is ` +
+            `not counted as your spending.`,
+        );
+        onClose();
+        return;
+      }
+
+      if (!category) return;
+
+      await recordSpend({
         amount,
         categoryId: category.categoryId,
         envelopeId: category.envelopeId,
+        categoryName: category.name,
         funding,
         ...(payee.trim() ? { payee: payee.trim() } : {}),
-        categoryName: category.name,
-        system: SYSTEM_ACCOUNTS,
       });
-
-      await saveEntry(entry);
 
       toast(
         `Saved. You spent ${money.format(amount)} on ${category.name.toLowerCase()}` +
@@ -149,6 +169,82 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </button>
           </div>
 
+          {/* The toggle that keeps somebody else's costs out of your figures. */}
+          <button
+            type="button"
+            onClick={() => setFronted(!fronted)}
+            aria-pressed={fronted}
+            className={clsx(
+              'flex items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors',
+              fronted
+                ? 'border-liquid-dim bg-liquid-wash'
+                : 'border-line bg-raised hover:border-line-strong',
+            )}
+          >
+            <span
+              className={clsx(
+                'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm border',
+                fronted ? 'border-liquid bg-liquid text-base' : 'border-line-strong',
+              )}
+              aria-hidden="true"
+            >
+              {fronted && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="m4 12.5 5 5L20 6.5"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className={clsx('block text-body', fronted ? 'text-liquid' : 'text-ink')}>
+                I fronted this for someone else
+              </span>
+              <span className="block pt-0.5 text-caption text-ink-2">
+                A work trip, a dinner you covered, a group booking. It will be kept out of your
+                own spending until the money comes back.
+              </span>
+            </span>
+          </button>
+
+          {fronted ? (
+            <>
+              <Field label="Who will pay you back?">
+                <input
+                  type="text"
+                  value={owedBy}
+                  onChange={(e) => setOwedBy(e.target.value)}
+                  placeholder="Work, Sam, the group…"
+                  className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
+                />
+              </Field>
+
+              <Field label="What kind of thing was it?">
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(CLAIM_KIND_LABELS) as ClaimKind[]).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setClaimKind(k)}
+                      aria-pressed={claimKind === k}
+                      className={clsx(
+                        'rounded-md border px-3 py-2.5 text-left text-body transition-colors',
+                        claimKind === k
+                          ? 'border-liquid-dim bg-liquid-wash text-liquid'
+                          : 'border-line bg-raised text-ink hover:border-line-strong',
+                      )}
+                    >
+                      {CLAIM_KIND_LABELS[k]}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </>
+          ) : (
           <Field label="What was it for?">
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((c) => (
@@ -169,6 +265,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               ))}
             </div>
           </Field>
+          )}
 
           <Field label="How did you pay?">
             <div className="flex flex-col gap-2">
@@ -196,7 +293,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </div>
           </Field>
 
-          <Field label="Who did you pay? (optional)">
+          <Field label={fronted ? 'Who did you pay? (optional)' : 'Who did you pay? (optional)'}>
             <input
               type="text"
               value={payee}
