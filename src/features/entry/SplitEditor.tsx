@@ -13,11 +13,10 @@
  * payment that quietly misstates a month.
  * ======================================================================== */
 
-import { useMemo } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
 import type { AccountId, SplitLine } from '@/core/ledger';
-import { CATEGORIES } from '@/data/seed';
+import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
 import { useMoney } from '@/app/money/useMoney';
 import { Button, Input, Money, Select } from '@/design/ui';
 
@@ -40,17 +39,26 @@ export function parseAmountText(text: string): Minor {
   return minor(Math.round(value * 100));
 }
 
-/** The lines that are complete enough to post. */
-export function toSplitLines(drafts: readonly DraftLine[]): SplitLine[] {
+/**
+ * The lines that are complete enough to post.
+ *
+ * Needs the chart to pair each category with its envelope, so it takes a
+ * lookup rather than reaching for a literal — the categories are the person's
+ * now, and only the database knows what they are.
+ */
+export function toSplitLines(
+  drafts: readonly DraftLine[],
+  lookup: Map<string, { categoryId: string; envelopeId: string }>,
+): SplitLine[] {
   const lines: SplitLine[] = [];
   for (const draft of drafts) {
     const amount = parseAmountText(draft.amountText);
     if (!draft.categoryId || amount <= 0) continue;
-    const pair = CATEGORIES.find((c) => c.categoryId === draft.categoryId);
+    const pair = lookup.get(draft.categoryId);
     if (!pair) continue;
     lines.push({
-      categoryId: pair.categoryId,
-      envelopeId: pair.envelopeId,
+      categoryId: pair.categoryId as SplitLine['categoryId'],
+      envelopeId: pair.envelopeId as SplitLine['envelopeId'],
       amount,
       ...(draft.memo.trim() ? { memo: draft.memo.trim() } : {}),
     });
@@ -72,16 +80,12 @@ export function SplitEditor({
   onChange: (lines: DraftLine[]) => void;
 }) {
   const money = useMoney();
+  const picker = useCategoryPicker();
 
   const given = allocated(lines);
   const remainder = minor(total - given);
   const exact = remainder === 0 && given > 0;
   const over = remainder < 0;
-
-  const options = useMemo(
-    () => CATEGORIES.map((c) => ({ value: c.categoryId, label: c.name })),
-    [],
-  );
 
   const update = (key: string, patch: Partial<DraftLine>) =>
     onChange(lines.map((line) => (line.key === key ? { ...line, ...patch } : line)));
@@ -110,7 +114,7 @@ export function SplitEditor({
                   aria-label={`What part ${index + 1} was for`}
                   value={line.categoryId}
                   onChange={(e) => update(line.key, { categoryId: e.target.value as AccountId })}
-                  options={options}
+                  groups={picker.groups}
                   placeholder="What was it for?"
                   containerClassName="flex-1"
                 />

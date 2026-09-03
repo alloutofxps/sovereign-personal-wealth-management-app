@@ -11,9 +11,12 @@ import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
 import { isoDate, type AccountId } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
-import { ACCOUNT_IDS, CATEGORIES } from '@/data/seed';
+import { ACCOUNT_IDS } from '@/data/seed';
 import { CLAIM_KIND_LABELS, type ClaimKind } from '@/data/repositories/claimsRepo';
 import { recordFronted, recordSpend, recordSplitSpend, voidEntry } from '@/app/ledger/actions';
+import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
+import { saveRule } from '@/data/repositories/rulesRepo';
+import { AlwaysFileToggle, CategoryPicker } from '@/features/categories/CategoryPicker';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
 import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
@@ -47,6 +50,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [payee, setPayee] = useState('');
   const [when, setWhen] = useState(() => toIsoDate(new Date()));
   const [note, setNote] = useState('');
+  const [alwaysFile, setAlwaysFile] = useState(false);
   const [splitting, setSplitting] = useState(false);
   const [splitLines, setSplitLines] = useState<DraftLine[]>([]);
   /** Money paid out for somebody else never counts as your spending. */
@@ -66,6 +70,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setPayee('');
     setWhen(toIsoDate(new Date()));
     setNote('');
+    setAlwaysFile(false);
     setSplitting(false);
     setSplitLines([]);
     setFronted(false);
@@ -75,18 +80,20 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setSaving(false);
   }, [open]);
 
-  const category = CATEGORIES.find((c) => c.categoryId === categoryId) ?? null;
+  const picker = useCategoryPicker();
+  const category = categoryId ? (picker.byId.get(categoryId) ?? null) : null;
   const canContinue = amount > 0;
   // A split is only saveable when every last unit is accounted for. Letting a
   // remainder through would post a payment whose parts do not add up to it.
   const splitExact = splitting && allocated(splitLines) === amount && amount > 0;
+  const splitReady = toSplitLines(splitLines, picker.byId).length >= 2;
   const canSave =
     canContinue &&
     !saving &&
     (fronted
       ? owedBy.trim().length > 0
       : splitting
-        ? splitExact && toSplitLines(splitLines).length >= 2
+        ? splitExact && splitReady
         : category !== null);
 
   async function save() {
@@ -120,15 +127,16 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
       }
 
       if (splitting) {
+        const lines = toSplitLines(splitLines, picker.byId);
         const id = await recordSplitSpend({
-          lines: toSplitLines(splitLines),
+          lines,
           paidFrom: method.accountId,
           date,
           ...(note.trim() ? { memo: note.trim() } : {}),
           ...(payee.trim() ? { payee: payee.trim() } : {}),
         });
         toast(
-          `Saved. ${money.format(amount)} split across ${toSplitLines(splitLines).length} ` +
+          `Saved. ${money.format(amount)} split across ${lines.length} ` +
             `categories${paidWith === 'card' ? ', with the money for your card bill set aside' : ''}.`,
           { action: { label: 'Undo', run: () => void undoJustSaved(id) } },
         );
@@ -148,6 +156,16 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         ...(note.trim() ? { memo: note.trim() } : {}),
         ...(payee.trim() ? { payee: payee.trim() } : {}),
       });
+
+      // Offered at the only moment the person actually knows the answer:
+      // just after they have made the decision by hand.
+      if (alwaysFile && payee.trim()) {
+        await saveRule({
+          pattern: payee.trim(),
+          categoryId: category.categoryId,
+          envelopeId: category.envelopeId,
+        });
+      }
 
       toast(
         `Saved. You spent ${money.format(amount)} on ${category.name.toLowerCase()}` +
@@ -325,26 +343,26 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
           )}
 
           {!splitting && (
-          <Field label="What was it for?">
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.categoryId}
-                  type="button"
-                  onClick={() => setCategoryId(c.categoryId)}
-                  aria-pressed={categoryId === c.categoryId}
-                  className={clsx(
-                    'rounded-md border px-3 py-2.5 text-left text-body transition-colors',
-                    categoryId === c.categoryId
-                      ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                      : 'border-line bg-raised text-ink hover:border-line-strong',
-                  )}
-                >
-                  {c.name}
-                </button>
-              ))}
+            <div className="flex flex-col gap-3">
+              <CategoryPicker
+                value={categoryId}
+                onChange={setCategoryId}
+                merchant={payee}
+                onPrediction={(predicted) => {
+                  // Only fills a blank. Overwriting a choice somebody has
+                  // already made would be the app arguing with them.
+                  setCategoryId((current) => current ?? predicted);
+                }}
+              />
+              {category && (
+                <AlwaysFileToggle
+                  merchant={payee}
+                  categoryName={category.name}
+                  checked={alwaysFile}
+                  onChange={setAlwaysFile}
+                />
+              )}
             </div>
-          </Field>
           )}
             </>
           )}

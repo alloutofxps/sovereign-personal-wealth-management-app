@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { minor } from '@/core/money';
 import { isoDate, type AccountId, type LedgerAccount } from '@/core/ledger';
 import type { EntrySearchParams } from '@/data/repositories/searchRepo';
+import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
 import { useMoney } from '@/app/money/useMoney';
 import { BottomSheet, Button, Chip, Input } from '@/design/ui';
 
@@ -93,6 +94,7 @@ export function FilterSheet({
   accounts: readonly LedgerAccount[];
 }) {
   const money = useMoney();
+  const picker = useCategoryPicker();
   const [draft, setDraft] = useState<EntrySearchParams>(value);
   const [minText, setMinText] = useState('');
   const [maxText, setMaxText] = useState('');
@@ -107,7 +109,9 @@ export function FilterSheet({
   }, [open, value]);
 
   const places = accounts.filter((a) => a.type === 'ASSET' || a.type === 'LIABILITY');
-  const categories = accounts.filter((a) => a.type === 'EXPENSE');
+  // Only the leaves. A group is an account too, but nothing is ever filed
+  // directly against one, so offering it as a filter would return nothing.
+  const categories = picker.all;
 
   const toggle = (list: string[] | undefined, id: string): string[] | undefined => {
     const current = list ?? [];
@@ -182,11 +186,11 @@ export function FilterSheet({
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <Chip
-                key={category.id}
-                active={(draft.categoryIds ?? []).includes(category.id)}
+                key={category.categoryId}
+                active={(draft.categoryIds ?? []).includes(category.categoryId)}
                 onClick={() =>
                   setDraft((d) => {
-                    const ids = toggle(d.categoryIds, category.id);
+                    const ids = toggle(d.categoryIds, category.categoryId);
                     const { categoryIds: _drop, ...rest } = d;
                     return ids ? { ...rest, categoryIds: ids } : rest;
                   })

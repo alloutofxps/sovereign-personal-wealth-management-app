@@ -69,17 +69,44 @@ export interface CategoryPair {
   categoryId: AccountId;
   envelopeId: AccountId;
   name: string;
+  /** Which starter group it sits under. */
+  groupId: AccountId;
 }
 
+/* --- the starter groups ---------------------------------------------------
+ * These exist so a fresh install lands on exactly the shape an upgraded
+ * database reaches through migration v8. They are a starting point and
+ * nothing more: every one can be renamed, added to, or archived.
+ * ------------------------------------------------------------------------ */
+
+export const GROUP_IDS = {
+  essential: accountId('grp-essential'),
+  lifestyle: accountId('grp-lifestyle'),
+  transit: accountId('grp-transit'),
+} as const;
+
+export const STARTER_GROUPS: { id: AccountId; envelopeId: AccountId; name: string }[] = [
+  { id: GROUP_IDS.essential, envelopeId: accountId('grp-pot-essential'), name: 'Essential living' },
+  { id: GROUP_IDS.lifestyle, envelopeId: accountId('grp-pot-lifestyle'), name: 'Lifestyle and personal' },
+  { id: GROUP_IDS.transit, envelopeId: accountId('grp-pot-transit'), name: 'Getting around and health' },
+];
+
+/**
+ * The categories a first run starts with.
+ *
+ * SEED DATA ONLY. Nothing outside this file reads it any more — every picker
+ * in the app now queries the chart of accounts, because a household's
+ * categories are theirs and not ours to fix in a literal.
+ */
 export const CATEGORIES: CategoryPair[] = [
-  { categoryId: ACCOUNT_IDS.groceries, envelopeId: ACCOUNT_IDS.potGroceries, name: 'Food shopping' },
-  { categoryId: ACCOUNT_IDS.eatingOut, envelopeId: ACCOUNT_IDS.potEatingOut, name: 'Eating out' },
-  { categoryId: ACCOUNT_IDS.transport, envelopeId: ACCOUNT_IDS.potTransport, name: 'Getting around' },
-  { categoryId: ACCOUNT_IDS.home, envelopeId: ACCOUNT_IDS.potHome, name: 'Home' },
-  { categoryId: ACCOUNT_IDS.shopping, envelopeId: ACCOUNT_IDS.potShopping, name: 'Shopping' },
-  { categoryId: ACCOUNT_IDS.health, envelopeId: ACCOUNT_IDS.potHealth, name: 'Health' },
-  { categoryId: ACCOUNT_IDS.fun, envelopeId: ACCOUNT_IDS.potFun, name: 'Fun' },
-  { categoryId: ACCOUNT_IDS.billsAndSubs, envelopeId: ACCOUNT_IDS.potBills, name: 'Bills and subscriptions' },
+  { categoryId: ACCOUNT_IDS.groceries, envelopeId: ACCOUNT_IDS.potGroceries, name: 'Food shopping', groupId: GROUP_IDS.essential },
+  { categoryId: ACCOUNT_IDS.eatingOut, envelopeId: ACCOUNT_IDS.potEatingOut, name: 'Eating out', groupId: GROUP_IDS.lifestyle },
+  { categoryId: ACCOUNT_IDS.transport, envelopeId: ACCOUNT_IDS.potTransport, name: 'Getting around', groupId: GROUP_IDS.transit },
+  { categoryId: ACCOUNT_IDS.home, envelopeId: ACCOUNT_IDS.potHome, name: 'Home', groupId: GROUP_IDS.essential },
+  { categoryId: ACCOUNT_IDS.shopping, envelopeId: ACCOUNT_IDS.potShopping, name: 'Shopping', groupId: GROUP_IDS.lifestyle },
+  { categoryId: ACCOUNT_IDS.health, envelopeId: ACCOUNT_IDS.potHealth, name: 'Health', groupId: GROUP_IDS.transit },
+  { categoryId: ACCOUNT_IDS.fun, envelopeId: ACCOUNT_IDS.potFun, name: 'Fun', groupId: GROUP_IDS.lifestyle },
+  { categoryId: ACCOUNT_IDS.billsAndSubs, envelopeId: ACCOUNT_IDS.potBills, name: 'Bills and subscriptions', groupId: GROUP_IDS.essential },
 ];
 
 function make(
@@ -104,8 +131,12 @@ function make(
   };
 }
 
-const pot = (id: AccountId, name: string, role: EnvelopeRole = 'category'): LedgerAccount =>
-  make(id, 'ENVELOPE', name, { envelopeRole: role });
+const pot = (
+  id: AccountId,
+  name: string,
+  role: EnvelopeRole = 'category',
+  extra: Partial<LedgerAccount> = {},
+): LedgerAccount => make(id, 'ENVELOPE', name, { envelopeRole: role, ...extra });
 
 export function starterChart(): LedgerAccount[] {
   return [
@@ -123,12 +154,18 @@ export function starterChart(): LedgerAccount[] {
     make(ACCOUNT_IDS.otherIncome, 'INCOME', 'Other money in'),
 
     // --- what you spend on ---
-    ...CATEGORIES.map((c) => make(c.categoryId, 'EXPENSE', c.name)),
+    ...STARTER_GROUPS.map((g) => make(g.id, 'EXPENSE', g.name)),
+    ...CATEGORIES.map((c) => make(c.categoryId, 'EXPENSE', c.name, { parentId: c.groupId })),
 
     // --- the budget side ---
     make(ACCOUNT_IDS.spendable, 'BUDGETABLE_CASH', 'Money you can spend'),
     make(ACCOUNT_IDS.readyToAssign, 'READY_TO_ASSIGN', 'Not given a job yet'),
-    ...CATEGORIES.map((c) => pot(c.envelopeId, c.name)),
+    ...STARTER_GROUPS.map((g) => pot(g.envelopeId, g.name, 'group')),
+    ...CATEGORIES.map((c) =>
+      pot(c.envelopeId, c.name, 'category', {
+        parentId: STARTER_GROUPS.find((g) => g.id === c.groupId)!.envelopeId,
+      }),
+    ),
     pot(ACCOUNT_IDS.potCardBill, 'Set aside for your card bill', 'card_payment'),
     pot(ACCOUNT_IDS.potFronted, 'Money you fronted', 'reimbursements'),
   ];

@@ -6,11 +6,11 @@
  * is a decision, not a tidy-up. */
 
 import { useEffect, useState } from 'react';
-import clsx from 'clsx';
 import type { AccountId } from '@/core/ledger';
-import { CATEGORIES } from '@/data/seed';
 import type { Claim } from '@/data/repositories/claimsRepo';
 import { writeOffClaim } from '@/app/ledger/actions';
+import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
+import { CategoryPicker } from '@/features/categories/CategoryPicker';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
 import { BottomSheet, Button, Money } from '@/design/ui';
@@ -36,7 +36,8 @@ export function WriteOffSheet({
     setSaving(false);
   }, [open]);
 
-  const category = CATEGORIES.find((c) => c.categoryId === categoryId) ?? null;
+  const picker = useCategoryPicker();
+  const category = categoryId ? (picker.byId.get(categoryId) ?? null) : null;
 
   async function confirm() {
     if (!claim || !category) return;
@@ -106,24 +107,7 @@ export function WriteOffSheet({
             <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
               What should it count as?
             </span>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.categoryId}
-                  type="button"
-                  onClick={() => setCategoryId(c.categoryId)}
-                  aria-pressed={categoryId === c.categoryId}
-                  className={clsx(
-                    'rounded-md border px-3 py-2.5 text-left text-body transition-colors',
-                    categoryId === c.categoryId
-                      ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                      : 'border-line bg-raised text-ink hover:border-line-strong',
-                  )}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
+            <CategoryPicker value={categoryId} onChange={setCategoryId} label="" />
           </div>
         </div>
       )}

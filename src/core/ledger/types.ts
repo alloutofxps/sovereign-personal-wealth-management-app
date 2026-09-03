@@ -98,6 +98,8 @@ export const BOOK_BY_TYPE: Record<LedgerAccountType, Book> = {
 /** What an envelope is for. Drives how the budget layer treats it. */
 export type EnvelopeRole =
   | 'category'
+  /** A parent node holding other envelopes, so a budget can roll up by group. */
+  | 'group'
   | 'sinking_fund'
   | 'goal'
   | 'card_payment'
@@ -127,6 +129,17 @@ export interface LedgerAccount {
   paymentEnvelopeId: AccountId | null;
   /** For an ENVELOPE: what it is for. */
   envelopeRole: EnvelopeRole | null;
+
+  /**
+   * When this was retired, or null while it is still in use.
+   *
+   * Nothing is ever deleted. A category with history cannot be removed without
+   * orphaning every posting that points at it and changing what past months
+   * add up to, so retiring means hiding it from what comes next.
+   */
+  archivedAt?: string | null;
+  colorToken?: string | null;
+  icon?: string | null;
 }
 
 /**

@@ -33,6 +33,25 @@ export const accounts = sqliteTable('accounts', {
   minPayment: integer('min_payment'),
   creditLimit: integer('credit_limit'),
   dueDay: integer('due_day'),
+  /** Set when a category is retired. Its history stays; it stops being offered. */
+  archivedAt: text('archived_at'),
+  colorToken: text('color_token'),
+  icon: text('icon'),
+});
+
+export const rules = sqliteTable('rules', {
+  id: text('id').primaryKey(),
+  pattern: text('pattern').notNull(),
+  isRegex: integer('is_regex').notNull().default(0),
+  matchField: text('match_field').notNull().default('description'),
+  categoryId: text('category_id').notNull(),
+  envelopeId: text('envelope_id').notNull(),
+  /** Lower runs first. */
+  priority: integer('priority').notNull().default(0),
+  active: integer('active').notNull().default(1),
+  matchCount: integer('match_count').notNull().default(0),
+  lastMatchedAt: text('last_matched_at'),
+  createdAt: text('created_at').notNull(),
 });
 
 export const entries = sqliteTable(

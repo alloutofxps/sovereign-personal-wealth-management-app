@@ -71,7 +71,8 @@ export function BottomNav({
             active={
               route === tab.route ||
               (tab.route === 'accounts' &&
-                (route === 'pots' || route === 'triage' || route === 'transactions'))
+                (route === 'pots' || route === 'triage' || route === 'transactions')) ||
+              (tab.route === 'settings' && route === 'categories')
             }
             onNavigate={onNavigate}
           />

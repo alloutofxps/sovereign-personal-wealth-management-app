@@ -86,6 +86,18 @@ export function SettingsView() {
         )}
       </Card>
 
+      <Card label="Categories and rules">
+        <p className="text-caption text-ink-2">
+          How your spending is divided up, and anything you have asked Sovereign to file for
+          you without being asked twice.
+        </p>
+        <div className="pt-3">
+          <Button variant="secondary" onClick={() => navigate('categories')}>
+            Manage categories
+          </Button>
+        </div>
+      </Card>
+
       <Card label="Design system">
         <p className="text-caption text-ink-2">
           Every button, sheet and figure in Sovereign, on one page.

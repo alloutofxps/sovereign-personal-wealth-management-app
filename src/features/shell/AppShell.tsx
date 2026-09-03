@@ -58,6 +58,11 @@ const DebtPayoffView = lazy(() =>
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
 );
+const CategoryManagerView = lazy(() =>
+  import('@/features/categories/CategoryManagerView').then((m) => ({
+    default: m.CategoryManagerView,
+  })),
+);
 const SettingsView = lazy(() =>
   import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
 );
@@ -168,6 +173,8 @@ function View({
       return <DebtPayoffView />;
     case 'independence':
       return <IndependenceView />;
+    case 'categories':
+      return <CategoryManagerView />;
     case 'settings':
       return <SettingsView />;
     case 'gallery':

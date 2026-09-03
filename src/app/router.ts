@@ -16,6 +16,7 @@ export const ROUTES = [
   'forecast',
   'debt',
   'independence',
+  'categories',
   'settings',
   'gallery',
 ] as const;

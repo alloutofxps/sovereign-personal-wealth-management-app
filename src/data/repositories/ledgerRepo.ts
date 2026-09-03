@@ -46,6 +46,9 @@ function toAccount(row: AccountRow): LedgerAccount {
     liquid: row.liquid === 1,
     paymentEnvelopeId: (row.paymentEnvelopeId as AccountId | null) ?? null,
     envelopeRole: (row.envelopeRole as LedgerAccount['envelopeRole']) ?? null,
+    archivedAt: row.archivedAt ?? null,
+    colorToken: row.colorToken ?? null,
+    icon: row.icon ?? null,
   };
 }
 

@@ -57,7 +57,12 @@ export const DDL: readonly string[] = [
      apr_bp              INTEGER,
      min_payment         INTEGER,
      credit_limit        INTEGER,
-     due_day             INTEGER CHECK (due_day IS NULL OR (due_day >= 1 AND due_day <= 28))
+     due_day             INTEGER CHECK (due_day IS NULL OR (due_day >= 1 AND due_day <= 28)),
+     -- Archived rather than deleted: past months have to keep adding up, and
+     -- a deleted account would orphan every posting that ever pointed at it.
+     archived_at         TEXT,
+     color_token         TEXT,
+     icon                TEXT
    );`,
 
   `CREATE TABLE IF NOT EXISTS entries (
@@ -83,6 +88,22 @@ export const DDL: readonly string[] = [
      clearance  TEXT NOT NULL CHECK (clearance IN ('pending','cleared')),
      memo       TEXT,
      sequence   INTEGER NOT NULL
+   );`,
+
+  // Patterns that file a statement row without being asked twice.
+  `CREATE TABLE IF NOT EXISTS rules (
+     id              TEXT PRIMARY KEY,
+     pattern         TEXT NOT NULL,
+     is_regex        INTEGER NOT NULL DEFAULT 0 CHECK (is_regex IN (0,1)),
+     match_field     TEXT NOT NULL DEFAULT 'description'
+                       CHECK (match_field IN ('description','raw_descriptor')),
+     category_id     TEXT NOT NULL REFERENCES accounts(id),
+     envelope_id     TEXT NOT NULL REFERENCES accounts(id),
+     priority        INTEGER NOT NULL DEFAULT 0,
+     active          INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+     match_count     INTEGER NOT NULL DEFAULT 0,
+     last_matched_at TEXT,
+     created_at      TEXT NOT NULL
    );`,
 
   // Regular payments in and out. These are what make "safe to spend" mean
@@ -130,6 +151,9 @@ export const DDL: readonly string[] = [
    );`,
 
   `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
+  `CREATE INDEX IF NOT EXISTS idx_rules_active_priority ON rules(active, priority ASC);`,
+  `CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_accounts_book_type ON accounts(book, type, archived_at);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,
   `CREATE INDEX IF NOT EXISTS entries_claim_idx ON entries(claim_id);`,
