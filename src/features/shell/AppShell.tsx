@@ -6,22 +6,15 @@
  * are created on a first run.
  * ======================================================================== */
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { openDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
 import type { StorageStatus } from '@/data/worker/protocol';
 import { useRoute, type Route } from '@/app/router';
 import { AddPaymentSheet } from '@/features/entry/AddPaymentSheet';
-import { Gallery } from '@/features/gallery/Gallery';
 import { Dashboard } from '@/features/dashboard/Dashboard';
-import { TriageView } from '@/features/triage/TriageView';
 import { AccountsView } from '@/features/accounts/AccountsView';
-import { PotsView } from '@/features/goals/PotsView';
-import { ForecastView } from '@/features/forecast/ForecastView';
-import { DebtPayoffView } from '@/features/simulations/DebtPayoffView';
-import { IndependenceView } from '@/features/simulations/IndependenceView';
-import { SettingsView } from '@/features/settings/SettingsView';
 import { useAppUpdate } from '@/app/pwa/useAppUpdate';
 import { requestPersistence } from '@/data/persistence';
 import { countUnreviewed, STAGING_TABLES } from '@/data/repositories/stagingRepo';
@@ -30,6 +23,45 @@ import { LockGate } from './LockGate';
 import { UpdateBanner } from './UpdateBanner';
 import { BottomNav } from './BottomNav';
 import { Toasts } from './Toasts';
+
+/* ---------------------------------------------------------------------------
+ * WHAT LOADS WHEN
+ * ---------------------------------------------------------------------------
+ * Home and Accounts are the two screens people actually open, so they stay in
+ * the first bundle and the first paint owes nothing to the network. Everything
+ * else is somewhere you go on purpose — a forecast, a statement import, the
+ * settings — and is fetched at that moment instead.
+ *
+ * In practice the fetch is a disk read: the service worker precaches every
+ * chunk on install, so by the time anybody taps "Ahead" the file is already
+ * there and the fallback below is never seen. It matters on the very first
+ * visit, which is exactly the visit worth protecting.
+ * ------------------------------------------------------------------------ */
+
+const TriageView = lazy(() =>
+  import('@/features/triage/TriageView').then((m) => ({ default: m.TriageView })),
+);
+const PotsView = lazy(() =>
+  import('@/features/goals/PotsView').then((m) => ({ default: m.PotsView })),
+);
+const ForecastView = lazy(() =>
+  import('@/features/forecast/ForecastView').then((m) => ({ default: m.ForecastView })),
+);
+const DebtPayoffView = lazy(() =>
+  import('@/features/simulations/DebtPayoffView').then((m) => ({ default: m.DebtPayoffView })),
+);
+const IndependenceView = lazy(() =>
+  import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
+);
+const SettingsView = lazy(() =>
+  import('@/features/settings/SettingsView').then((m) => ({ default: m.SettingsView })),
+);
+// The gallery is every primitive in the design system on one page. It is
+// reached from Settings and most people will never open it, so it carries its
+// own chunk rather than riding along with the settings screen.
+const Gallery = lazy(() =>
+  import('@/features/gallery/Gallery').then((m) => ({ default: m.Gallery })),
+);
 
 type Startup =
   | { state: 'opening' }
@@ -92,7 +124,9 @@ function Shell({ storage }: { storage: StorageStatus }) {
         // which is what a person expects when they switch tabs.
         key={route}
       >
-        <View route={route} onAdd={() => setAdding(true)} unreviewed={unreviewed.data ?? 0} />
+        <Suspense fallback={<ViewLoading />}>
+          <View route={route} onAdd={() => setAdding(true)} unreviewed={unreviewed.data ?? 0} />
+        </Suspense>
       </main>
 
       <BottomNav route={route} onNavigate={navigate} onAdd={() => setAdding(true)} />
@@ -132,6 +166,17 @@ function View({
     case 'gallery':
       return <Gallery />;
   }
+}
+
+/**
+ * The gap while a split view arrives.
+ *
+ * Deliberately almost nothing: it holds the height so the bottom bar does not
+ * jump, and says nothing at all, because a spinner that flashes for forty
+ * milliseconds reads as a fault rather than as progress.
+ */
+function ViewLoading() {
+  return <div className="min-h-[60dvh]" aria-hidden="true" />;
 }
 
 function Opening() {

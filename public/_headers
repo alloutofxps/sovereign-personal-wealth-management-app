@@ -1,0 +1,48 @@
+# ===========================================================================
+# CLOUDFLARE PAGES HEADERS
+# ---------------------------------------------------------------------------
+# Vite only controls dev and preview. Everything below is what production has
+# to send for itself, and the first pair is not optional: without them
+# `crossOriginIsolated` is false, SharedArrayBuffer is unavailable, and
+# SQLite's classic OPFS VFS has no fallback left to fall back to.
+#
+# Comments sit at the start of a line and outside a rule block, because inside
+# one an indented line is read as a header name.
+#
+# This file is copied verbatim from public/ into dist/ at build time.
+# ===========================================================================
+#
+# X-Frame-Options: a ledger has no business inside somebody else's frame.
+# Permissions-Policy names WebAuthn explicitly rather than leaving it to the
+# default, because the lock's biometric path is WebAuthn and a blanket deny
+# would kill it silently.
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()
+
+# Filenames carry a content hash, so these can never go stale.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The service worker decides when everything else updates, so it must never be
+# the thing that is out of date. A long cache here strands people on an old
+# build with no way left to tell them.
+
+/sw.js
+  Cache-Control: no-cache
+
+/workbox-*.js
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache

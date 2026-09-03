@@ -9,6 +9,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
 import { Button, Card } from '@/design/ui';
+import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { DataAndSecurity } from './DataAndSecurity';
 
 export function SettingsView() {
@@ -67,6 +68,8 @@ export function SettingsView() {
           </select>
         </label>
       </Card>
+
+      <ProtectStorage context="settings" />
 
       <DataAndSecurity />
 

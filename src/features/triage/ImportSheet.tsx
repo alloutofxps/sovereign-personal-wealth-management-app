@@ -24,7 +24,6 @@ import {
 } from '@/ingest';
 import { stageRows } from '@/data/repositories/stagingRepo';
 import { ACCOUNT_IDS } from '@/data/seed';
-import { requestPersistence } from '@/data/persistence';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
 import { BottomSheet, Button, Money } from '@/design/ui';
@@ -102,9 +101,12 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
     try {
       const result = await stageRows(preview.rows, account);
       // Somebody who has just imported a statement has demonstrably invested
-      // something in this app; that is the moment worth asking the browser to
-      // keep their data.
-      void requestPersistence();
+      // something in this app, and that is the moment worth asking the browser
+      // to keep their data. The asking is done by <ProtectStorage> on the
+      // review queue behind this sheet, with a sentence explaining why, rather
+      // than silently from here — Firefox turns this call into a permission
+      // dialog, and one that appears unannounced while a sheet is closing gets
+      // dismissed on reflex.
       toast(describeImport(preview, result.duplicates));
       setStep('done');
       onClose();

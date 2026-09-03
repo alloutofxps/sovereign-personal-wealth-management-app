@@ -21,6 +21,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
 import { BottomSheet, Button, Card, Money, SwipeRow } from '@/design/ui';
+import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { ImportSheet } from './ImportSheet';
 
 export function TriageView() {
@@ -83,6 +84,12 @@ export function TriageView() {
         </Card>
       ) : (
         <>
+          {/* Rows only ever land here from a statement import, so their
+              presence is the signal that somebody has just brought real
+              history onto this device — the moment the browser is most
+              likely to agree to keep it. */}
+          <ProtectStorage context="after-import" />
+
           <Card padding="none">
             <ul className="divide-y divide-line-faint">
               {rows.map((row) => (
