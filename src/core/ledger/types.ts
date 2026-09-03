@@ -156,6 +156,7 @@ export type EntryKind =
   | 'CC_PAYMENT'
   | 'REIMBURSABLE'
   | 'REIMBURSEMENT'
+  | 'WRITE_OFF'
   | 'REFUND'
   | 'ASSIGN'
   | 'REVERSAL';

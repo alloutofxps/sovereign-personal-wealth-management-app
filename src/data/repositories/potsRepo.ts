@@ -86,9 +86,12 @@ export async function assignedThisCycle(
     })
     .from(postings)
     .innerJoin(entries, eq(entries.id, postings.entryId))
+    // Every budget-book movement on the pot this cycle, in both directions:
+    // taking money back out has to count against what went in, or a pot could
+    // be filled and emptied and still look funded.
     .where(
       sql`${entries.kind} = 'ASSIGN' AND ${entries.date} >= ${from} AND ${entries.date} <= ${to}
-          AND ${postings.book} = 'BUDGET' AND ${postings.amount} < 0`,
+          AND ${postings.book} = 'BUDGET'`,
     )
     .groupBy(postings.accountId);
 
@@ -100,15 +103,21 @@ export async function assignedThisCycle(
 export async function potTargets(from: IsoDate, to: IsoDate): Promise<PotTarget[]> {
   const [pots, assigned] = await Promise.all([listSavingPots(), assignedThisCycle(from, to)]);
 
-  return pots.map((pot) => ({
-    envelopeId: pot.id,
-    name: pot.name,
-    targetAmount: pot.targetAmount ?? minor(0),
-    currentBalance: pot.balance,
-    targetDate: pot.targetDate,
-    recurring: pot.recurring,
-    assignedThisCycle: assigned.get(pot.id) ?? minor(0),
-  }));
+  return pots.map((pot) => {
+    const putInThisCycle = assigned.get(pot.id) ?? minor(0);
+    return {
+      envelopeId: pot.id,
+      name: pot.name,
+      targetAmount: pot.targetAmount ?? minor(0),
+      currentBalance: pot.balance,
+      targetDate: pot.targetDate,
+      recurring: pot.recurring,
+      assignedThisCycle: putInThisCycle,
+      // Only assignments move a saving pot, so where it stood at the start of
+      // the month is simply today's balance less what has gone in since.
+      balanceAtCycleStart: minor(pot.balance - putInThisCycle),
+    };
+  });
 }
 
 export interface NewPot {

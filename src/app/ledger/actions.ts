@@ -16,6 +16,7 @@ import {
   reimbursable,
   reimbursement,
   spend,
+  writeOff,
   type AccountId,
   type Funding,
   type JournalEntry,
@@ -25,6 +26,7 @@ import { saveEntry } from '@/data/repositories/ledgerRepo';
 import {
   openClaim,
   settleClaimStatement,
+  writeOffStatement,
   type Claim,
   type ClaimKind,
 } from '@/data/repositories/claimsRepo';
@@ -130,6 +132,38 @@ export async function recordPayback(claim: Claim, amount: Minor): Promise<void> 
   };
 
   const update = settleClaimStatement(claim, amount);
+  await saveEntry(entry, [{ sql: update.sql, params: update.params }]);
+}
+
+/**
+ * Accepting that money you fronted is not coming back.
+ *
+ * Only at this point does it become your spending, and it lands in the month
+ * you accept it rather than the month you paid it — backdating would rewrite a
+ * month you have already looked at and closed.
+ */
+export async function writeOffClaim(
+  claim: Claim,
+  categoryId: AccountId,
+  envelopeId: AccountId,
+  categoryName: string,
+): Promise<void> {
+  const base = newEntry();
+
+  const entry: WithClaim = {
+    ...writeOff({
+      ...base,
+      amount: claim.outstanding,
+      categoryId,
+      categoryName,
+      envelopeId,
+      counterparty: claim.counterparty,
+      system: SYSTEM_ACCOUNTS,
+    }),
+    claimId: claim.id,
+  };
+
+  const update = writeOffStatement(claim);
   await saveEntry(entry, [{ sql: update.sql, params: update.params }]);
 }
 

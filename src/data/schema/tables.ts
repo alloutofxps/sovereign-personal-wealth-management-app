@@ -28,6 +28,9 @@ export const accounts = sqliteTable('accounts', {
   targetAmount: integer('target_amount'),
   targetDate: text('target_date'),
   targetRecurring: integer('target_recurring').notNull().default(0),
+  /** Annual rate in basis points, and the least the lender accepts. */
+  aprBp: integer('apr_bp'),
+  minPayment: integer('min_payment'),
 });
 
 export const entries = sqliteTable(

@@ -67,6 +67,14 @@ export const MIGRATIONS: readonly MigrationStep[] = [
       `CREATE INDEX IF NOT EXISTS entries_claim_idx ON entries(claim_id);`,
     ],
   },
+  {
+    to: 4,
+    reason: 'Interest rates and minimum payments, so a payoff plan can be worked out.',
+    addColumns: [
+      { table: 'accounts', column: 'apr_bp', declaration: 'INTEGER' },
+      { table: 'accounts', column: 'min_payment', declaration: 'INTEGER' },
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, step) => Math.max(max, step.to), 1);

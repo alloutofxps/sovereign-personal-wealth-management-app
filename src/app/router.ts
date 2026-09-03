@@ -7,7 +7,17 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-export const ROUTES = ['home', 'triage', 'accounts', 'pots', 'settings', 'gallery'] as const;
+export const ROUTES = [
+  'home',
+  'triage',
+  'accounts',
+  'pots',
+  'forecast',
+  'debt',
+  'independence',
+  'settings',
+  'gallery',
+] as const;
 export type Route = (typeof ROUTES)[number];
 
 const DEFAULT: Route = 'home';

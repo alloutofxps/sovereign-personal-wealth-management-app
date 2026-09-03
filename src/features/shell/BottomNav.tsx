@@ -23,7 +23,7 @@ export function BottomNav({
 }) {
   const tabs: Tab[] = [
     { route: 'home', label: 'Home', icon: <HomeIcon /> },
-    { route: 'triage', label: 'To review', icon: <InboxIcon /> },
+    { route: 'forecast', label: 'Ahead', icon: <ChartIcon /> },
     { route: 'accounts', label: 'Accounts', icon: <WalletIcon /> },
     { route: 'settings', label: 'Settings', icon: <GearIcon /> },
   ];
@@ -35,7 +35,15 @@ export function BottomNav({
     >
       <div className="mx-auto grid max-w-[42rem] grid-cols-5 items-center px-2 pb-[var(--safe-bottom)]">
         {tabs.slice(0, 2).map((tab) => (
-          <NavButton key={tab.route} tab={tab} active={route === tab.route} onNavigate={onNavigate} />
+          <NavButton
+            key={tab.route}
+            tab={tab}
+            active={
+              route === tab.route ||
+              (tab.route === 'forecast' && (route === 'debt' || route === 'independence'))
+            }
+            onNavigate={onNavigate}
+          />
         ))}
 
         <div className="flex items-center justify-center">
@@ -60,7 +68,10 @@ export function BottomNav({
             key={tab.route}
             tab={tab}
             // Pots live under Accounts, so that tab stays lit while you are there.
-            active={route === tab.route || (tab.route === 'accounts' && route === 'pots')}
+            active={
+              route === tab.route ||
+              (tab.route === 'accounts' && (route === 'pots' || route === 'triage'))
+            }
             onNavigate={onNavigate}
           />
         ))}
@@ -110,11 +121,11 @@ function HomeIcon() {
   );
 }
 
-function InboxIcon() {
+function ChartIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 13V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7" {...stroke} />
-      <path d="M4 13h4l1.5 2.5h5L16 13h4v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5Z" {...stroke} />
+      <path d="M4 19V5" {...stroke} />
+      <path d="M4 15.5 9 11l3.5 3L20 6.5" {...stroke} />
     </svg>
   );
 }

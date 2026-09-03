@@ -52,7 +52,10 @@ export const DDL: readonly string[] = [
      -- Pots that are saving up for something carry their own target.
      target_amount       INTEGER,
      target_date         TEXT,
-     target_recurring    INTEGER NOT NULL DEFAULT 0
+     target_recurring    INTEGER NOT NULL DEFAULT 0,
+     -- Borrowing terms, so what you owe can be planned rather than guessed.
+     apr_bp              INTEGER,
+     min_payment         INTEGER
    );`,
 
   `CREATE TABLE IF NOT EXISTS entries (

@@ -293,6 +293,40 @@ export function reimbursement(p: ReimbursementParams): JournalEntry {
   ]);
 }
 
+export interface WriteOffParams extends EntryBase {
+  amount: Minor;
+  /** Where the cost finally lands, now that it is yours after all. */
+  categoryId: AccountId;
+  categoryName: string;
+  envelopeId: AccountId;
+  counterparty: string;
+  system: SystemAccounts;
+}
+
+/**
+ * Giving up on money somebody owed you.
+ *
+ * Up to this point it was not your spending, because you expected it back.
+ * Once you accept it is not coming, it becomes your spending — in the month
+ * you accept it, not the month you paid it. Backdating it would rewrite a
+ * month that has already been reviewed and closed.
+ */
+export function writeOff(p: WriteOffParams): JournalEntry {
+  const amount = requirePositiveAmount(p.amount, 'A write-off');
+
+  return buildEntry(
+    p,
+    'WRITE_OFF',
+    `Wrote off what ${p.counterparty} owed you as your own spending.`,
+    [
+      debit(FIN, p.categoryId, amount),
+      credit(FIN, p.system.receivables, amount),
+      debit(BUD, p.envelopeId, amount),
+      credit(BUD, p.system.reimbursementsEnvelope, amount),
+    ],
+  );
+}
+
 /* --- refunds ------------------------------------------------------------- */
 
 export interface RefundParams extends EntryBase {

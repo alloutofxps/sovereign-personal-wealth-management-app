@@ -5,11 +5,12 @@
  * once a year, a holiday in August, the boiler service — each one arrives as a
  * shock only because nothing was put by for it.
  *
- *   MonthlyAllocation = (Target − CurrentBalance) ÷ MonthsRemaining
+ *   MonthlyAllocation = (Target − BalanceAtCycleStart) ÷ MonthsRemaining
  *
- * The allocation recalculates every time the balance or the date moves, so
- * falling behind one month raises the next month's share rather than leaving
- * a fixed plan quietly broken.
+ * The figure is set once at the start of each month and holds for that whole
+ * month, so paying in never moves the target you were paying towards. At
+ * rollover it is worked out again from wherever the pot has actually reached:
+ * fall behind and next month asks for more, get ahead and it asks for less.
  *
  * What this produces feeds straight into G_savings in the Safe-to-Spend
  * calculation: money that has to be put by is not money that is safe to spend,
@@ -34,12 +35,25 @@ export interface PotTarget {
   recurring: boolean;
   /** How much has been put into this pot during the current cycle. */
   assignedThisCycle: Minor;
+  /**
+   * What was in the pot when this month began.
+   *
+   * The month's target is worked out from this, not from the live balance.
+   * Otherwise paying in would immediately lower the very figure it was
+   * paying towards — you would put in the 85 you were asked for and be told
+   * the month now wanted 77.92, which reads as though the goalposts moved
+   * the moment you reached them.
+   */
+  balanceAtCycleStart: Minor;
 }
 
 export interface PotPlan extends PotTarget {
   /** Whole months from today to the target date. Never below one. */
   monthsRemaining: number;
-  /** What needs to go in each month from here to hit the target. */
+  /**
+   * This month's target. Fixed for the whole cycle, and recalculated at
+   * rollover from wherever the pot has actually got to.
+   */
   monthlyAllocation: Minor;
   /** What still needs to go in this month, after what already has. */
   stillNeededThisCycle: Minor;
@@ -63,6 +77,10 @@ export function monthsUntil(from: string, to: string): number {
 export function planFor(target: PotTarget, today: string): PotPlan {
   const outstanding = minor(Math.max(0, target.targetAmount - target.currentBalance));
   const funded = target.currentBalance >= target.targetAmount && target.targetAmount > 0;
+  // The month's ask is set from where the pot stood when the month began.
+  const outstandingAtCycleStart = minor(
+    Math.max(0, target.targetAmount - target.balanceAtCycleStart),
+  );
 
   // An open-ended pot has no deadline, so nothing is *required* of any month.
   if (!target.targetDate) {
@@ -81,10 +99,13 @@ export function planFor(target: PotTarget, today: string): PotPlan {
   // Once the date has passed, the whole remainder is needed now, not spread.
   const monthsRemaining = overdue ? 1 : Math.max(1, monthsUntil(today, target.targetDate));
 
-  const monthlyAllocation = funded
-    ? ZERO
-    : // Rounded up, so the last month never leaves a penny short.
-      minor(Math.ceil(outstanding / monthsRemaining));
+  const monthlyAllocation =
+    // Once the whole target is met there is nothing more to ask for, even
+    // mid-month — being asked to keep paying into a full pot would be absurd.
+    funded
+      ? ZERO
+      : // Rounded up, so the last month never leaves a penny short.
+        minor(Math.ceil(outstandingAtCycleStart / monthsRemaining));
 
   const stillNeededThisCycle = minor(
     Math.max(0, monthlyAllocation - Math.max(0, target.assignedThisCycle)),
@@ -144,7 +165,7 @@ export function describePot(plan: PotPlan, format: (amount: Minor) => string): s
         : `Fully saved. ${format(plan.targetAmount)} is ready whenever you need it.`;
 
     case 'on_track':
-      return `You have put ${format(plan.assignedThisCycle)} in this month, which keeps you on track. ${format(plan.outstanding)} still to find.`;
+      return `${format(plan.monthlyAllocation)} was planned for this month and ${format(plan.assignedThisCycle)} has gone in. ${format(plan.outstanding)} still to find in total.`;
 
     case 'behind':
       return plan.assignedThisCycle > 0

@@ -359,5 +359,101 @@ export async function totalAssets(): Promise<Minor> {
   return minor(Number(row?.total ?? 0));
 }
 
+/**
+ * What each category typically costs a month, over the trailing window.
+ *
+ * Used by the runway calculation, where the question is not what you spent
+ * last month but what a normal month looks like.
+ */
+export async function monthlySpendByCategory(
+  from: IsoDate,
+  to: IsoDate,
+  maxMonths: number,
+): Promise<{ id: AccountId; name: string; monthly: Minor }[]> {
+  // Divide by the months that actually have records in them, not by the width
+  // of the window. Three days of spending divided over three months would put
+  // a weekly shop at a few pounds a month and quietly triple every runway.
+  const [span] = await db
+    .select({ earliest: sql<string | null>`min(${entries.date})` })
+    .from(entries)
+    .where(sql`${entries.date} >= ${from} AND ${entries.date} <= ${to}`);
+
+  const monthsWithData = span?.earliest
+    ? Math.min(maxMonths, Math.max(1, monthsBetween(span.earliest, to)))
+    : 1;
+
+  const rows = await db
+    .select({
+      id: accounts.id,
+      name: accounts.name,
+      total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+    })
+    .from(accounts)
+    .leftJoin(postings, eq(postings.accountId, accounts.id))
+    .leftJoin(entries, eq(entries.id, postings.entryId))
+    .where(
+      sql`${accounts.type} = 'EXPENSE'
+          AND (${entries.date} IS NULL OR (${entries.date} >= ${from} AND ${entries.date} <= ${to}))`,
+    )
+    .groupBy(accounts.id, accounts.name);
+
+  const divisor = monthsWithData;
+  return rows
+    .map((row) => ({
+      id: row.id as AccountId,
+      name: row.name,
+      monthly: minor(Math.max(0, Math.round(Number(row.total) / divisor))),
+    }))
+    .filter((row) => row.monthly > 0);
+}
+
+/** Whole months spanned by two dates, at least one. */
+function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  return Math.max(1, ((ty ?? 0) - (fy ?? 0)) * 12 + ((tm ?? 1) - (fm ?? 1)) + 1);
+}
+
+/** Borrowing terms for everything you owe, for the payoff planner. */
+export async function debtTerms(): Promise<
+  { id: AccountId; name: string; balance: Minor; aprBp: number | null; minPayment: number | null }[]
+> {
+  const rows = await db
+    .select({
+      id: accounts.id,
+      name: accounts.name,
+      aprBp: accounts.aprBp,
+      minPayment: accounts.minPayment,
+      total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+    })
+    .from(accounts)
+    .leftJoin(postings, eq(postings.accountId, accounts.id))
+    .where(eq(accounts.type, 'LIABILITY'))
+    .groupBy(accounts.id, accounts.name, accounts.aprBp, accounts.minPayment);
+
+  return rows.map((row) => ({
+    id: row.id as AccountId,
+    name: row.name,
+    // Liabilities carry credit balances, so negate to read as money owed.
+    balance: minor(-Number(row.total)),
+    aprBp: row.aprBp,
+    minPayment: row.minPayment,
+  }));
+}
+
+/** Set the interest rate and minimum payment on something you owe. */
+export async function saveDebtTerms(
+  id: AccountId,
+  aprBp: number,
+  minPayment: number,
+): Promise<void> {
+  const statement = db
+    .update(accounts)
+    .set({ aprBp, minPayment })
+    .where(eq(accounts.id, id))
+    .toSQL();
+  await runBatch([{ sql: statement.sql, params: statement.params }]);
+}
+
 /** Every table this repository reads, for `useLiveQuery` subscriptions. */
 export const LEDGER_TABLES = ['accounts', 'entries', 'postings'] as const;

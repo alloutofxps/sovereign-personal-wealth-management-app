@@ -22,6 +22,7 @@ import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
+import { WriteOffSheet } from './WriteOffSheet';
 
 export function AccountsView() {
   const [, navigate] = useRoute();
@@ -34,6 +35,7 @@ export function AccountsView() {
 
   const [payingCard, setPayingCard] = useState(false);
   const [settling, setSettling] = useState<Claim | null>(null);
+  const [writingOff, setWritingOff] = useState<Claim | null>(null);
 
   const data = dashboard.data;
   const all = accounts.data ?? [];
@@ -163,9 +165,12 @@ export function AccountsView() {
                     </div>
                     <Money value={claim.outstanding} size="lead" tone="caution" />
                   </div>
-                  <div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button variant="secondary" size="sm" onClick={() => setSettling(claim)}>
                       Record payback
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setWritingOff(claim)}>
+                      Write off as my own spending
                     </Button>
                   </div>
                 </li>
@@ -231,6 +236,11 @@ export function AccountsView() {
         reserved={data?.reserved ?? minor(0)}
       />
       <PaybackSheet open={settling !== null} onClose={() => setSettling(null)} claim={settling} />
+      <WriteOffSheet
+        open={writingOff !== null}
+        onClose={() => setWritingOff(null)}
+        claim={writingOff}
+      />
     </div>
   );
 }

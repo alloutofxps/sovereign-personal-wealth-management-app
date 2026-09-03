@@ -53,6 +53,7 @@ export type {
   ReimbursementParams,
   SpendParams,
   TransferParams,
+  WriteOffParams,
 } from './entries/builders';
 export {
   assign,
@@ -64,6 +65,7 @@ export {
   reimbursement,
   spend,
   transfer,
+  writeOff,
 } from './entries/builders';
 
 export type { BalanceFilter } from './balances';

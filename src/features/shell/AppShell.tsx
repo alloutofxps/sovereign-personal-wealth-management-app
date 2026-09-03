@@ -18,6 +18,9 @@ import { Dashboard } from '@/features/dashboard/Dashboard';
 import { TriageView } from '@/features/triage/TriageView';
 import { AccountsView } from '@/features/accounts/AccountsView';
 import { PotsView } from '@/features/goals/PotsView';
+import { ForecastView } from '@/features/forecast/ForecastView';
+import { DebtPayoffView } from '@/features/simulations/DebtPayoffView';
+import { IndependenceView } from '@/features/simulations/IndependenceView';
 import { SettingsView } from '@/features/settings/SettingsView';
 import { BottomNav } from './BottomNav';
 import { Toasts } from './Toasts';
@@ -88,6 +91,12 @@ function View({ route, onAdd }: { route: Route; onAdd: () => void }) {
       return <AccountsView />;
     case 'pots':
       return <PotsView />;
+    case 'forecast':
+      return <ForecastView />;
+    case 'debt':
+      return <DebtPayoffView />;
+    case 'independence':
+      return <IndependenceView />;
     case 'settings':
       return <SettingsView />;
     case 'gallery':
