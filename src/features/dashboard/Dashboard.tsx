@@ -27,7 +27,7 @@ import { SafeToSpendCard, SafeToSpendSkeleton } from './SafeToSpendCard';
 import { SafeToSpendSheet } from './SafeToSpendSheet';
 import { TriageBar } from './TriageBar';
 
-export function Dashboard({ onAdd }: { onAdd: () => void }) {
+export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unreviewed?: number }) {
   const [, navigate] = useRoute();
   const locale = useAppConfig((s) => s.locale);
   const dashboard = useDashboard();
@@ -81,7 +81,7 @@ export function Dashboard({ onAdd }: { onAdd: () => void }) {
           {/* 4 — anything waiting */}
           <TriageBar
             data={data}
-            unreviewed={0}
+            unreviewed={unreviewed}
             onOpenReview={() => navigate('triage')}
             onAddBill={() => setAddingBill(true)}
           />

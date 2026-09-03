@@ -10,6 +10,7 @@ import { minor, type Minor } from '@/core/money';
 import {
   assign,
   cardPayment,
+  income as incomeEntry,
   claimId as makeClaimId,
   entryId,
   isoDate,
@@ -30,6 +31,7 @@ import {
   type Claim,
   type ClaimKind,
 } from '@/data/repositories/claimsRepo';
+import { markReviewedStatement, type StagedRow } from '@/data/repositories/stagingRepo';
 import { ACCOUNT_IDS, SYSTEM_ACCOUNTS } from '@/data/seed';
 
 const today = () => isoDate(toIsoDate(new Date()));
@@ -62,6 +64,48 @@ export async function recordSpend(input: RecordSpendInput): Promise<void> {
       system: SYSTEM_ACCOUNTS,
     }),
   );
+}
+
+/**
+ * Confirming a row from the review queue.
+ *
+ * The journal entry and the queue update commit together, so a row can never
+ * show as reviewed without the entry existing — and confirming the same row
+ * twice cannot produce two entries.
+ */
+export async function confirmStagedRow(
+  row: StagedRow,
+  choice: { categoryId: AccountId; envelopeId: AccountId; categoryName: string },
+): Promise<void> {
+  const id = entryId(crypto.randomUUID());
+  const date = isoDate(row.date);
+  const outgoing = row.amount < 0;
+
+  const entry = outgoing
+    ? spend({
+        id,
+        date,
+        amount: minor(-row.amount),
+        categoryId: choice.categoryId,
+        envelopeId: choice.envelopeId,
+        funding: { via: 'cash', accountId: row.accountId },
+        payee: row.description,
+        categoryName: choice.categoryName,
+        system: SYSTEM_ACCOUNTS,
+      })
+    : incomeEntry({
+        id,
+        date,
+        amount: row.amount,
+        sourceId: ACCOUNT_IDS.otherIncome,
+        depositAccountId: row.accountId,
+        countsAsBudgetableCash: true,
+        payer: row.description,
+        system: SYSTEM_ACCOUNTS,
+      });
+
+  const update = markReviewedStatement(row.id, id);
+  await saveEntry(entry, [{ sql: update.sql, params: update.params }]);
 }
 
 /* --- money you fronted for somebody else --------------------------------- */

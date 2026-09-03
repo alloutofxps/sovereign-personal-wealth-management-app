@@ -9,6 +9,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
 import { Button, Card } from '@/design/ui';
+import { DataAndSecurity } from './DataAndSecurity';
 
 export function SettingsView() {
   const [, navigate] = useRoute();
@@ -66,6 +67,8 @@ export function SettingsView() {
           </select>
         </label>
       </Card>
+
+      <DataAndSecurity />
 
       <Card label="Where your data lives">
         <p className="text-caption text-ink-2">

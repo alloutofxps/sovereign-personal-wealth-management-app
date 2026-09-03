@@ -39,16 +39,22 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // A waiting service worker that never activates strands users on a stale
-      // build across deploys. For a ledger that will ship correctness fixes,
-      // applying the update on next load is the safer default. Phase 5 can
-      // reintroduce an explicit prompt once there is UI to host it.
-      registerType: 'autoUpdate',
+      // 'prompt' with an actual prompt behind it. The Phase 2 audit found this
+      // set to prompt with nothing listening, which strands people on a stale
+      // build forever; autoUpdate fixed that but reloads without asking, which
+      // is unkind mid-entry. src/app/pwa/useAppUpdate.ts is the missing half.
+      registerType: 'prompt',
       // Phase 5 replaces this with a hand-written service worker that also
       // guards storage persistence. For now: precache the shell so the app
       // opens offline, which is the whole point of a local-first ledger.
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        // The WASM binary matters most: without it the app opens offline and
+        // then cannot reach its own database. Fonts are here for the same
+        // reason — a local-first ledger must not need the network to render.
+        globPatterns: ['**/*.{js,css,html,wasm,woff2,woff,png,svg,webmanifest}'],
+        // The SQLite binary is roughly 900 KB and the default ceiling is two,
+        // so raise it explicitly rather than discovering the miss in the wild.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

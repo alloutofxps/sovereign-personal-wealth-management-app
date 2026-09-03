@@ -75,6 +75,34 @@ export const MIGRATIONS: readonly MigrationStep[] = [
       { table: 'accounts', column: 'min_payment', declaration: 'INTEGER' },
     ],
   },
+  {
+    to: 5,
+    reason: 'Credit limits and the day a bill falls due, so the forecast lands it right.',
+    addColumns: [
+      { table: 'accounts', column: 'credit_limit', declaration: 'INTEGER' },
+      { table: 'accounts', column: 'due_day', declaration: 'INTEGER' },
+    ],
+  },
+  {
+    to: 6,
+    reason: 'Somewhere for imported statement rows to wait until they are reviewed.',
+    statements: [
+        `CREATE TABLE IF NOT EXISTS staged_transactions (
+     id          TEXT PRIMARY KEY,
+     account_id  TEXT NOT NULL REFERENCES accounts(id),
+     date        TEXT NOT NULL CHECK (date LIKE '____-__-__'),
+     amount      INTEGER NOT NULL CHECK (amount <> 0),
+     description TEXT NOT NULL,
+     raw         TEXT NOT NULL,
+     dedupe_key  TEXT NOT NULL UNIQUE,
+     status      TEXT NOT NULL CHECK (status IN ('unreviewed','reviewed','ignored')),
+     entry_id    TEXT REFERENCES entries(id),
+     imported_at TEXT NOT NULL,
+     batch_id    TEXT NOT NULL
+   );`,
+      `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, step) => Math.max(max, step.to), 1);

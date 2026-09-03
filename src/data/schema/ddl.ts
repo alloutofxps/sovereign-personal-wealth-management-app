@@ -55,7 +55,9 @@ export const DDL: readonly string[] = [
      target_recurring    INTEGER NOT NULL DEFAULT 0,
      -- Borrowing terms, so what you owe can be planned rather than guessed.
      apr_bp              INTEGER,
-     min_payment         INTEGER
+     min_payment         INTEGER,
+     credit_limit        INTEGER,
+     due_day             INTEGER CHECK (due_day IS NULL OR (due_day >= 1 AND due_day <= 28))
    );`,
 
   `CREATE TABLE IF NOT EXISTS entries (
@@ -111,6 +113,23 @@ export const DDL: readonly string[] = [
      note         TEXT
    );`,
 
+  // Statement rows waiting for a quick look. Ephemeral by design: once a row
+  // is confirmed it becomes a journal entry, and the queue empties.
+  `CREATE TABLE IF NOT EXISTS staged_transactions (
+     id          TEXT PRIMARY KEY,
+     account_id  TEXT NOT NULL REFERENCES accounts(id),
+     date        TEXT NOT NULL CHECK (date LIKE '____-__-__'),
+     amount      INTEGER NOT NULL CHECK (amount <> 0),
+     description TEXT NOT NULL,
+     raw         TEXT NOT NULL,
+     dedupe_key  TEXT NOT NULL UNIQUE,
+     status      TEXT NOT NULL CHECK (status IN ('unreviewed','reviewed','ignored')),
+     entry_id    TEXT REFERENCES entries(id),
+     imported_at TEXT NOT NULL,
+     batch_id    TEXT NOT NULL
+   );`,
+
+  `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,
   `CREATE INDEX IF NOT EXISTS entries_claim_idx ON entries(claim_id);`,

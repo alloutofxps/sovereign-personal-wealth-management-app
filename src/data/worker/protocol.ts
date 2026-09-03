@@ -18,7 +18,13 @@ export type WorkerRequest =
   | { id: number; op: 'batch'; statements: Statement[] }
   | { id: number; op: 'status' }
   /** Wipes and recreates the database. Used by "start again" in settings. */
-  | { id: number; op: 'reset' };
+  | { id: number; op: 'reset' }
+  /** The whole database as bytes, for an export or a pre-migration copy. */
+  | { id: number; op: 'export' }
+  /** Replace everything with the bytes of a previous export. */
+  | { id: number; op: 'import'; bytes: Uint8Array }
+  /** Copies taken automatically before each migration. */
+  | { id: number; op: 'listBackups' };
 
 /** Where the data actually lives, and whether it will survive a reload. */
 export interface StorageStatus {
@@ -33,7 +39,16 @@ export interface StorageStatus {
   schemaVersion: number;
 }
 
+export interface BackupFile {
+  name: string;
+  bytes: number;
+  /** The schema version this copy was taken before moving on from. */
+  fromVersion: number;
+}
+
 export type WorkerResponse =
+  | { id: number; ok: true; bytes: Uint8Array }
+  | { id: number; ok: true; backups: BackupFile[] }
   | { id: number; ok: true; rows: unknown[][] }
   | { id: number; ok: true; status: StorageStatus }
   | { id: number; ok: true }

@@ -16,8 +16,12 @@
  *   Full      you could stop and live as you do now
  *   Coast     you could stop *saving* and still arrive on time
  *
- * Everything here is deterministic and returns the arithmetic it used. It is a
- * projection, not a promise, and the copy above it says so.
+ * Everything here is deterministic and returns the arithmetic it used. Around
+ * the middle line sits a band for a better and a worse run of markets, worked
+ * out directly rather than by simulating thousands of trials — the answer is
+ * the same shape and costs a phone nothing.
+ *
+ * It is a projection, not a promise, and the copy above it says so.
  * ======================================================================== */
 
 import { minor, mulDivRound, type BasisPoints, type Minor } from '@/core/money';
@@ -35,6 +39,11 @@ export interface FireInput {
   realReturn: BasisPoints;
   /** Safe withdrawal rate in basis points. 300–450 covers 3%–4.5%. */
   withdrawalRate: BasisPoints;
+  /**
+   * How much returns bounce around, in basis points. 1500 is 15%, roughly a
+   * broad equity fund. Used for the band around the line, not for the line.
+   */
+  volatility?: BasisPoints;
   /** Age now, so a "coast" figure can be anchored to a retirement age. */
   currentAge?: number;
   retirementAge?: number;
@@ -52,10 +61,19 @@ export interface Milestone {
   percent: number;
 }
 
+export interface TrajectoryPoint {
+  year: number;
+  /** The middle line: steady returns, no drama. */
+  balance: Minor;
+  /** A rough good case and bad case around it. */
+  low: Minor;
+  high: Minor;
+}
+
 export interface FireResult {
   milestones: Milestone[];
-  /** Year-by-year balance, for the chart. */
-  trajectory: { year: number; balance: Minor }[];
+  /** Year-by-year balance with a band around it, for the chart. */
+  trajectory: TrajectoryPoint[];
   /** What a year's spending multiplies to at this withdrawal rate. */
   multiple: number;
   input: FireInput;
@@ -133,16 +151,7 @@ export function projectFire(input: FireInput): FireResult {
     percent: target <= 0 ? 0 : Math.min(100, Math.round((input.invested / target) * 100)),
   });
 
-  const trajectory: { year: number; balance: Minor }[] = [];
-  let balance = input.invested as number;
-  trajectory.push({ year: 0, balance: minor(Math.round(balance)) });
-  for (let year = 1; year <= 40; year++) {
-    for (let month = 0; month < 12; month++) {
-      balance += (balance * input.realReturn) / (10_000 * 12);
-      balance += input.monthlyContribution;
-    }
-    trajectory.push({ year, balance: minor(Math.round(balance)) });
-  }
+  const trajectory = buildTrajectory(input);
 
   return {
     milestones: [
@@ -155,6 +164,41 @@ export function projectFire(input: FireInput): FireResult {
     multiple: input.withdrawalRate > 0 ? Math.round(10_000 / input.withdrawalRate) : 0,
     input,
   };
+}
+
+/**
+ * The middle line, with a good case and a bad case either side.
+ *
+ * Not ten thousand random trials — that flattens a phone battery to produce a
+ * band that can be worked out directly. The spread of an *annualised* return
+ * narrows with the square root of time, so the band is drawn by running the
+ * same compounding at a better and a worse rate. Wide early, tighter later,
+ * and still widening in pounds, which is what actually happens.
+ */
+function buildTrajectory(input: FireInput): TrajectoryPoint[] {
+  const volatility = input.volatility ?? 1500;
+
+  const grow = (years: number, annualRate: number): number => {
+    let balance = input.invested as number;
+    for (let month = 0; month < years * 12; month++) {
+      balance += (balance * annualRate) / (10_000 * 12);
+      balance += input.monthlyContribution;
+    }
+    return Math.max(0, balance);
+  };
+
+  const points: TrajectoryPoint[] = [];
+  for (let year = 0; year <= 40; year++) {
+    // Year zero has no spread: it is today, and today is known.
+    const spread = year === 0 ? 0 : volatility / Math.sqrt(year);
+    points.push({
+      year,
+      balance: minor(Math.round(grow(year, input.realReturn))),
+      low: minor(Math.round(grow(year, input.realReturn - spread))),
+      high: minor(Math.round(grow(year, input.realReturn + spread))),
+    });
+  }
+  return points;
 }
 
 /** "in about 12 years", "in about 8 months" — the way people say it. */

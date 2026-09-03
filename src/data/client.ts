@@ -7,6 +7,7 @@
 
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import type {
+  BackupFile,
   SqlMethod,
   Statement,
   StorageStatus,
@@ -113,6 +114,24 @@ export async function openDatabase(): Promise<StorageStatus> {
 
 export function getStorageStatus(): StorageStatus | null {
   return storageStatus;
+}
+
+/** The whole database as bytes — a real SQLite file, openable anywhere. */
+export async function exportDatabase(): Promise<Uint8Array> {
+  const response = await send({ op: 'export' });
+  if (!('bytes' in response)) throw new Error('The database did not hand over a copy.');
+  return response.bytes;
+}
+
+/** Replace everything with the bytes of a previous export. */
+export async function importDatabase(bytes: Uint8Array): Promise<void> {
+  await send({ op: 'import', bytes });
+}
+
+/** Copies taken automatically before each schema change. */
+export async function listBackups(): Promise<BackupFile[]> {
+  const response = await send({ op: 'listBackups' });
+  return 'backups' in response ? response.backups : [];
 }
 
 /** Wipe everything and start over. Used by "Start again" in settings. */

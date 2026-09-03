@@ -414,22 +414,39 @@ function monthsBetween(from: string, to: string): number {
   return Math.max(1, ((ty ?? 0) - (fy ?? 0)) * 12 + ((tm ?? 1) - (fm ?? 1)) + 1);
 }
 
+export interface DebtTermsRow {
+  id: AccountId;
+  name: string;
+  balance: Minor;
+  aprBp: number | null;
+  minPayment: number | null;
+  creditLimit: number | null;
+  dueDay: number | null;
+}
+
 /** Borrowing terms for everything you owe, for the payoff planner. */
-export async function debtTerms(): Promise<
-  { id: AccountId; name: string; balance: Minor; aprBp: number | null; minPayment: number | null }[]
-> {
+export async function debtTerms(): Promise<DebtTermsRow[]> {
   const rows = await db
     .select({
       id: accounts.id,
       name: accounts.name,
       aprBp: accounts.aprBp,
       minPayment: accounts.minPayment,
+      creditLimit: accounts.creditLimit,
+      dueDay: accounts.dueDay,
       total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
     })
     .from(accounts)
     .leftJoin(postings, eq(postings.accountId, accounts.id))
     .where(eq(accounts.type, 'LIABILITY'))
-    .groupBy(accounts.id, accounts.name, accounts.aprBp, accounts.minPayment);
+    .groupBy(
+      accounts.id,
+      accounts.name,
+      accounts.aprBp,
+      accounts.minPayment,
+      accounts.creditLimit,
+      accounts.dueDay,
+    );
 
   return rows.map((row) => ({
     id: row.id as AccountId,
@@ -438,18 +455,25 @@ export async function debtTerms(): Promise<
     balance: minor(-Number(row.total)),
     aprBp: row.aprBp,
     minPayment: row.minPayment,
+    creditLimit: row.creditLimit,
+    dueDay: row.dueDay,
   }));
 }
 
-/** Set the interest rate and minimum payment on something you owe. */
+/** Set the borrowing terms on something you owe. */
 export async function saveDebtTerms(
   id: AccountId,
-  aprBp: number,
-  minPayment: number,
+  terms: { aprBp: number; minPayment: number; creditLimit: number; dueDay: number },
 ): Promise<void> {
   const statement = db
     .update(accounts)
-    .set({ aprBp, minPayment })
+    .set({
+      aprBp: terms.aprBp,
+      minPayment: terms.minPayment,
+      // Zero means "not set" rather than "a limit of nothing".
+      creditLimit: terms.creditLimit > 0 ? terms.creditLimit : null,
+      dueDay: terms.dueDay,
+    })
     .where(eq(accounts.id, id))
     .toSQL();
   await runBatch([{ sql: statement.sql, params: statement.params }]);

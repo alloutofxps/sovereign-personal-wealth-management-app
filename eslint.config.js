@@ -11,6 +11,7 @@ import globals from 'globals';
  *   core     pure arithmetic and domain rules. No React, no DOM, no storage.
  *            Runs in Node under Vitest with no browser at all — which is what
  *            makes the ledger testable at the volume this domain needs.
+ *   ingest   parsing bank files. Pure, and never touches the network.
  *   data     SQLite in a worker, repositories, and the live-query bus.
  *   app      configuration and the React bindings over core and data.
  *   design   tokens and UI primitives.
@@ -21,7 +22,14 @@ import globals from 'globals';
  * ======================================================================== */
 
 const LAYERS = [
-  { target: './src/core', from: ['./src/data', './src/app', './src/design', './src/charts', './src/features'] },
+  {
+    target: './src/core',
+    from: ['./src/ingest', './src/data', './src/app', './src/design', './src/charts', './src/features'],
+  },
+  {
+    target: './src/ingest',
+    from: ['./src/data', './src/app', './src/design', './src/charts', './src/features'],
+  },
   { target: './src/data', from: ['./src/app', './src/design', './src/charts', './src/features'] },
   { target: './src/app', from: ['./src/design', './src/charts', './src/features'] },
   { target: './src/design', from: ['./src/charts', './src/features'] },
@@ -96,7 +104,7 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@/data/*', '@/app/*', '@/design/*', '@/charts/*', '@/features/*'],
+              group: ['@/ingest/*', '@/data/*', '@/app/*', '@/design/*', '@/charts/*', '@/features/*'],
               message: 'core imports nothing from the app.',
             },
           ],

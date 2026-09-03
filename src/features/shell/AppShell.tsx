@@ -6,7 +6,7 @@
  * are created on a first run.
  * ======================================================================== */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { openDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
@@ -22,6 +22,12 @@ import { ForecastView } from '@/features/forecast/ForecastView';
 import { DebtPayoffView } from '@/features/simulations/DebtPayoffView';
 import { IndependenceView } from '@/features/simulations/IndependenceView';
 import { SettingsView } from '@/features/settings/SettingsView';
+import { useAppUpdate } from '@/app/pwa/useAppUpdate';
+import { requestPersistence } from '@/data/persistence';
+import { countUnreviewed, STAGING_TABLES } from '@/data/repositories/stagingRepo';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { LockGate } from './LockGate';
+import { UpdateBanner } from './UpdateBanner';
 import { BottomNav } from './BottomNav';
 import { Toasts } from './Toasts';
 
@@ -31,16 +37,18 @@ type Startup =
   | { state: 'failed'; message: string };
 
 export function AppShell() {
-  const [route, navigate] = useRoute();
   const [startup, setStartup] = useState<Startup>({ state: 'opening' });
-  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const storage = await openDatabase();
-        await ensureStarterChart();
+        const { created } = await ensureStarterChart();
+        // Somebody arriving for the first time has not invested anything yet;
+        // asking then is the request browsers are most likely to refuse. After
+        // a real write it is a different conversation.
+        if (!created) void requestPersistence();
         if (!cancelled) setStartup({ state: 'ready', storage });
       } catch (error) {
         if (cancelled) return;
@@ -62,8 +70,21 @@ export function AppShell() {
   if (startup.state === 'failed') return <Failed message={startup.message} />;
 
   return (
+    <LockGate>
+      <Shell storage={startup.storage} />
+    </LockGate>
+  );
+}
+
+function Shell({ storage }: { storage: StorageStatus }) {
+  const [route, navigate] = useRoute();
+  const [adding, setAdding] = useState(false);
+  const update = useAppUpdate();
+  const unreviewed = useLiveQuery(useCallback(() => countUnreviewed(), []), STAGING_TABLES);
+
+  return (
     <div className="min-h-dvh bg-base">
-      {!startup.storage.durable && <StorageWarning explanation={startup.storage.explanation} />}
+      {!storage.durable && <StorageWarning explanation={storage.explanation} />}
 
       <main
         className="mx-auto w-full max-w-[42rem] px-4 pb-[calc(5.5rem+var(--safe-bottom))] pt-[calc(1rem+var(--safe-top))]"
@@ -71,20 +92,29 @@ export function AppShell() {
         // which is what a person expects when they switch tabs.
         key={route}
       >
-        <View route={route} onAdd={() => setAdding(true)} />
+        <View route={route} onAdd={() => setAdding(true)} unreviewed={unreviewed.data ?? 0} />
       </main>
 
       <BottomNav route={route} onNavigate={navigate} onAdd={() => setAdding(true)} />
       <AddPaymentSheet open={adding} onClose={() => setAdding(false)} />
+      <UpdateBanner update={update} />
       <Toasts />
     </div>
   );
 }
 
-function View({ route, onAdd }: { route: Route; onAdd: () => void }) {
+function View({
+  route,
+  onAdd,
+  unreviewed,
+}: {
+  route: Route;
+  onAdd: () => void;
+  unreviewed: number;
+}) {
   switch (route) {
     case 'home':
-      return <Dashboard onAdd={onAdd} />;
+      return <Dashboard onAdd={onAdd} unreviewed={unreviewed} />;
     case 'triage':
       return <TriageView />;
     case 'accounts':

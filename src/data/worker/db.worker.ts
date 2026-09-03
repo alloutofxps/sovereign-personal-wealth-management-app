@@ -98,6 +98,10 @@ async function doOpen(): Promise<StorageStatus> {
     );
   }
 
+  // Somebody's financial history is the only copy there is. Take one before
+  // changing the shape of it, so a migration that goes wrong is recoverable
+  // rather than final.
+  if (!fresh && currentVersion(db) < SCHEMA_VERSION) await backupBeforeMigrating(db);
   if (!fresh) migrate(db);
   for (const statement of DDL) db.exec(statement);
   setVersion(db, SCHEMA_VERSION);
@@ -205,6 +209,75 @@ function migrate(database: Database): void {
   }
 }
 
+/* --- copies and exports --------------------------------------------------- */
+
+const BACKUP_PREFIX = 'sovereign-backup-v';
+
+function exportBytes(database: Database): Uint8Array {
+  return sqlite3!.capi.sqlite3_js_db_export(database);
+}
+
+/**
+ * Write a copy of the database into the origin's private file system, named
+ * for the version it is being taken from. Best effort: a browser that will not
+ * give us a directory handle must not block the app from opening.
+ */
+async function backupBeforeMigrating(database: Database): Promise<void> {
+  try {
+    const from = currentVersion(database);
+    const bytes = exportBytes(database);
+    const root = await navigator.storage.getDirectory();
+    const handle = await root.getFileHandle(`${BACKUP_PREFIX}${from}.sqlite3`, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(bytes as BufferSource);
+    await writable.close();
+  } catch {
+    // No copy taken. The migration itself is still transactional, so this is
+    // a lost safety net rather than a lost database.
+  }
+}
+
+async function readBackups(): Promise<{ name: string; bytes: number; fromVersion: number }[]> {
+  const found: { name: string; bytes: number; fromVersion: number }[] = [];
+  try {
+    const root = await navigator.storage.getDirectory();
+    for await (const [name, handle] of (
+      root as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
+    ).entries()) {
+      if (!name.startsWith(BACKUP_PREFIX) || handle.kind !== 'file') continue;
+      const file = await (handle as FileSystemFileHandle).getFile();
+      found.push({
+        name,
+        bytes: file.size,
+        fromVersion: Number(name.slice(BACKUP_PREFIX.length).split('.')[0] ?? 0),
+      });
+    }
+  } catch {
+    // Nothing to report.
+  }
+  return found.sort((a, b) => b.fromVersion - a.fromVersion);
+}
+
+/** Replace the live database with the bytes of an export. */
+async function replaceDatabase(bytes: Uint8Array): Promise<void> {
+  const database = requireDb();
+  const capi = sqlite3!.capi;
+
+  // Deserialise into the open connection rather than closing and swapping the
+  // file: the OPFS pool holds the handle, and taking it apart underneath a
+  // live connection is how a database ends up half-written.
+  const pointer = sqlite3!.wasm.allocFromTypedArray(bytes);
+  const rc = capi.sqlite3_deserialize(
+    database.pointer!,
+    'main',
+    pointer,
+    bytes.length,
+    bytes.length,
+    capi.SQLITE_DESERIALIZE_FREEONCLOSE | capi.SQLITE_DESERIALIZE_RESIZEABLE,
+  );
+  database.checkRc(rc);
+}
+
 function requireDb(): Database {
   if (!db) throw new Error('The database has not been opened yet.');
   return db;
@@ -266,6 +339,26 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
         post({ id: request.id, ok: true, rows: [] });
         announce([...touched]);
+        break;
+      }
+
+      case 'export': {
+        await open();
+        post({ id: request.id, ok: true, bytes: exportBytes(requireDb()) });
+        break;
+      }
+
+      case 'listBackups': {
+        post({ id: request.id, ok: true, backups: await readBackups() });
+        break;
+      }
+
+      case 'import': {
+        await open();
+        await replaceDatabase(request.bytes);
+        // Everything on screen is now looking at the wrong data.
+        announce(['accounts', 'entries', 'postings', 'scheduled_items', 'claims', 'staged_transactions', 'meta']);
+        post({ id: request.id, ok: true });
         break;
       }
 

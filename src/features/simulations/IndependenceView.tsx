@@ -7,12 +7,14 @@ import { describeMilestone, describeWhen, projectFire, type Milestone } from '@/
 import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useIndependenceAssumptions, type IndependenceAssumptions } from '@/app/config/store';
+import { GrowthBand } from '@/charts/GrowthBand';
 import { AmountInput, BottomSheet, Button, Card, Money } from '@/design/ui';
 
 /** 3.0% to 4.5%, in quarter-point steps. */
 const RATES = [300, 325, 350, 375, 400, 425, 450] as const;
 
 export function IndependenceView() {
+  const money = useMoney();
   const forecast = useForecast();
   const assumptions = useIndependenceAssumptions();
   // The store keeps plain numbers because it is persisted as JSON; branding
@@ -108,6 +110,22 @@ export function IndependenceView() {
             it. At 3% you need {Math.round(10_000 / 300)} times what you spend in a year; at 4.5%
             you need {Math.round(10_000 / 450)} times. It is the single biggest thing on this
             page.
+          </p>
+        </div>
+      </Card>
+
+      <Card label="How it might grow">
+        <div className="flex flex-col gap-3">
+          <GrowthBand
+            points={result.trajectory}
+            milestones={result.milestones}
+            years={30}
+            format={(amount) => money.format(amount, { compact: true })}
+          />
+          <p className="max-w-[46ch] text-caption text-ink-2">
+            The solid line is what steady returns would give you. The shaded band is the range a
+            good or a bad run of markets could put you in — real markets do not move in a
+            straight line, and the width of that band is the honest part of this page.
           </p>
         </div>
       </Card>

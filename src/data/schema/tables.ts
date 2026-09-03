@@ -31,6 +31,8 @@ export const accounts = sqliteTable('accounts', {
   /** Annual rate in basis points, and the least the lender accepts. */
   aprBp: integer('apr_bp'),
   minPayment: integer('min_payment'),
+  creditLimit: integer('credit_limit'),
+  dueDay: integer('due_day'),
 });
 
 export const entries = sqliteTable(
@@ -86,6 +88,25 @@ export const scheduledItems = sqliteTable(
   (t) => [index('scheduled_due_idx').on(t.nextDue)],
 );
 
+/** Statement rows waiting to be looked at. */
+export const stagedTransactions = sqliteTable(
+  'staged_transactions',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id').notNull(),
+    date: text('date').notNull(),
+    amount: integer('amount').notNull(),
+    description: text('description').notNull(),
+    raw: text('raw').notNull(),
+    dedupeKey: text('dedupe_key').notNull(),
+    status: text('status').notNull(),
+    entryId: text('entry_id'),
+    importedAt: text('imported_at').notNull(),
+    batchId: text('batch_id').notNull(),
+  },
+  (t) => [index('staged_status_idx').on(t.status)],
+);
+
 /** Money you paid out that somebody else owes you back. */
 export const claims = sqliteTable(
   'claims',
@@ -113,6 +134,7 @@ export const TABLES = [
   'entries',
   'postings',
   'scheduled_items',
+  'staged_transactions',
   'claims',
   'meta',
 ] as const;

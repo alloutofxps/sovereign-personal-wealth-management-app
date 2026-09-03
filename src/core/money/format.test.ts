@@ -192,7 +192,13 @@ describe('no hardcoded currency in the app', () => {
   const CURRENCY_LITERAL = /[€£¥₹₽₩₿]|\$\s?\d[\d.,]|[\d.,]\d\s?\$/;
 
   it('has no currency symbol outside the money module', () => {
+    // Test files are exempt from *this* rule only. A symbol in a test is
+    // usually input being parsed — the ingest tests check that "€42.35" from a
+    // bank file is read correctly — rather than something being rendered. The
+    // Intl rule below still applies everywhere, because reaching for the
+    // formatter directly is a design mistake wherever it happens.
     const offenders = files
+      .filter((f) => !/\.test\.tsx?$/.test(f))
       .map((f) => ({ file: f.slice(SRC_ROOT.length), code: stripComments(readFileSync(f, 'utf8')) }))
       .filter(({ code }) => CURRENCY_LITERAL.test(code))
       .map(({ file, code }) => `${file}: ${code.match(CURRENCY_LITERAL)?.[0]}`);

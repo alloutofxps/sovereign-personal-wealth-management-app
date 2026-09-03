@@ -270,6 +270,42 @@ describe('when you could stop', () => {
     }
   });
 
+  it('draws a band that widens with time and starts closed', () => {
+    const r = projectFire({
+      invested: m(100_000),
+      monthlyContribution: m(1000),
+      annualSpending: m(30_000),
+      realReturn: basisPoints(500),
+      withdrawalRate: basisPoints(400),
+    });
+
+    const first = r.trajectory[0]!;
+    // Today is known, so there is nothing to be uncertain about.
+    expect(first.low).toBe(first.balance);
+    expect(first.high).toBe(first.balance);
+
+    for (const point of r.trajectory.slice(1)) {
+      expect(point.low).toBeLessThanOrEqual(point.balance);
+      expect(point.high).toBeGreaterThanOrEqual(point.balance);
+    }
+
+    // In pounds the gap keeps growing, even as the annualised spread narrows.
+    const gap = (year: number) => r.trajectory[year]!.high - r.trajectory[year]!.low;
+    expect(gap(20)).toBeGreaterThan(gap(5));
+  });
+
+  it('never projects a negative balance, however bad the bad case', () => {
+    const r = projectFire({
+      invested: m(1000),
+      monthlyContribution: m(0),
+      annualSpending: m(30_000),
+      realReturn: basisPoints(200),
+      withdrawalRate: basisPoints(400),
+      volatility: basisPoints(9000),
+    });
+    for (const point of r.trajectory) expect(point.low).toBeGreaterThanOrEqual(0);
+  });
+
   it('asks for less to coast than to stop outright', () => {
     const r = projectFire({
       invested: m(50_000),

@@ -101,9 +101,12 @@ export function useForecast(): LiveQueryResult<ForecastData> {
       }
     }
 
-    // Card balances are treated as due at the end of the month they sit in.
+    // Card bills land on the day they are actually due, where that is known.
+    // Falling back to the month end was a guess that could be three weeks out.
+    const dueDayById = new Map(terms.map((row) => [row.id, row.dueDay]));
     for (const debt of liabilities.filter((row) => row.amount > 0)) {
-      const due = endOfMonth(today);
+      const dueDay = dueDayById.get(debt.id);
+      const due = dueDay ? nextOccurrenceOfDay(today, dueDay) : endOfMonth(today);
       if (due <= horizon) {
         events.push({
           date: due,
@@ -184,6 +187,14 @@ function monthlyEquivalent(amount: Minor, cadence: string): number {
 function firstOfMonthAfter(iso: string, monthsAhead: number): string {
   const [y, m] = iso.split('-').map(Number);
   return toIsoDate(new Date((y ?? 1970), (m ?? 1) - 1 + monthsAhead, 1));
+}
+
+/** The next time this day of the month comes round, today included. */
+function nextOccurrenceOfDay(iso: string, day: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const thisMonth = new Date(y ?? 1970, (m ?? 1) - 1, day);
+  if ((d ?? 1) <= day) return toIsoDate(thisMonth);
+  return toIsoDate(new Date(y ?? 1970, m ?? 1, day));
 }
 
 function endOfMonth(iso: string): string {

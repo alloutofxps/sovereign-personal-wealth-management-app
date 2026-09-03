@@ -12,6 +12,7 @@ import { minor, type Minor } from '@/core/money';
 import type { AccountId, LedgerAccount } from '@/core/ledger';
 import { potStatusLabel } from '@/core/goals';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { debtTerms, type DebtTermsRow } from '@/data/repositories/ledgerRepo';
 import { CLAIM_TABLES, listOpenClaims, type Claim } from '@/data/repositories/claimsRepo';
 import { ACCOUNT_IDS } from '@/data/seed';
 import { useDashboard } from '@/app/dashboard/useDashboard';
@@ -23,6 +24,7 @@ import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
 import { WriteOffSheet } from './WriteOffSheet';
+import { DebtTermsSheet } from './DebtTermsSheet';
 
 export function AccountsView() {
   const [, navigate] = useRoute();
@@ -36,6 +38,8 @@ export function AccountsView() {
   const [payingCard, setPayingCard] = useState(false);
   const [settling, setSettling] = useState<Claim | null>(null);
   const [writingOff, setWritingOff] = useState<Claim | null>(null);
+  const [editingTerms, setEditingTerms] = useState<DebtTermsRow | null>(null);
+  const terms = useLiveQuery(useCallback(() => debtTerms(), []), ['accounts', 'postings']);
 
   const data = dashboard.data;
   const all = accounts.data ?? [];
@@ -103,19 +107,40 @@ export function AccountsView() {
 
                 return (
                   <li key={account.id} className="flex flex-col gap-3 px-4 py-3.5">
-                    <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingTerms(
+                          (terms.data ?? []).find((row) => row.id === account.id) ?? null,
+                        )
+                      }
+                      className="flex items-start justify-between gap-3 text-left"
+                    >
                       <div className="min-w-0">
                         <p className="truncate text-body text-ink">{account.name}</p>
                         <p className="pt-0.5 text-caption text-ink-3">
-                          {owed === 0
-                            ? 'Nothing on it at the moment'
-                            : covered
-                              ? `${money.format(reserved)} is set aside, ready to pay it`
-                              : `${money.format(reserved)} set aside so far`}
+                          {describeTerms({
+                            owed,
+                            reserved,
+                            covered,
+                            row: (terms.data ?? []).find((r) => r.id === account.id),
+                            format: (amount) => money.format(amount),
+                          })}
                         </p>
                       </div>
-                      <Money value={owed} size="lead" tone={owed > 0 ? 'neutral' : 'muted'} />
-                    </div>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        <Money value={owed} size="lead" tone={owed > 0 ? 'neutral' : 'muted'} />
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path
+                            d="m9 6 6 6-6 6"
+                            stroke="var(--color-ink-3)"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    </button>
 
                     {owed > 0 && (
                       <div className="flex items-center gap-2">
@@ -241,8 +266,36 @@ export function AccountsView() {
         onClose={() => setWritingOff(null)}
         claim={writingOff}
       />
+      <DebtTermsSheet
+        open={editingTerms !== null}
+        onClose={() => setEditingTerms(null)}
+        account={editingTerms}
+        balance={editingTerms ? amountFor(editingTerms.id) : minor(0)}
+      />
     </div>
   );
+}
+
+/** What to say under a debt: the rate if known, the reserve if not. */
+function describeTerms(input: {
+  owed: Minor;
+  reserved: Minor;
+  covered: boolean;
+  row: DebtTermsRow | undefined;
+  format: (amount: Minor) => string;
+}): string {
+  const rate =
+    input.row?.aprBp && input.row.aprBp > 0 ? `${(input.row.aprBp / 100).toFixed(2)}% a year` : null;
+
+  if (input.owed === 0) {
+    return rate ? `Nothing on it at the moment · ${rate}` : 'Nothing on it. Tap to add the rate.';
+  }
+
+  const reserve = input.covered
+    ? `${input.format(input.reserved)} is set aside, ready to pay it`
+    : `${input.format(input.reserved)} set aside so far`;
+
+  return rate ? `${reserve} · ${rate}` : `${reserve} · tap to add the rate`;
 }
 
 /* --- shared bits --------------------------------------------------------- */

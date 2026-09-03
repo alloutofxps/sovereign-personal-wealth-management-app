@@ -8,7 +8,7 @@ export {
   totalMinimum,
 } from './debt';
 
-export type { FireInput, FireResult, Milestone, MilestoneKind } from './fire';
+export type { FireInput, FireResult, Milestone, MilestoneKind, TrajectoryPoint } from './fire';
 export {
   MILESTONE_LABELS,
   describeMilestone,
