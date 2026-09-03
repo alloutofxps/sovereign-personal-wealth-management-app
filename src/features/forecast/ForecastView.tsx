@@ -135,6 +135,9 @@ export function ForecastView() {
             Two questions worth an answer before you need one.
           </p>
           <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={() => navigate('calendar')}>
+              See it on a calendar
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => navigate('debt')}>
               Paying off what you owe
             </Button>

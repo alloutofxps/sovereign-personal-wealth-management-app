@@ -9,11 +9,14 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { minor, type Minor } from '@/core/money';
 import type { AccountId } from '@/core/ledger';
-import { addDays } from '@/core/liquidity';
+import { CADENCE_LABELS, occurrencesWithin, type Cadence } from '@/core/recurring';
 import { db, runBatch } from '../client';
 import { scheduledItems } from '../schema/tables';
 
-export type Cadence = 'weekly' | 'fortnightly' | 'monthly' | 'yearly';
+// The dates themselves are worked out in core, where they can be tested
+// exhaustively without a database. This module only stores and fetches.
+export { CADENCE_LABELS, occurrencesWithin };
+export type { Cadence };
 
 export interface ScheduledItem {
   id: string;
@@ -26,14 +29,14 @@ export interface ScheduledItem {
   accountId: AccountId | null;
   categoryId: AccountId | null;
   active: boolean;
+  /** What it is supposed to cost. Price-creep is measured against this. */
+  expectedAmount: Minor;
+  /** What it last actually cost, and when it last arrived. */
+  lastAmount: Minor | null;
+  lastBilledDate: string | null;
+  /** Set when the person has said a quiet subscription is fine as it is. */
+  dormantAlertDismissedAt: string | null;
 }
-
-export const CADENCE_LABELS: Record<Cadence, string> = {
-  weekly: 'Every week',
-  fortnightly: 'Every two weeks',
-  monthly: 'Every month',
-  yearly: 'Once a year',
-};
 
 type Row = typeof scheduledItems.$inferSelect;
 
@@ -48,6 +51,12 @@ function toItem(row: Row): ScheduledItem {
     accountId: (row.accountId as AccountId | null) ?? null,
     categoryId: (row.categoryId as AccountId | null) ?? null,
     active: row.active === 1,
+    // An older row migrated in with no baseline falls back to the scheduled
+    // amount, which is what it always meant.
+    expectedAmount: minor(row.expectedAmount || row.amount),
+    lastAmount: row.lastAmount === null ? null : minor(row.lastAmount),
+    lastBilledDate: row.lastBilledDate,
+    dormantAlertDismissedAt: row.dormantAlertDismissedAt,
   };
 }
 
@@ -73,6 +82,10 @@ export async function saveScheduled(item: ScheduledItem): Promise<void> {
       accountId: item.accountId,
       categoryId: item.categoryId,
       active: item.active ? 1 : 0,
+      expectedAmount: item.expectedAmount || item.amount,
+      lastAmount: item.lastAmount,
+      lastBilledDate: item.lastBilledDate,
+      dormantAlertDismissedAt: item.dormantAlertDismissedAt,
     })
     .onConflictDoUpdate({
       target: scheduledItems.id,
@@ -81,7 +94,10 @@ export async function saveScheduled(item: ScheduledItem): Promise<void> {
         amount: item.amount,
         nextDue: item.nextDue,
         cadence: item.cadence,
+        accountId: item.accountId,
+        categoryId: item.categoryId,
         active: item.active ? 1 : 0,
+        expectedAmount: item.expectedAmount || item.amount,
       },
     })
     .toSQL();
@@ -106,51 +122,45 @@ export async function countScheduled(): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
-/* --- what falls inside a window ------------------------------------------ */
+/* --- surveillance bookkeeping --------------------------------------------- */
 
-/**
- * Every time this item comes due between today and the horizon.
- *
- * A weekly bill inside a 30-day window is four or five payments, not one, and
- * treating it as one would quietly overstate what is safe to spend.
- */
-export function occurrencesWithin(
-  item: ScheduledItem,
-  from: string,
-  to: string,
-): { date: string; amount: Minor }[] {
-  const stepDays: Record<Cadence, number> = {
-    weekly: 7,
-    fortnightly: 14,
-    monthly: 0, // handled by calendar month arithmetic below
-    yearly: 0,
-  };
-
-  const dates: string[] = [];
-  let cursor = item.nextDue;
-
-  // A hard stop, so a bad cadence can never spin forever.
-  for (let guard = 0; guard < 400 && cursor <= to; guard++) {
-    if (cursor >= from) dates.push(cursor);
-
-    if (item.cadence === 'monthly') cursor = addCalendarMonths(cursor, 1);
-    else if (item.cadence === 'yearly') cursor = addCalendarMonths(cursor, 12);
-    else cursor = addDays(cursor, stepDays[item.cadence]);
-  }
-
-  return dates.map((date) => ({ date, amount: item.amount }));
+/** Accept a new price as the baseline this bill is measured against. */
+export async function updateExpectedAmount(id: string, amount: Minor): Promise<void> {
+  const statement = db
+    .update(scheduledItems)
+    .set({ expectedAmount: amount, amount })
+    .where(eq(scheduledItems.id, id))
+    .toSQL();
+  await runBatch([{ sql: statement.sql, params: statement.params }]);
 }
 
-/** Keeps the day of the month, clamping where the next month is shorter. */
-function addCalendarMonths(iso: string, months: number): string {
-  const [year, month, day] = iso.split('-').map(Number);
-  const target = new Date(year ?? 1970, (month ?? 1) - 1 + months, 1);
-  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(day ?? 1, lastDay));
-  const y = target.getFullYear();
-  const m = String(target.getMonth() + 1).padStart(2, '0');
-  const d = String(target.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+/**
+ * Note what a bill actually cost this time without moving the baseline.
+ *
+ * "Treat as a one-off" has to record something, or the same charge is flagged
+ * again on the next import and the dismissal means nothing.
+ */
+export async function recordActualCharge(
+  id: string,
+  amount: Minor,
+  date: string,
+): Promise<void> {
+  const statement = db
+    .update(scheduledItems)
+    .set({ lastAmount: amount, lastBilledDate: date })
+    .where(eq(scheduledItems.id, id))
+    .toSQL();
+  await runBatch([{ sql: statement.sql, params: statement.params }]);
+}
+
+/** Stop asking about a subscription the person has said is fine. */
+export async function dismissDormantAlert(id: string): Promise<void> {
+  const statement = db
+    .update(scheduledItems)
+    .set({ dormantAlertDismissedAt: new Date().toISOString() })
+    .where(eq(scheduledItems.id, id))
+    .toSQL();
+  await runBatch([{ sql: statement.sql, params: statement.params }]);
 }
 
 export const SCHEDULE_TABLES = ['scheduled_items'] as const;

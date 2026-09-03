@@ -17,7 +17,7 @@ import {
   listUnreviewed,
   type StagedRow,
 } from '@/data/repositories/stagingRepo';
-import { confirmStagedRow, voidEntry } from '@/app/ledger/actions';
+import { confirmStagedRow, noteScheduledCharge, voidEntry } from '@/app/ledger/actions';
 import { applyRulesToStagedRows } from '@/ingest';
 import { useCategoryPicker, useRules } from '@/app/taxonomy/useTaxonomy';
 import { recordRuleMatches, saveRule } from '@/data/repositories/rulesRepo';
@@ -101,6 +101,12 @@ export function TriageView() {
           categoryId: category.categoryId,
           envelopeId: category.envelopeId,
         });
+      }
+
+      // If this row is one of their known bills, remember what it actually
+      // cost. The audit compares it to the baseline; nothing is raised here.
+      if (row.amount < 0) {
+        void noteScheduledCharge(row.description, minor(-row.amount));
       }
 
       const firedRule = matchByRow.get(row.id);

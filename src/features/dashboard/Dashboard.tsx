@@ -86,6 +86,7 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
             unreviewed={unreviewed}
             onOpenReview={() => navigate('triage')}
             onAddBill={() => setAddingBill(true)}
+            onOpenCalendar={() => navigate('calendar')}
           />
         </>
       )}

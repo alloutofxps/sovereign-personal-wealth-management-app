@@ -40,7 +40,8 @@ export function BottomNav({
             tab={tab}
             active={
               route === tab.route ||
-              (tab.route === 'forecast' && (route === 'debt' || route === 'independence'))
+              (tab.route === 'forecast' &&
+                (route === 'debt' || route === 'independence' || route === 'calendar'))
             }
             onNavigate={onNavigate}
           />

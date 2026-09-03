@@ -109,15 +109,22 @@ export const DDL: readonly string[] = [
   // Regular payments in and out. These are what make "safe to spend" mean
   // anything: money already promised to a bill is not money you can spend.
   `CREATE TABLE IF NOT EXISTS scheduled_items (
-     id          TEXT PRIMARY KEY,
-     kind        TEXT NOT NULL CHECK (kind IN ('bill','income')),
-     name        TEXT NOT NULL,
-     amount      INTEGER NOT NULL CHECK (amount > 0),
-     next_due    TEXT NOT NULL CHECK (next_due LIKE '____-__-__'),
-     cadence     TEXT NOT NULL CHECK (cadence IN ('weekly','fortnightly','monthly','yearly')),
-     account_id  TEXT REFERENCES accounts(id),
-     category_id TEXT REFERENCES accounts(id),
-     active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
+     id                         TEXT PRIMARY KEY,
+     kind                       TEXT NOT NULL CHECK (kind IN ('bill','income')),
+     name                       TEXT NOT NULL,
+     amount                     INTEGER NOT NULL CHECK (amount > 0),
+     next_due                   TEXT NOT NULL CHECK (next_due LIKE '____-__-__'),
+     cadence                    TEXT NOT NULL CHECK (cadence IN
+                                  ('daily','weekly','biweekly','semimonthly',
+                                   'monthly','quarterly','annual')),
+     account_id                 TEXT REFERENCES accounts(id),
+     category_id                TEXT REFERENCES accounts(id),
+     active                     INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+     -- What this is supposed to cost, so a charge above it can be noticed.
+     expected_amount            INTEGER NOT NULL DEFAULT 0,
+     last_amount                INTEGER,
+     last_billed_date           TEXT,
+     dormant_alert_dismissed_at TEXT
    );`,
 
   // Money you paid out that somebody else owes you back.
@@ -155,6 +162,7 @@ export const DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_book_type ON accounts(book, type, archived_at);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
+  `CREATE INDEX IF NOT EXISTS idx_scheduled_active_due ON scheduled_items(active, next_due ASC);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,
   `CREATE INDEX IF NOT EXISTS entries_claim_idx ON entries(claim_id);`,
   `CREATE INDEX IF NOT EXISTS entries_date_idx ON entries(date);`,

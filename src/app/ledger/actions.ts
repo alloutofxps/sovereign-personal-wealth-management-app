@@ -195,6 +195,27 @@ export async function confirmStagedRow(
   return entry.id;
 }
 
+/**
+ * Notice when a confirmed statement row is one of the person's known bills.
+ *
+ * Recording what it actually cost is what lets the audit compare it against
+ * the baseline later. It deliberately does not decide anything here: a charge
+ * being higher than expected is something to mention once, calmly, on a screen
+ * the person chose to open — not an interruption in the middle of filing.
+ */
+export async function noteScheduledCharge(description: string, amount: Minor): Promise<void> {
+  const { listScheduled, recordActualCharge } = await import(
+    '@/data/repositories/scheduleRepo'
+  );
+  const { isSameMerchant } = await import('@/core/taxonomy/merchantMemory');
+
+  const items = await listScheduled();
+  const match = items.find((item) => item.kind === 'bill' && isSameMerchant(item.name, description));
+  if (!match) return;
+
+  await recordActualCharge(match.id, amount, today());
+}
+
 /* --- undoing something --------------------------------------------------- */
 
 /**

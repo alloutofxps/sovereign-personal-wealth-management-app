@@ -7,21 +7,28 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
 import { toIsoDate } from '@/core/liquidity';
-import { CADENCE_LABELS, saveScheduled, type Cadence } from '@/data/repositories/scheduleRepo';
+import { CADENCE_LABELS, describeSchedule, type Cadence } from '@/core/recurring';
+import { saveScheduled } from '@/data/repositories/scheduleRepo';
+import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
+import { useAccounts } from '@/app/ledger/useLedger';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Select } from '@/design/ui';
 
 type Kind = 'bill' | 'income';
 
 export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const money = useMoney();
+  const accounts = useAccounts();
+  const picker = useCategoryPicker();
   const [step, setStep] = useState<'amount' | 'details'>('amount');
   const [kind, setKind] = useState<Kind>('bill');
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [name, setName] = useState('');
   const [cadence, setCadence] = useState<Cadence>('monthly');
   const [nextDue, setNextDue] = useState(toIsoDate(new Date()));
+  const [accountId, setAccountId] = useState<string>('');
+  const [categoryId, setCategoryId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -33,6 +40,8 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
     setName('');
     setCadence('monthly');
     setNextDue(toIsoDate(new Date()));
+    setAccountId('');
+    setCategoryId('');
     setProblem(null);
     setSaving(false);
   }, [open]);
@@ -51,9 +60,15 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
         amount,
         nextDue,
         cadence,
-        accountId: null,
-        categoryId: null,
+        accountId: (accountId || null) as never,
+        categoryId: (categoryId || null) as never,
         active: true,
+        // What it is supposed to cost, which anything charged above will be
+        // measured against from now on.
+        expectedAmount: amount,
+        lastAmount: null,
+        lastBilledDate: null,
+        dormantAlertDismissedAt: null,
       });
       toast(
         kind === 'bill'
@@ -136,15 +151,15 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
             />
           </Field>
 
-          <Field label="How often?">
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(CADENCE_LABELS) as Cadence[]).map((c) => (
-                <Choice key={c} selected={cadence === c} onClick={() => setCadence(c)}>
-                  {CADENCE_LABELS[c]}
-                </Choice>
-              ))}
-            </div>
-          </Field>
+          <Select
+            label="How often?"
+            value={cadence}
+            onChange={(e) => setCadence(e.target.value as Cadence)}
+            options={(Object.keys(CADENCE_LABELS) as Cadence[]).map((c) => ({
+              value: c,
+              label: CADENCE_LABELS[c],
+            }))}
+          />
 
           <Field label={kind === 'bill' ? 'When is it next due?' : 'When are you next paid?'}>
             <input
@@ -155,11 +170,38 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
             />
           </Field>
 
-          <p className="text-caption text-ink-3">
-            {amount > 0 && name.trim()
-              ? `${money.format(amount)} for ${name.trim()}, ${CADENCE_LABELS[cadence].toLowerCase()}.`
-              : 'Fill in the name above and we will hold this back for you.'}
-          </p>
+          <Select
+            label={kind === 'bill' ? 'Which account pays it?' : 'Where does it land?'}
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            options={[
+              { value: '', label: 'Not sure yet' },
+              ...(accounts.data ?? [])
+                .filter((a) => a.type === 'ASSET' || a.type === 'LIABILITY')
+                .map((a) => ({ value: a.id, label: a.name })),
+            ]}
+          />
+
+          {kind === 'bill' && (
+            <Select
+              label="What should it count as?"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              groups={picker.groups}
+              placeholder="Not sure yet"
+            />
+          )}
+
+          <div className="flex flex-col gap-1">
+            <p className="text-caption text-ink-2">
+              {amount > 0 && name.trim()
+                ? `${money.format(amount)} for ${name.trim()}.`
+                : 'Fill in the name above and we will hold this back for you.'}
+            </p>
+            {/* Spelled out, because "semi-monthly" means one of two quite
+                different things and nobody should have to guess which. */}
+            <p className="text-caption text-ink-3">{describeSchedule(cadence, nextDue)}</p>
+          </div>
         </div>
       )}
     </BottomSheet>

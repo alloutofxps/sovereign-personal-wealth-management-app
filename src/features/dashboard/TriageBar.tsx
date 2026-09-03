@@ -10,11 +10,14 @@ export function TriageBar({
   unreviewed,
   onOpenReview,
   onAddBill,
+  onOpenCalendar,
 }: {
   data: DashboardData;
   unreviewed: number;
   onOpenReview: () => void;
   onAddBill: () => void;
+  /** Bills due in the next three days lead straight to the day they land on. */
+  onOpenCalendar: () => void;
 }) {
   const locale = useAppConfig((s) => s.locale);
   const soon = data.dueSoon;
@@ -53,17 +56,19 @@ export function TriageBar({
             />
           </button>
         ) : (
-          <StatPill
-            label="Bills due soon"
-            value={<Money value={sum(soon)} size="lead" tone="caution" decimals="hide" />}
-            detail={
-              soon.length === 1
-                ? `${soon[0]!.name}, ${describeDate(soon[0]!.date, locale).toLowerCase()}`
-                : `${soon.length} payments in the next three days`
-            }
-            tone="caution"
-            dot
-          />
+          <button type="button" onClick={onOpenCalendar} className="text-left">
+            <StatPill
+              label="Bills due soon"
+              value={<Money value={sum(soon)} size="lead" tone="caution" decimals="hide" />}
+              detail={
+                soon.length === 1
+                  ? `${soon[0]!.name}, ${describeDate(soon[0]!.date, locale).toLowerCase()}`
+                  : `${soon.length} payments in the next three days`
+              }
+              tone="caution"
+              dot
+            />
+          </button>
         )}
       </div>
     </section>

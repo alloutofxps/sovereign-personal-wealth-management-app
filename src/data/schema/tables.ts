@@ -103,6 +103,11 @@ export const scheduledItems = sqliteTable(
     accountId: text('account_id'),
     categoryId: text('category_id'),
     active: integer('active').notNull().default(1),
+    /** What it is supposed to cost, which price-creep is measured against. */
+    expectedAmount: integer('expected_amount').notNull().default(0),
+    lastAmount: integer('last_amount'),
+    lastBilledDate: text('last_billed_date'),
+    dormantAlertDismissedAt: text('dormant_alert_dismissed_at'),
   },
   (t) => [index('scheduled_due_idx').on(t.nextDue)],
 );

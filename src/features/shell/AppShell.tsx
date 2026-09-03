@@ -49,11 +49,10 @@ const TransactionsView = lazy(() =>
 const PotsView = lazy(() =>
   import('@/features/goals/PotsView').then((m) => ({ default: m.PotsView })),
 );
-const ForecastView = lazy(() =>
-  import('@/features/forecast/ForecastView').then((m) => ({ default: m.ForecastView })),
-);
-const DebtPayoffView = lazy(() =>
-  import('@/features/simulations/DebtPayoffView').then((m) => ({ default: m.DebtPayoffView })),
+// One lazy chunk for all three "Ahead" panes: they share the toggle at the
+// top, so arriving on any of them means the other two are one tap away.
+const AheadView = lazy(() =>
+  import('@/features/forecast/AheadView').then((m) => ({ default: m.AheadView })),
 );
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
@@ -168,9 +167,9 @@ function View({
     case 'pots':
       return <PotsView />;
     case 'forecast':
-      return <ForecastView />;
+    case 'calendar':
     case 'debt':
-      return <DebtPayoffView />;
+      return <AheadView />;
     case 'independence':
       return <IndependenceView />;
     case 'categories':
