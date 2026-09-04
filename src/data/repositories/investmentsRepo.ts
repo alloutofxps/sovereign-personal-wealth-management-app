@@ -23,11 +23,12 @@ import {
   LedgerError,
   entryId as toEntryId,
   isoDate,
-  valuation,
   type AccountId,
   type IsoDate,
   type LedgerAccount,
 } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { valuation } from '@/core/ledger/entries/valuation';
 // Deep import on purpose: see the note in the ledger barrel.
 import { investmentDividend, investmentSell } from '@/core/ledger/entries/trade';
 import {

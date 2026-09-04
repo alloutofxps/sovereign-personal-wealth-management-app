@@ -282,6 +282,31 @@ export interface SystemAccounts {
   fxConversionFee: AccountId;
   /** FINANCIAL: what a currency's movement did to a foreign balance. Equity. */
   unrealizedFxGainLoss: AccountId;
+  /**
+   * FINANCIAL: the part of a loan payment that bought nothing.
+   *
+   * EXPENSE, and that is the opposite call from `investmentTaxWithheld` — so
+   * the reasoning matters. Withholding tax is money that never reached the
+   * account and could never have been kept, so counting it as spending would
+   * invent purchases nobody made. Loan interest is money that sat in the
+   * account and was handed over, at a rate somebody agreed to, in exchange for
+   * nothing they still own. It is a cost of living in the fullest sense, and
+   * for most households the largest one. Hiding it would make the burn rate
+   * flatter than the life it describes.
+   */
+  interestExpense: AccountId;
+  /**
+   * FINANCIAL: the part of a mortgage payment the lender holds back for tax
+   * and insurance.
+   *
+   * Booked straight to expense rather than held as an asset until the lender
+   * pays the bill. That is a simplification and worth naming: the money is
+   * genuinely yours until it is spent. But the bills are certain, the timing
+   * is the lender's, and carrying an escrow balance would mean asking somebody
+   * to record disbursements they never see. Expensing it as it leaves matches
+   * what the household experiences, which is money gone every month.
+   */
+  escrowExpense: AccountId;
 }
 
 /* --- the journal --------------------------------------------------------- */
@@ -322,7 +347,19 @@ export type EntryKind =
   /** Money paid out by something you hold. Real income, unlike a valuation. */
   | 'DIVIDEND'
   /** A foreign balance restated at today's rate. Nothing moved; the rate did. */
-  | 'FX_REVALUATION';
+  | 'FX_REVALUATION'
+  /**
+   * One payment on a loan, split into the part that repays and the part that
+   * does not.
+   *
+   * Deliberately NOT in I6's neutral set, unlike a transfer or an investment
+   * buy. Part of this payment really is spending — the interest is money paid
+   * for nothing but the use of the money, and so is the escrow that settles a
+   * tax bill. Excluding the whole payment would understate the cost of living
+   * by whatever a mortgage costs, which for most households is the largest
+   * single thing they pay for.
+   */
+  | 'LOAN_PAYMENT';
 
 /**
  * Whether the bank has settled this line yet.

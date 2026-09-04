@@ -15,13 +15,12 @@ import { useCallback, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
 import {
-  GROUP_HINTS,
-  GROUP_TITLES,
-  groupOf,
   type AccountGroup,
   type AccountId,
   type LedgerAccount,
 } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { GROUP_HINTS, GROUP_TITLES, groupOf } from '@/core/ledger/accountClasses';
 import { potStatusLabel } from '@/core/goals';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { debtTerms, type DebtTermsRow } from '@/data/repositories/ledgerRepo';
@@ -43,6 +42,9 @@ import { AccountDetailSheet } from './AccountDetailSheet';
 import { ConvertCurrencySheet } from './ConvertCurrencySheet';
 import { CreateAccountSheet } from './CreateAccountSheet';
 import { RecordValuationSheet } from './RecordValuationSheet';
+import { LoanScheduleSheet } from './LoanScheduleSheet';
+import { RecordLoanPaymentSheet } from './RecordLoanPaymentSheet';
+import { NetWorthHistoryCard } from './NetWorthHistoryCard';
 
 const ORDER: AccountGroup[] = ['cash', 'foreign', 'investments', 'property', 'debts'];
 
@@ -66,6 +68,8 @@ export function AccountsView() {
   const [converting, setConverting] = useState(false);
   const [viewing, setViewing] = useState<LedgerAccount | null>(null);
   const [revaluing, setRevaluing] = useState<LedgerAccount | null>(null);
+  const [schedulingLoan, setSchedulingLoan] = useState<AccountId | null>(null);
+  const [payingLoan, setPayingLoan] = useState<AccountId | null>(null);
   const [collapsed, setCollapsed] = useState<Set<AccountGroup>>(new Set());
 
   const data = dashboard.data;
@@ -198,6 +202,9 @@ export function AccountsView() {
         </div>
       </Card>
 
+      {/* --- the line it got here along ------------------------------------ */}
+      <NetWorthHistoryCard />
+
       {/* --- the four sections --------------------------------------------- */}
       {ORDER.map((group) => {
         const rows = sections.get(group) ?? [];
@@ -273,6 +280,7 @@ export function AccountsView() {
                           terms={termsFor(account.id)}
                           onOpen={() => setViewing(account)}
                           onPay={() => setPayingCard(true)}
+                          onSchedule={() => setSchedulingLoan(account.id)}
                         />
                       ))}
                     </ul>
@@ -412,6 +420,16 @@ export function AccountsView() {
         onClose={() => setWritingOff(null)}
         claim={writingOff}
       />
+      <LoanScheduleSheet
+        accountId={schedulingLoan}
+        onClose={() => setSchedulingLoan(null)}
+        onRecordPayment={(id) => {
+          setSchedulingLoan(null);
+          setPayingLoan(id);
+        }}
+      />
+      <RecordLoanPaymentSheet accountId={payingLoan} onClose={() => setPayingLoan(null)} />
+
       <DebtTermsSheet
         open={editingTerms !== null}
         onClose={() => setEditingTerms(null)}
@@ -421,6 +439,9 @@ export function AccountsView() {
     </div>
   );
 }
+
+/** The liabilities that have a term, a rate and a contractual payment. */
+const AMORTIZING_CLASSES = new Set(['mortgage', 'loan']);
 
 /* --- one account in a list ------------------------------------------------ */
 
@@ -433,6 +454,7 @@ function AccountRow({
   terms,
   onOpen,
   onPay,
+  onSchedule,
 }: {
   account: LedgerAccount;
   amount: Minor;
@@ -442,6 +464,7 @@ function AccountRow({
   terms: DebtTermsRow | undefined;
   onOpen: () => void;
   onPay: () => void;
+  onSchedule: () => void;
 }) {
   const money = useMoney();
   const fx = useFx();
@@ -489,6 +512,16 @@ function AccountRow({
           </svg>
         </span>
       </button>
+
+      {/* A loan splits every payment in two, so it gets its own way in. A
+          card does not — revolving debt has no schedule to show. */}
+      {owed && amount > 0 && AMORTIZING_CLASSES.has(account.accountClass ?? '') && (
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={onSchedule}>
+            What each payment does
+          </Button>
+        </div>
+      )}
 
       {owed && amount > 0 && account.id === ACCOUNT_IDS.card && (
         <div className="flex items-center gap-2">

@@ -90,7 +90,13 @@ export function presentEntry(
     categories,
     accountName: funding ? nameOf(funding.accountId) : null,
     note: entry.postings.find((p) => p.memo)?.memo ?? null,
-    isSplit: entry.kind === 'SPEND_SPLIT' || categories.length > 1,
+    // A loan payment lands in two categories — the interest and what the
+    // lender holds for tax and insurance — but nobody split it. It is one
+    // payment whose parts are decided by the contract, and calling it a split
+    // would suggest a choice was made that never was.
+    isSplit:
+      entry.kind !== 'LOAN_PAYMENT' &&
+      (entry.kind === 'SPEND_SPLIT' || categories.length > 1),
     isCorrection: entry.kind === 'REVERSAL',
     financialLines: financial.map(line),
   };

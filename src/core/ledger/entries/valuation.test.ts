@@ -6,9 +6,6 @@ import {
   LedgerError,
   NORMAL_BY_TYPE,
   accountId,
-  checkInvariants,
-  depreciatedValue,
-  describeDepreciation,
   entryId,
   isoDate,
   liquidCash,
@@ -16,7 +13,6 @@ import {
   openingBalance,
   totalIncome,
   totalSpending,
-  valuation,
   type AccountId,
   type JournalEntry,
   type LedgerAccount,
@@ -24,6 +20,10 @@ import {
   type LedgerSnapshot,
   type SystemAccounts,
 } from '../index';
+// Deep import on purpose: see the note in the ledger barrel.
+import { depreciatedValue, describeDepreciation, valuation } from './valuation';
+// Deep import on purpose: see the note in the ledger barrel.
+import { checkInvariants } from '../invariants';
 
 /* ===========================================================================
  * A BALANCE SHEET WITH SOMETHING ILLIQUID ON IT
@@ -55,6 +55,8 @@ const SYSTEM: SystemAccounts = {
   fxRoundingVariance: accountId('eq-fx-rounding'),
   fxConversionFee: accountId('eq-fx-fee'),
   unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
   dividendIncome: accountId('inc-dividends'),
   investmentTaxWithheld: accountId('cat-tax'),
 };

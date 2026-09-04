@@ -18,17 +18,18 @@ import { minor, type Minor } from '@/core/money';
 import {
   LedgerError,
   accountId as toAccountId,
-  depreciatedValue,
   isoDate,
   entryId as toEntryId,
   openingBalance,
-  planAccountCreation,
-  valuation,
   type AccountDraft,
   type AccountId,
   type IsoDate,
   type LedgerAccount,
 } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { planAccountCreation } from '@/core/ledger/accountClasses';
+// Deep import on purpose: see the note in the ledger barrel.
+import { depreciatedValue, valuation } from '@/core/ledger/entries/valuation';
 import { SYSTEM_ACCOUNTS } from '@/data/seed';
 import { db, runBatch } from '../client';
 import { accounts, valuations } from '../schema/tables';

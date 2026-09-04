@@ -42,6 +42,14 @@ import { useAppConfig } from '@/app/config/store';
 
 /** How far ahead "already promised" reaches. */
 const HORIZON_DAYS = 30;
+
+/**
+ * Debts that are paid down over a term rather than settled from this month's
+ * cash. Their balance is not a claim on what is safe to spend; their monthly
+ * payment is, and that is budgeted out of a pot like any other bill.
+ */
+const AMORTIZING_CLASSES = new Set(['mortgage', 'loan']);
+
 /** Anything due inside this window is worth surfacing today. */
 export const SOON_HOURS = 72;
 
@@ -144,11 +152,20 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
       .filter((row) => row.amount !== 0)
       .map((row) => ({ id: row.id, name: row.name, amount: row.baseAmount }));
 
-    const cardCommitments: Commitment[] = debts.map((debt) => ({
-      label: debt.name,
-      amount: debt.amount,
-      kind: 'card' as const,
-    }));
+    // A card balance is money that has to come out of cash, so it is taken off
+    // what is safe to spend. A mortgage is not. Nobody has to find two hundred
+    // thousand this month — they have to find one payment, and that payment is
+    // budgeted like any other bill, out of a pot. Subtracting the whole balance
+    // would tell somebody with a house and a healthy current account that they
+    // have nothing to spend, which is both false and the single most
+    // discouraging thing a money app can say.
+    const cardCommitments: Commitment[] = liabilities
+      .filter((row) => row.amount !== 0 && !AMORTIZING_CLASSES.has(row.accountClass ?? ''))
+      .map((row) => ({
+        label: row.name,
+        amount: row.baseAmount,
+        kind: 'card' as const,
+      }));
 
     const bills = scheduled.filter((item) => item.kind === 'bill');
     const upcoming: UpcomingBill[] = bills
@@ -213,7 +230,13 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
       periodNoun: CADENCE_NOUNS[settings.cadence],
     });
 
+    // Everything owed, which is what net worth is measured against.
     const totalDebt = minor(debts.reduce((total, d) => total + d.amount, 0));
+
+    // What is set aside for card bills is only ever compared against card
+    // bills. A mortgage in the total would leave the badge permanently saying
+    // the bill is not covered, on an account nobody is expected to cover.
+    const cardDebt = minor(cardCommitments.reduce((total, c) => total + c.amount, 0));
 
     return {
       today,
@@ -225,7 +248,7 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
       debts,
       totalDebt,
       reserved,
-      billsCovered: totalDebt === 0 || reserved >= totalDebt,
+      billsCovered: cardDebt === 0 || reserved >= cardDebt,
       // Everything you own, less everything you owe — money other people owe
       // you back is still yours, so it belongs here.
       netWorth: minor(assets - totalDebt),

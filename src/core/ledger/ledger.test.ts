@@ -8,8 +8,6 @@ import {
   accountId,
   assign,
   cardPayment,
-  checkInvariant,
-  checkInvariants,
   entryId,
   income,
   isoDate,
@@ -28,8 +26,6 @@ import {
   type AccountId,
   fundingFor,
   assertFundingMatchesAccount,
-  spendSplit,
-  splitTotal,
   type Funding,
   type JournalEntry,
   type LedgerAccount,
@@ -37,6 +33,10 @@ import {
   type LedgerSnapshot,
   type SystemAccounts,
 } from './index';
+// Deep import on purpose: see the note in the ledger barrel.
+import { spendSplit, splitTotal } from './entries/spendSplit';
+// Deep import on purpose: see the note in the ledger barrel.
+import { checkInvariant, checkInvariants } from './invariants';
 
 /* ===========================================================================
  * A chart of accounts to test against
@@ -75,6 +75,8 @@ const SYSTEM: SystemAccounts = {
   fxRoundingVariance: accountId('eq-fx-rounding'),
   fxConversionFee: accountId('eq-fx-fee'),
   unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
   dividendIncome: accountId('inc-dividends'),
   investmentTaxWithheld: accountId('cat-tax'),
 };
@@ -114,6 +116,8 @@ const CHART: LedgerAccount[] = [
   account(SYSTEM.realizedLoss, 'EQUITY', 'Losses you have taken'),
   account(SYSTEM.dividendIncome, 'INCOME', 'Money your investments paid out'),
   account(SYSTEM.investmentTaxWithheld, 'EQUITY', 'Tax taken from your investments'),
+  account(SYSTEM.interestExpense, 'EXPENSE', 'Interest on what you owe'),
+  account(SYSTEM.escrowExpense, 'EXPENSE', 'Property tax and insurance'),
   account(A.salary, 'INCOME', 'Salary'),
   account(A.groceries, 'EXPENSE', 'Groceries'),
   account(A.transport, 'EXPENSE', 'Transport'),

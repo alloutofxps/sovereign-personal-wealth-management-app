@@ -16,7 +16,9 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
-import { CLASS_PROFILES, type AccountClass } from '@/core/ledger';
+import type { AccountClass } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { CLASS_PROFILES } from '@/core/ledger/accountClasses';
 import { COMMON_CURRENCIES } from '@/core/money';
 import { useAppConfig } from '@/app/config/store';
 import { createAccount } from '@/data/repositories/accountsRepo';

@@ -9,7 +9,7 @@
  * written whole or not at all.
  * ======================================================================== */
 
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { minor, type Minor } from '@/core/money';
 import {
   assertBalanced,
@@ -104,13 +104,24 @@ export async function saveAccounts(list: readonly LedgerAccount[]): Promise<void
       .toSQL(),
   );
 
+  // Parents are linked in a second pass because an account can name one that
+  // has not been inserted yet. Only ever filled in where nothing is there:
+  // this runs again whenever the starter chart gains an account, and somebody
+  // who has since moved a category into a group of their own must not find it
+  // put back on next launch.
   const links = list
     .filter((account) => account.parentId || account.paymentEnvelopeId)
     .map((account) =>
       db
         .update(accounts)
         .set({ parentId: account.parentId, paymentEnvelopeId: account.paymentEnvelopeId })
-        .where(eq(accounts.id, account.id))
+        .where(
+          and(
+            eq(accounts.id, account.id),
+            isNull(accounts.parentId),
+            isNull(accounts.paymentEnvelopeId),
+          ),
+        )
         .toSQL(),
     );
 
@@ -379,7 +390,15 @@ export async function spendByDay(from: IsoDate, to: IsoDate): Promise<Map<string
 export async function balancesByType(
   type: 'LIABILITY' | 'ENVELOPE' | 'ASSET',
 ): Promise<
-  { id: AccountId; name: string; amount: Minor; baseAmount: Minor; role: string | null }[]
+  {
+    id: AccountId;
+    name: string;
+    amount: Minor;
+    baseAmount: Minor;
+    role: string | null;
+    /** What kind of thing this is: 'mortgage', 'credit_card', and so on. */
+    accountClass: string | null;
+  }[]
 > {
   const rows = await db
     .select({
@@ -387,13 +406,20 @@ export async function balancesByType(
       name: accounts.name,
       role: accounts.envelopeRole,
       normal: accounts.normal,
+      accountClass: accounts.class,
       total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
       base: sql<number>`coalesce(sum(${postings.baseAmount}), 0)`,
     })
     .from(accounts)
     .leftJoin(postings, eq(postings.accountId, accounts.id))
     .where(eq(accounts.type, type))
-    .groupBy(accounts.id, accounts.name, accounts.envelopeRole, accounts.normal);
+    .groupBy(
+      accounts.id,
+      accounts.name,
+      accounts.envelopeRole,
+      accounts.normal,
+      accounts.class,
+    );
 
   return rows.map((row) => {
     const raw = Number(row.total);
@@ -406,6 +432,7 @@ export async function balancesByType(
       // Sum this across accounts, never `amount`.
       baseAmount: minor(flip ? -base : base),
       role: row.role,
+      accountClass: row.accountClass ?? null,
     };
   });
 }
@@ -431,6 +458,45 @@ export async function netWorthAsOf(date: IsoDate): Promise<Minor> {
           AND (${entries.date} <= ${date} OR ${entries.kind} = 'OPENING_BALANCE')`,
     );
   return minor(Number(row?.total ?? 0));
+}
+
+/**
+ * Every asset and liability posting, for drawing the net worth line.
+ *
+ * Opening balances are dated to the first day anything was recorded rather
+ * than to the day somebody typed them. They describe what was already there
+ * when the records begin, and leaving them on their own date would put a
+ * lifetime of savings into a single month as though it had appeared that
+ * fortnight — the same reasoning as `netWorthAsOf`, applied along the whole
+ * line instead of at one point.
+ */
+export async function netWorthPostings(): Promise<
+  { date: string; baseAmount: Minor; side: 'ASSET' | 'LIABILITY' }[]
+> {
+  const rows = await db
+    .select({
+      date: entries.date,
+      kind: entries.kind,
+      amount: postings.baseAmount,
+      type: accounts.type,
+    })
+    .from(postings)
+    .innerJoin(accounts, eq(accounts.id, postings.accountId))
+    .innerJoin(entries, eq(entries.id, postings.entryId))
+    .where(sql`${accounts.type} IN ('ASSET','LIABILITY')`);
+
+  if (rows.length === 0) return [];
+
+  let earliest = rows[0]!.date;
+  for (const row of rows) {
+    if (row.kind !== 'OPENING_BALANCE' && row.date < earliest) earliest = row.date;
+  }
+
+  return rows.map((row) => ({
+    date: row.kind === 'OPENING_BALANCE' ? earliest : row.date,
+    baseAmount: minor(row.amount),
+    side: row.type === 'ASSET' ? ('ASSET' as const) : ('LIABILITY' as const),
+  }));
 }
 
 /** Everything you own, including money other people owe you. */

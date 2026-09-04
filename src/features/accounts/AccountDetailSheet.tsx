@@ -9,7 +9,9 @@
 
 import { useCallback, useState } from 'react';
 import { minor, type Minor } from '@/core/money';
-import { isRevaluable, isoDate, type LedgerAccount } from '@/core/ledger';
+import { isoDate, type LedgerAccount } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { isRevaluable } from '@/core/ledger/accountClasses';
 import { toIsoDate } from '@/core/liquidity';
 import {
   ACCOUNT_TABLES,

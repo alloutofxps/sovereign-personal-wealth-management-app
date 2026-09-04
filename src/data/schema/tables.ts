@@ -46,6 +46,39 @@ export const accounts = sqliteTable('accounts', {
   salvageValue: integer('salvage_value'),
   /** v14. Null means the household's base currency. */
   currency: text('currency'),
+  /** v15. What a loan payment is split by. `aprBp` above holds the rate. */
+  originalPrincipal: integer('original_principal'),
+  termMonths: integer('term_months'),
+  startDate: text('start_date'),
+  monthlyPayment: integer('monthly_payment'),
+  escrowMonthly: integer('escrow_monthly').notNull().default(0),
+  interestType: text('interest_type').notNull().default('fixed'),
+});
+
+/** What each loan payment came to. An audit trail, never a source of balance. */
+export const loanPayments = sqliteTable('loan_payments', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  entryId: text('entry_id').notNull(),
+  paymentNumber: integer('payment_number').notNull(),
+  date: text('date').notNull(),
+  totalPayment: integer('total_payment').notNull(),
+  principalAmount: integer('principal_amount').notNull(),
+  interestAmount: integer('interest_amount').notNull(),
+  escrowAmount: integer('escrow_amount').notNull().default(0),
+  extraPrincipal: integer('extra_principal').notNull().default(0),
+  remainingBalance: integer('remaining_balance').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** What somebody was worth on a day. Derived; kept so history stays cheap. */
+export const netWorthSnapshots = sqliteTable('net_worth_snapshots', {
+  id: text('id').primaryKey(),
+  date: text('date').notNull(),
+  totalAssets: integer('total_assets').notNull(),
+  totalLiabilities: integer('total_liabilities').notNull(),
+  netWorth: integer('net_worth').notNull(),
+  createdAt: text('created_at').notNull(),
 });
 
 /**
@@ -292,5 +325,7 @@ export const TABLES = [
   'investment_trades',
   'target_allocations',
   'fx_rates',
+  'loan_payments',
+  'net_worth_snapshots',
 ] as const;
 export type TableName = (typeof TABLES)[number];

@@ -14,7 +14,6 @@ import {
   claimId as makeClaimId,
   credit,
   debit,
-  entryFromStatementLine,
   entryId,
   fundingFor,
   isoDate,
@@ -22,7 +21,6 @@ import {
   reimbursement,
   reverseEntry,
   spend,
-  spendSplit,
   writeOff,
   type AccountId,
   type CardCredit,
@@ -134,6 +132,11 @@ export interface RecordSplitInput {
  * submit until the parts add up to the whole — so nothing is inferred here.
  */
 export async function recordSplitSpend(input: RecordSplitInput): Promise<EntryId> {
+  // Loaded on demand. Splitting a payment is reached only from the split
+  // editor, and this module is on the first paint — see the note in the ledger
+  // barrel. The wait costs nothing on a path that already goes to the database.
+  const { spendSplit } = await import('@/core/ledger/entries/spendSplit');
+
   const entry = spendSplit({
     ...newEntry(input.date),
     lines: input.lines,
@@ -178,6 +181,13 @@ export async function confirmStagedRow(
   if (!account) {
     throw new Error('The account that row came from could not be found.');
   }
+
+  // Both builders are loaded on demand, for the same reason as the split
+  // above: the review queue is a lazily loaded view, and this module is not.
+  const [{ spendSplit }, { entryFromStatementLine }] = await Promise.all([
+    import('@/core/ledger/entries/spendSplit'),
+    import('@/core/ledger/entries/fromStatement'),
+  ]);
 
   const id = entryId(crypto.randomUUID());
   const date = isoDate(row.date);

@@ -5,8 +5,6 @@ import {
   BOOK_BY_TYPE,
   NORMAL_BY_TYPE,
   accountId,
-  entryFromStatementLine,
-  needsCardCreditChoice,
   entryId,
   isoDate,
   presentedBalance,
@@ -16,6 +14,11 @@ import {
   type LedgerAccountType,
   type SystemAccounts,
 } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import {
+  entryFromStatementLine,
+  needsCardCreditChoice,
+} from '@/core/ledger/entries/fromStatement';
 import { detectDelimiter, findHeaderRow, guessColumns, parseDelimited } from './csv';
 import { dedupeKey, detectDateFormat, parseAmount, parseDate } from './values';
 import { buildCandidates, describeImport, inspectFile } from './import';
@@ -338,6 +341,8 @@ const SYS: SystemAccounts = {
   fxRoundingVariance: accountId('eq-fx-rounding'),
   fxConversionFee: accountId('eq-fx-fee'),
   unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
   dividendIncome: accountId('inc-dividends'),
   investmentTaxWithheld: accountId('cat-tax'),
 };

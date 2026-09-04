@@ -47,3 +47,23 @@ export {
   medianOf,
   trailingMedians,
 } from './trailingMedian';
+
+export type { HistoryPosting, NetWorthPoint, TrajectorySummary } from './netWorthHistory';
+export {
+  buildNetWorthHistory,
+  describeTrajectory,
+  endOfMonth,
+  monthOf,
+  monthsBetween,
+  summariseTrajectory,
+} from './netWorthHistory';
+
+export type { Milestone } from './milestones';
+export {
+  MILESTONE_MAJORS,
+  describeMilestone,
+  describeMilestoneAmount,
+  findMilestones,
+  latestMilestone,
+  reachedMilestones,
+} from './milestones';

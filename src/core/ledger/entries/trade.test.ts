@@ -7,8 +7,6 @@ import {
   NORMAL_BY_TYPE,
   accountId,
   assign,
-  checkInvariant,
-  checkInvariants,
   entryId,
   income,
   isoDate,
@@ -24,6 +22,8 @@ import {
   type LedgerSnapshot,
   type SystemAccounts,
 } from '../index';
+// Deep import on purpose: see the note in the ledger barrel.
+import { checkInvariant, checkInvariants } from '../invariants';
 import {
   investmentBuy,
   investmentDividend,
@@ -68,6 +68,8 @@ const SYSTEM: SystemAccounts = {
   fxRoundingVariance: accountId('eq-fx-rounding'),
   fxConversionFee: accountId('eq-fx-fee'),
   unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
   dividendIncome: A.dividends,
   investmentTaxWithheld: A.tax,
 };

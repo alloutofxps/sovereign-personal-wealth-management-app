@@ -93,7 +93,15 @@ export function PaymentDetailsSheet({
           )}
 
           {shown && shown.categories.length > 1 && (
-            <Detail label={`Split across ${shown.categories.length} categories`}>
+            <Detail
+              label={
+                // A loan payment has two lines because the contract says so,
+                // not because anybody divided it up.
+                shown.isSplit
+                  ? `Split across ${shown.categories.length} categories`
+                  : 'What this payment was made of'
+              }
+            >
               <ul className="flex flex-col gap-2">
                 {shown.categories.map((part) => (
                   <li key={part.accountId} className="flex items-start justify-between gap-3">

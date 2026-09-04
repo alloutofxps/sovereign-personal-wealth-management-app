@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { minor } from '@/core/money';
 import {
-  CLASS_PROFILES,
   LedgerError,
   accountId,
-  depreciatedValue,
-  groupOf,
-  isRevaluable,
-  planAccountCreation,
   type AccountClass,
   type AccountDraft,
   type LedgerAccount,
 } from './index';
+// Deep import on purpose: see the note in the ledger barrel.
+import { CLASS_PROFILES, groupOf, isRevaluable, planAccountCreation } from './accountClasses';
+// Deep import on purpose: see the note in the ledger barrel.
+import { depreciatedValue } from './entries/valuation';
 
 const IDS = {
   account: accountId('acc-new'),

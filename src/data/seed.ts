@@ -41,6 +41,10 @@ export const ACCOUNT_IDS = {
   fxRoundingVariance: accountId('acc-fx-rounding'),
   fxConversionFee: accountId('acc-fx-fee'),
   unrealizedFxGainLoss: accountId('acc-fx-unrealized'),
+  // What a loan costs. Real spending, unlike the tax below: this is money that
+  // sat in the account and was handed over for the use of somebody else's.
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
   // Money paid out by things you hold, and the tax taken before it arrives.
   dividendIncome: accountId('inc-dividends'),
   // Kept its original id so every posting ever made to it comes along; see
@@ -88,6 +92,8 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   unrealizedFxGainLoss: ACCOUNT_IDS.unrealizedFxGainLoss,
   dividendIncome: ACCOUNT_IDS.dividendIncome,
   investmentTaxWithheld: ACCOUNT_IDS.investmentTaxWithheld,
+  interestExpense: ACCOUNT_IDS.interestExpense,
+  escrowExpense: ACCOUNT_IDS.escrowExpense,
 };
 
 /** A spending category and the pot that funds it, kept side by side. */
@@ -190,6 +196,14 @@ export function starterChart(): LedgerAccount[] {
 
     // --- what you spend on ---
     ...STARTER_GROUPS.map((g) => make(g.id, 'EXPENSE', g.name)),
+    // Under Home, because that is where somebody looks for what their house
+    // costs them. They are ordinary categories with ordinary names.
+    make(ACCOUNT_IDS.interestExpense, 'EXPENSE', 'Interest on what you owe', {
+      parentId: GROUP_IDS.essential,
+    }),
+    make(ACCOUNT_IDS.escrowExpense, 'EXPENSE', 'Property tax and insurance', {
+      parentId: GROUP_IDS.essential,
+    }),
     ...CATEGORIES.map((c) => make(c.categoryId, 'EXPENSE', c.name, { parentId: c.groupId })),
 
     // --- the budget side ---

@@ -7,8 +7,6 @@ import {
   LedgerError,
   NORMAL_BY_TYPE,
   accountId,
-  checkInvariant,
-  checkInvariants,
   entryId,
   isoDate,
   liquidCash,
@@ -23,6 +21,8 @@ import {
   type LedgerSnapshot,
   type SystemAccounts,
 } from '../index';
+// Deep import on purpose: see the note in the ledger barrel.
+import { checkInvariant, checkInvariants } from '../invariants';
 import { fxRevaluation, transferCrossCurrency } from './transferCrossCurrency';
 
 /* ===========================================================================
@@ -59,6 +59,8 @@ const SYSTEM: SystemAccounts = {
   fxRoundingVariance: A.fxVariance,
   fxConversionFee: A.fxFee,
   unrealizedFxGainLoss: A.fxUnrealized,
+  interestExpense: accountId('cat-loan-interest'),
+  escrowExpense: accountId('cat-escrow'),
 };
 
 function account(

@@ -69,6 +69,13 @@ export const DDL: readonly string[] = [
      institution         TEXT,
      -- v14. Null means the household's base currency.
      currency            TEXT,
+     -- v15. What a loan payment has to be split by. apr_bp above holds the rate.
+     original_principal  INTEGER,
+     term_months         INTEGER,
+     start_date          TEXT,
+     monthly_payment     INTEGER,
+     escrow_monthly      INTEGER NOT NULL DEFAULT 0,
+     interest_type       TEXT NOT NULL DEFAULT 'fixed',
      -- How a car or a laptop loses value on its own, with no transaction.
      depreciation_model  TEXT,
      depreciation_rate_bp INTEGER,
@@ -221,6 +228,35 @@ export const DDL: readonly string[] = [
 
   // v12. Share parcels, what was traded, and what the portfolio is meant to
   // look like.
+  // v15. What each loan payment came to, and what you were worth over time.
+  `CREATE TABLE IF NOT EXISTS loan_payments (
+     id                TEXT PRIMARY KEY,
+     account_id        TEXT NOT NULL REFERENCES accounts(id),
+     entry_id          TEXT NOT NULL REFERENCES entries(id),
+     payment_number    INTEGER NOT NULL,
+     date              TEXT NOT NULL,
+     total_payment     INTEGER NOT NULL,
+     principal_amount  INTEGER NOT NULL,
+     interest_amount   INTEGER NOT NULL,
+     escrow_amount     INTEGER NOT NULL DEFAULT 0,
+     extra_principal   INTEGER NOT NULL DEFAULT 0,
+     remaining_balance INTEGER NOT NULL,
+     created_at        TEXT NOT NULL
+   );`,
+
+  `CREATE TABLE IF NOT EXISTS net_worth_snapshots (
+     id                TEXT PRIMARY KEY,
+     date              TEXT NOT NULL UNIQUE,
+     total_assets      INTEGER NOT NULL,
+     total_liabilities INTEGER NOT NULL,
+     net_worth         INTEGER NOT NULL,
+     created_at        TEXT NOT NULL
+   );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_loan_payments_account ON loan_payments(account_id, payment_number ASC);`,
+  `CREATE INDEX IF NOT EXISTS idx_loan_payments_entry ON loan_payments(entry_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_nw_snapshots_date ON net_worth_snapshots(date ASC);`,
+
   // v14. Historical exchange rates, quote-per-base.
   `CREATE TABLE IF NOT EXISTS fx_rates (
      id             TEXT PRIMARY KEY,
