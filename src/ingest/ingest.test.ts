@@ -331,6 +331,8 @@ const SYS: SystemAccounts = {
   openingBalances: ID.opening,
   receivables: ID.owed,
   reimbursementsEnvelope: ID.fronted,
+  unrealizedGain: accountId('eq-unrealized-gain'),
+  unrealizedLoss: accountId('eq-unrealized-loss'),
 };
 
 function acct(

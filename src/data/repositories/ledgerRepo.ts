@@ -49,6 +49,13 @@ function toAccount(row: AccountRow): LedgerAccount {
     archivedAt: row.archivedAt ?? null,
     colorToken: row.colorToken ?? null,
     icon: row.icon ?? null,
+    // v10. Null on the three accounts that predate it, which is read as "one
+    // of the originals" rather than guessed at from the type.
+    accountClass: (row.class as LedgerAccount['accountClass']) ?? null,
+    institution: row.institution ?? null,
+    depreciationModel: (row.depreciationModel as LedgerAccount['depreciationModel']) ?? null,
+    depreciationRateBp: row.depreciationRateBp ?? null,
+    salvageValue: row.salvageValue === null ? null : minor(row.salvageValue),
   };
 }
 

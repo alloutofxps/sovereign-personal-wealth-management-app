@@ -14,7 +14,6 @@ import type { StorageStatus } from '@/data/worker/protocol';
 import { useRoute, type Route } from '@/app/router';
 import { AddPaymentSheet } from '@/features/entry/AddPaymentSheet';
 import { Dashboard } from '@/features/dashboard/Dashboard';
-import { AccountsView } from '@/features/accounts/AccountsView';
 import { useAppUpdate } from '@/app/pwa/useAppUpdate';
 import { requestPersistence } from '@/data/persistence';
 import { countUnreviewed, STAGING_TABLES } from '@/data/repositories/stagingRepo';
@@ -57,6 +56,13 @@ const AheadView = lazy(() =>
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
 );
+// The balance sheet carries three sheets, the valuation builder and the
+// depreciation model. Nothing above this line may import from
+// `@/features/accounts/*` or `@/data/repositories/accountsRepo`.
+const AccountsView = lazy(() =>
+  import('@/features/accounts/AccountsView').then((m) => ({ default: m.AccountsView })),
+);
+
 // The budget grid carries the multi-month planner and the cadence engine.
 // Nothing above this line may import from `@/core/budget` or
 // `@/app/budget/useBudget`, or the planner lands in the first paint.

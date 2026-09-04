@@ -14,6 +14,7 @@ import {
   type AccountId,
   type Funding,
   type JournalEntry,
+  type Normal,
   type SystemAccounts,
 } from '../types';
 import { assertFundingMatchesAccount } from '../funding';
@@ -36,19 +37,47 @@ export interface OpeningBalanceParams extends EntryBase {
   /** Only on-budget, spendable accounts add to the money you can assign. */
   countsAsBudgetableCash: boolean;
   accountName: string;
+  /**
+   * Which way the starting figure runs.
+   *
+   * DEBIT is something you have; CREDIT is something you owe. It defaults to
+   * DEBIT because that is what every caller meant before mortgages and second
+   * cards existed, and because getting it wrong on a debt would record a
+   * £200,000 mortgage as £200,000 of wealth.
+   */
+  normal?: Normal;
   system: SystemAccounts;
 }
 
 export function openingBalance(p: OpeningBalanceParams): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'An opening balance');
+  const owed = p.normal === 'CREDIT';
 
-  return buildEntry(p, 'OPENING_BALANCE', `Starting balance for ${p.accountName}.`, [
-    debit(FIN, p.accountId, amount),
-    credit(FIN, p.system.openingBalances, amount),
-    ...(p.countsAsBudgetableCash
-      ? [debit(BUD, p.system.budgetableCash, amount), credit(BUD, p.system.readyToAssign, amount)]
-      : []),
-  ]);
+  if (owed && p.countsAsBudgetableCash) {
+    throw new LedgerError(
+      `${p.accountName} is something you owe, so it cannot also be money you can spend.`,
+    );
+  }
+
+  return buildEntry(
+    p,
+    'OPENING_BALANCE',
+    owed
+      ? `What was already owed on ${p.accountName}.`
+      : `Starting balance for ${p.accountName}.`,
+    owed
+      ? [credit(FIN, p.accountId, amount), debit(FIN, p.system.openingBalances, amount)]
+      : [
+          debit(FIN, p.accountId, amount),
+          credit(FIN, p.system.openingBalances, amount),
+          ...(p.countsAsBudgetableCash
+            ? [
+                debit(BUD, p.system.budgetableCash, amount),
+                credit(BUD, p.system.readyToAssign, amount),
+              ]
+            : []),
+        ],
+  );
 }
 
 /* --- assigning money to an envelope -------------------------------------- */

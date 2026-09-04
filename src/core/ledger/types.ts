@@ -95,6 +95,30 @@ export const BOOK_BY_TYPE: Record<LedgerAccountType, Book> = {
   READY_TO_ASSIGN: 'BUDGET',
 };
 
+/**
+ * What kind of thing an account is, as a person would name it.
+ *
+ * Deliberately about the thing rather than about how it behaves. How it
+ * behaves is `onBudget` and `liquid`, which are set from the class when the
+ * account is created and can then be overridden by somebody who knows their
+ * own money better than a default does.
+ */
+export type AccountClass =
+  | 'checking'
+  | 'savings'
+  | 'cash'
+  | 'credit_card'
+  | 'loan'
+  | 'mortgage'
+  | 'brokerage'
+  | 'retirement'
+  | 'real_estate'
+  | 'vehicle'
+  | 'other_asset';
+
+/** How something loses value on its own, with nothing being spent. */
+export type DepreciationModel = 'none' | 'straight_line' | 'declining_balance';
+
 /** What an envelope is for. Drives how the budget layer treats it. */
 export type EnvelopeRole =
   | 'category'
@@ -140,6 +164,21 @@ export interface LedgerAccount {
   archivedAt?: string | null;
   colorToken?: string | null;
   icon?: string | null;
+
+  /**
+   * What kind of thing this is. Null on the three accounts that predate v10 —
+   * read as "one of the originals" rather than guessed at from the type.
+   */
+  accountClass?: AccountClass | null;
+  /** Who holds it, as the person would say it: "Revolut", "the credit union". */
+  institution?: string | null;
+
+  /** Set only on things that lose value by sitting still, like a car. */
+  depreciationModel?: DepreciationModel | null;
+  /** Annual rate in basis points: 1500 is 15% a year. */
+  depreciationRateBp?: number | null;
+  /** The floor it never falls below. Scrap value. */
+  salvageValue?: Minor | null;
 }
 
 /**
@@ -176,6 +215,16 @@ export interface SystemAccounts {
   receivables: AccountId;
   /** BUDGET: holds the cash committed to money you have fronted. */
   reimbursementsEnvelope: AccountId;
+  /**
+   * FINANCIAL: where a rise in what something is worth is booked.
+   *
+   * Equity, never income. A house going up in value has not paid anybody
+   * anything, and counting it as income would tell somebody they could spend
+   * their kitchen.
+   */
+  unrealizedGain: AccountId;
+  /** FINANCIAL: the other direction. Equity, never an expense. */
+  unrealizedLoss: AccountId;
 }
 
 /* --- the journal --------------------------------------------------------- */
@@ -192,7 +241,16 @@ export type EntryKind =
   | 'WRITE_OFF'
   | 'REFUND'
   | 'ASSIGN'
-  | 'REVERSAL';
+  | 'REVERSAL'
+  /**
+   * A change in what something is worth, with no money moving.
+   *
+   * Kept apart from every other kind because it is the one entry that changes
+   * net worth without anybody earning or spending anything, and every figure
+   * that describes behaviour — spending, income, pacing, Safe-to-Spend — has
+   * to keep ignoring it.
+   */
+  | 'VALUATION';
 
 /**
  * Whether the bank has settled this line yet.

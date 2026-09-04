@@ -37,6 +37,31 @@ export const accounts = sqliteTable('accounts', {
   archivedAt: text('archived_at'),
   colorToken: text('color_token'),
   icon: text('icon'),
+  /** v10. What kind of thing this is. Null on accounts that predate v10. */
+  class: text('class'),
+  institution: text('institution'),
+  /** How something loses value on its own, with nothing being spent. */
+  depreciationModel: text('depreciation_model'),
+  depreciationRateBp: integer('depreciation_rate_bp'),
+  salvageValue: integer('salvage_value'),
+});
+
+/**
+ * What an illiquid thing is reckoned to be worth, and when somebody last said so.
+ *
+ * The journal is what every balance is computed from. This is the human record
+ * around it: the estimate, the day it applies to, and why. Emptying this table
+ * would not move a single figure in the app.
+ */
+export const valuations = sqliteTable('valuations', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  date: text('date').notNull(),
+  value: integer('value').notNull(),
+  costBasis: integer('cost_basis'),
+  notes: text('notes'),
+  entryId: text('entry_id'),
+  createdAt: text('created_at').notNull(),
 });
 
 export const rules = sqliteTable('rules', {
@@ -161,5 +186,6 @@ export const TABLES = [
   'staged_transactions',
   'claims',
   'meta',
+  'valuations',
 ] as const;
 export type TableName = (typeof TABLES)[number];

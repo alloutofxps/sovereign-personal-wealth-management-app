@@ -29,6 +29,10 @@ export const ACCOUNT_IDS = {
   card: accountId('acc-card'),
   owed: accountId('acc-owed-to-you'),
   openingBalances: accountId('acc-opening-balances'),
+  // Where a change in what something is worth is booked. Equity, never income
+  // or expense: a house going up in value has not paid anybody anything.
+  unrealizedGain: accountId('acc-unrealized-gain'),
+  unrealizedLoss: accountId('acc-unrealized-loss'),
   // Money coming in
   salary: accountId('inc-salary'),
   otherIncome: accountId('inc-other'),
@@ -62,6 +66,8 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   openingBalances: ACCOUNT_IDS.openingBalances,
   receivables: ACCOUNT_IDS.owed,
   reimbursementsEnvelope: ACCOUNT_IDS.potFronted,
+  unrealizedGain: ACCOUNT_IDS.unrealizedGain,
+  unrealizedLoss: ACCOUNT_IDS.unrealizedLoss,
 };
 
 /** A spending category and the pot that funds it, kept side by side. */
@@ -148,6 +154,8 @@ export function starterChart(): LedgerAccount[] {
     }),
     make(ACCOUNT_IDS.owed, 'ASSET', 'Money you are owed'),
     make(ACCOUNT_IDS.openingBalances, 'EQUITY', 'Starting balances'),
+    make(ACCOUNT_IDS.unrealizedGain, 'EQUITY', 'Gains on things you own'),
+    make(ACCOUNT_IDS.unrealizedLoss, 'EQUITY', 'Falls in what things are worth'),
 
     // --- money coming in ---
     make(ACCOUNT_IDS.salary, 'INCOME', 'Pay'),

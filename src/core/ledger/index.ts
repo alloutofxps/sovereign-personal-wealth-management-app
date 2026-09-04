@@ -1,10 +1,12 @@
 /* The ledger's public surface. Import from '@/core/ledger'. */
 
 export type {
+  AccountClass,
   AccountId,
   Book,
   Clearance,
   ClaimId,
+  DepreciationModel,
   EntryId,
   EntryKind,
   EnvelopeRole,
@@ -69,6 +71,24 @@ export {
 } from './entries/builders';
 
 export { assertFundingMatchesAccount, fundingFor } from './funding';
+
+export type {
+  AccountDraft,
+  AccountGroup,
+  AccountPlan,
+  ClassProfile,
+} from './accountClasses';
+export {
+  CLASS_PROFILES,
+  GROUP_HINTS,
+  GROUP_TITLES,
+  groupOf,
+  isRevaluable,
+  planAccountCreation,
+} from './accountClasses';
+
+export type { DepreciationTerms, ValuationParams } from './entries/valuation';
+export { depreciatedValue, describeDepreciation, valuation } from './entries/valuation';
 
 export type { SplitLine, SpendSplitParams } from './entries/spendSplit';
 export { spendSplit, splitTotal } from './entries/spendSplit';

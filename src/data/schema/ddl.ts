@@ -62,7 +62,15 @@ export const DDL: readonly string[] = [
      -- a deleted account would orphan every posting that ever pointed at it.
      archived_at         TEXT,
      color_token         TEXT,
-     icon                TEXT
+     icon                TEXT,
+     -- v10. What kind of thing this is, as a person would name it. Null on the
+     -- three accounts that predate the idea; see migrations/v10.ts.
+     class               TEXT,
+     institution         TEXT,
+     -- How a car or a laptop loses value on its own, with no transaction.
+     depreciation_model  TEXT,
+     depreciation_rate_bp INTEGER,
+     salvage_value       INTEGER
    );`,
 
   `CREATE TABLE IF NOT EXISTS entries (
@@ -156,6 +164,22 @@ export const DDL: readonly string[] = [
      imported_at TEXT NOT NULL,
      batch_id    TEXT NOT NULL
    );`,
+
+  // v10. What an illiquid thing is reckoned to be worth, and when somebody
+  // last looked. The journal holds the arithmetic; this holds the story.
+  `CREATE TABLE IF NOT EXISTS valuations (
+     id         TEXT PRIMARY KEY,
+     account_id TEXT NOT NULL REFERENCES accounts(id),
+     date       TEXT NOT NULL CHECK (date LIKE '____-__-__'),
+     value      INTEGER NOT NULL,
+     cost_basis INTEGER,
+     notes      TEXT,
+     entry_id   TEXT REFERENCES entries(id),
+     created_at TEXT NOT NULL
+   );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_valuations_account_date ON valuations(account_id, date DESC);`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_account_day ON valuations(account_id, date);`,
 
   `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
   `CREATE INDEX IF NOT EXISTS idx_rules_active_priority ON rules(active, priority ASC);`,
