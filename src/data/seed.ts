@@ -33,6 +33,9 @@ export const ACCOUNT_IDS = {
   // or expense: a house going up in value has not paid anybody anything.
   unrealizedGain: accountId('acc-unrealized-gain'),
   unrealizedLoss: accountId('acc-unrealized-loss'),
+  // Money paid out by things you hold, and the tax taken before it arrives.
+  dividendIncome: accountId('inc-dividends'),
+  taxExpense: accountId('cat-tax'),
   // Money coming in
   salary: accountId('inc-salary'),
   otherIncome: accountId('inc-other'),
@@ -68,6 +71,8 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   reimbursementsEnvelope: ACCOUNT_IDS.potFronted,
   unrealizedGain: ACCOUNT_IDS.unrealizedGain,
   unrealizedLoss: ACCOUNT_IDS.unrealizedLoss,
+  dividendIncome: ACCOUNT_IDS.dividendIncome,
+  taxExpense: ACCOUNT_IDS.taxExpense,
 };
 
 /** A spending category and the pot that funds it, kept side by side. */
@@ -160,6 +165,8 @@ export function starterChart(): LedgerAccount[] {
     // --- money coming in ---
     make(ACCOUNT_IDS.salary, 'INCOME', 'Pay'),
     make(ACCOUNT_IDS.otherIncome, 'INCOME', 'Other money in'),
+    make(ACCOUNT_IDS.dividendIncome, 'INCOME', 'Money your investments paid out'),
+    make(ACCOUNT_IDS.taxExpense, 'EXPENSE', 'Tax taken at source'),
 
     // --- what you spend on ---
     ...STARTER_GROUPS.map((g) => make(g.id, 'EXPENSE', g.name)),

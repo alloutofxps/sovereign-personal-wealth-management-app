@@ -13,6 +13,7 @@ export const ROUTES = [
   'transactions',
   'budget',
   'accounts',
+  'investments',
   'pots',
   'forecast',
   'calendar',

@@ -41,7 +41,7 @@ export interface PresentedEntry {
 }
 
 const MONEY_OUT = new Set<EntryKind>(['SPEND', 'SPEND_SPLIT', 'WRITE_OFF', 'REIMBURSABLE']);
-const MONEY_IN = new Set<EntryKind>(['INCOME', 'REFUND', 'REIMBURSEMENT']);
+const MONEY_IN = new Set<EntryKind>(['INCOME', 'REFUND', 'REIMBURSEMENT', 'DIVIDEND']);
 
 export function directionOf(kind: EntryKind): Direction {
   if (MONEY_OUT.has(kind)) return 'out';

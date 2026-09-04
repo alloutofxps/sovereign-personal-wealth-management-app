@@ -53,6 +53,40 @@ export const accounts = sqliteTable('accounts', {
  * around it: the estimate, the day it applies to, and why. Emptying this table
  * would not move a single figure in the app.
  */
+/** What a security *is*. One row per ticker, shared by every account. */
+export const securities = sqliteTable('securities', {
+  id: text('id').primaryKey(),
+  symbol: text('symbol').notNull(),
+  name: text('name').notNull(),
+  isin: text('isin'),
+  assetClass: text('asset_class').notNull(),
+  currency: text('currency').notNull().default('EUR'),
+  expenseRatioBp: integer('expense_ratio_bp').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+/** How much of it you have, and what the position cost. */
+export const holdings = sqliteTable('holdings', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  securityId: text('security_id').notNull(),
+  /** Shares as an exact integer at 1e8. 10.5 shares is 1,050,000,000. */
+  quantity1e8: integer('quantity_1e8').notNull(),
+  costBasis: integer('cost_basis').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** What one whole share was worth on a day. Append-only. */
+export const securityPrices = sqliteTable('security_prices', {
+  id: text('id').primaryKey(),
+  securityId: text('security_id').notNull(),
+  date: text('date').notNull(),
+  priceMinor: integer('price_minor').notNull(),
+  source: text('source').notNull().default('manual'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const valuations = sqliteTable('valuations', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
@@ -187,5 +221,8 @@ export const TABLES = [
   'claims',
   'meta',
   'valuations',
+  'securities',
+  'holdings',
+  'security_prices',
 ] as const;
 export type TableName = (typeof TABLES)[number];

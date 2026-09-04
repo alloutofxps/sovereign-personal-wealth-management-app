@@ -215,6 +215,18 @@ export function AccountsView() {
               <>
                 <p className="-mt-1 max-w-[46ch] text-caption text-ink-2">
                   {GROUP_HINTS[group]}
+                  {group === 'investments' && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => navigate('investments')}
+                        className="text-caption text-liquid"
+                      >
+                        See what you hold
+                      </button>
+                    </>
+                  )}
                 </p>
 
                 {rows.length === 0 ? (

@@ -272,8 +272,12 @@ function contributionOf(
 }
 
 const i6: Check = (snapshot) => {
+  // Buying an investment is here deliberately. It is an exchange of one asset
+  // for another — cash out, holding in — and treating it as spending would
+  // tell somebody who saved hard into a pension that they had a terrible
+  // month. The rule that protects transfers protects buys for the same reason.
   const neutral = snapshot.entries.filter(
-    (e) => e.kind === 'TRANSFER' || e.kind === 'CC_PAYMENT',
+    (e) => e.kind === 'TRANSFER' || e.kind === 'CC_PAYMENT' || e.kind === 'INVESTMENT_BUY',
   );
   const spending = contributionOf(snapshot, neutral, 'EXPENSE');
   const income = contributionOf(snapshot, neutral, 'INCOME');
@@ -284,8 +288,9 @@ const i6: Check = (snapshot) => {
       code: 'I6',
       rule: 'Moving your own money is not spending',
       message:
-        `Moving money between your accounts, or paying off a card, has been counted ` +
-        `as spending. That would show ${Math.abs(spending)} you have not actually spent.`,
+        `Moving money between your accounts, paying off a card, or putting money into ` +
+        `an investment has been counted as spending. That would show ` +
+        `${Math.abs(spending)} you have not actually spent.`,
       observed: spending,
       expected: 0,
     });

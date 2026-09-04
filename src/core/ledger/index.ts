@@ -87,6 +87,12 @@ export {
   planAccountCreation,
 } from './accountClasses';
 
+// The trade builders are deliberately NOT re-exported here. The dashboard
+// pulls this barrel in on the first paint, and a re-export is enough of an
+// edge to drag buys, sells and dividends along with it — in front of everybody
+// who opens the app, including the many people who hold no investments at all.
+// Import them from './entries/trade' directly, from lazily loaded code only.
+
 export type { DepreciationTerms, ValuationParams } from './entries/valuation';
 export { depreciatedValue, describeDepreciation, valuation } from './entries/valuation';
 

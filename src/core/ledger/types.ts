@@ -215,6 +215,10 @@ export interface SystemAccounts {
   receivables: AccountId;
   /** BUDGET: holds the cash committed to money you have fronted. */
   reimbursementsEnvelope: AccountId;
+  /** FINANCIAL: money paid out by things you hold. Real income. */
+  dividendIncome: AccountId;
+  /** FINANCIAL: tax withheld at source, which never reaches your account. */
+  taxExpense: AccountId;
   /**
    * FINANCIAL: where a rise in what something is worth is booked.
    *
@@ -250,7 +254,18 @@ export type EntryKind =
    * that describes behaviour — spending, income, pacing, Safe-to-Spend — has
    * to keep ignoring it.
    */
-  | 'VALUATION';
+  | 'VALUATION'
+  /**
+   * Money moved from cash into an investment account.
+   *
+   * A kind of its own rather than a plain TRANSFER, so "how much did I put in
+   * this year?" is answerable — but it is added to I6's neutral set alongside
+   * transfers, so the rule that a buy is not spending is enforced by the same
+   * check that enforces it for moving money between your own accounts.
+   */
+  | 'INVESTMENT_BUY'
+  /** Money paid out by something you hold. Real income, unlike a valuation. */
+  | 'DIVIDEND';
 
 /**
  * Whether the bank has settled this line yet.

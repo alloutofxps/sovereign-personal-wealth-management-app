@@ -50,6 +50,8 @@ const SYSTEM: SystemAccounts = {
   reimbursementsEnvelope: accountId('env-reimbursements'),
   unrealizedGain: A.gain,
   unrealizedLoss: A.loss,
+  dividendIncome: accountId('inc-dividends'),
+  taxExpense: accountId('cat-tax'),
 };
 
 function account(

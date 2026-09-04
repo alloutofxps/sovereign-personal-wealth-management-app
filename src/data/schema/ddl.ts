@@ -178,6 +178,44 @@ export const DDL: readonly string[] = [
      created_at TEXT NOT NULL
    );`,
 
+  // v11. What is actually held in an investment account: the securities, the
+  // share counts, what they cost, and what they are worth on a given day.
+  `CREATE TABLE IF NOT EXISTS securities (
+     id               TEXT PRIMARY KEY,
+     symbol           TEXT NOT NULL,
+     name             TEXT NOT NULL,
+     isin             TEXT,
+     asset_class      TEXT NOT NULL,
+     currency         TEXT NOT NULL DEFAULT 'EUR',
+     expense_ratio_bp INTEGER NOT NULL DEFAULT 0,
+     created_at       TEXT NOT NULL
+   );`,
+
+  `CREATE TABLE IF NOT EXISTS holdings (
+     id           TEXT PRIMARY KEY,
+     account_id   TEXT NOT NULL REFERENCES accounts(id),
+     security_id  TEXT NOT NULL REFERENCES securities(id),
+     quantity_1e8 INTEGER NOT NULL,
+     cost_basis   INTEGER NOT NULL,
+     created_at   TEXT NOT NULL,
+     updated_at   TEXT NOT NULL
+   );`,
+
+  `CREATE TABLE IF NOT EXISTS security_prices (
+     id          TEXT PRIMARY KEY,
+     security_id TEXT NOT NULL REFERENCES securities(id),
+     date        TEXT NOT NULL,
+     price_minor INTEGER NOT NULL,
+     source      TEXT NOT NULL DEFAULT 'manual',
+     created_at  TEXT NOT NULL
+   );`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_securities_symbol ON securities(symbol);`,
+  `CREATE INDEX IF NOT EXISTS idx_securities_class ON securities(asset_class);`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_holdings_account_security ON holdings(account_id, security_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_holdings_account ON holdings(account_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_security_prices_lookup ON security_prices(security_id, date DESC);`,
+
   `CREATE INDEX IF NOT EXISTS idx_valuations_account_date ON valuations(account_id, date DESC);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_account_day ON valuations(account_id, date);`,
 

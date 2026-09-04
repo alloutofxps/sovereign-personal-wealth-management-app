@@ -56,6 +56,16 @@ const AheadView = lazy(() =>
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
 );
+// The investments screen carries the holdings register, the allocation
+// arithmetic and the fee-drag projection. Nothing above this line may import
+// from `@/features/investments/*`, `@/core/investments` or
+// `@/data/repositories/investmentsRepo`.
+const InvestmentsView = lazy(() =>
+  import('@/features/investments/InvestmentsView').then((m) => ({
+    default: m.InvestmentsView,
+  })),
+);
+
 // The balance sheet carries three sheets, the valuation builder and the
 // depreciation model. Nothing above this line may import from
 // `@/features/accounts/*` or `@/data/repositories/accountsRepo`.
@@ -192,6 +202,8 @@ function View({
       return <AheadView />;
     case 'independence':
       return <IndependenceView />;
+    case 'investments':
+      return <InvestmentsView />;
     case 'budget':
       return <BudgetGrid />;
     case 'analytics':
