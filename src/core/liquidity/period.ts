@@ -71,3 +71,114 @@ export function cycleDays(cycle: Cycle): string[] {
   for (let i = 0; i < cycle.totalDays; i++) days.push(addDays(cycle.start, i));
   return days;
 }
+
+/* ===========================================================================
+ * PAYCHECK CYCLES
+ * ---------------------------------------------------------------------------
+ * A calendar month is a convention of the Gregorian calendar, not of anybody's
+ * money. Somebody paid fortnightly gets three paycheques twice a year, and a
+ * budget divided into months tells them their spending doubled in those months
+ * and collapsed in the next — which is the app being wrong about the one thing
+ * it exists to be right about.
+ *
+ * Every cycle below is generated from the anchor, never from the previous
+ * cycle. That is the same rule the recurrence engine follows in Slice 6.4, and
+ * for the same reason: stepping from the last result lets an error compound
+ * silently until a payday lands in the wrong period.
+ * ======================================================================== */
+
+export type BudgetCadence = 'calendar_month' | 'weekly' | 'biweekly' | 'semimonthly';
+
+/**
+ * What to call one period in a sentence.
+ *
+ * "Pay period" only for the semi-monthly case, where there is no everyday word
+ * for a stretch that is sometimes thirteen days and sometimes eighteen.
+ */
+export const CADENCE_NOUNS: Record<BudgetCadence, string> = {
+  calendar_month: 'month',
+  weekly: 'week',
+  biweekly: 'fortnight',
+  semimonthly: 'pay period',
+};
+
+function lastDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+/**
+ * The two pay days in a month, for a semi-monthly schedule.
+ *
+ * Same convention as the recurrence engine: anchored on the 1st means the 1st
+ * and the 15th; anchored on the 15th means the 15th and the last day. Both are
+ * real payroll conventions and neither is "every fifteen days".
+ */
+function semiMonthlyPayDays(anchorDay: number, year: number, month: number): number[] {
+  const last = lastDayOfMonth(year, month);
+  if (anchorDay === 1) return [1, 15];
+  if (anchorDay === 15) return [15, last];
+  const second = Math.min(anchorDay + 15, last);
+  return anchorDay === second ? [anchorDay] : [anchorDay, second];
+}
+
+/** Build a cycle from its two ends, working out where `today` sits in it. */
+function cycleBetween(start: string, end: string, today: string): Cycle {
+  const totalDays = daysBetween(start, end) + 1;
+  const elapsed = daysBetween(start, today) + 1;
+  const elapsedDays = Math.min(totalDays, Math.max(1, elapsed));
+  return {
+    start,
+    end,
+    totalDays,
+    elapsedDays,
+    remainingDays: Math.max(0, totalDays - elapsedDays + 1),
+  };
+}
+
+/**
+ * The pay cycle containing `targetDate`.
+ *
+ * Works backwards and forwards from the anchor, so a date before the first
+ * payday still lands in a well-formed cycle rather than throwing or clamping.
+ */
+export function paycheckCycle(
+  anchorDate: string,
+  cadence: BudgetCadence,
+  targetDate: string,
+): Cycle {
+  if (cadence === 'calendar_month') return monthCycle(targetDate);
+
+  if (cadence === 'weekly' || cadence === 'biweekly') {
+    const step = cadence === 'weekly' ? 7 : 14;
+    // Floor rather than truncate, so dates before the anchor step backwards
+    // instead of collapsing onto it.
+    const periods = Math.floor(daysBetween(anchorDate, targetDate) / step);
+    const start = addDays(anchorDate, periods * step);
+    return cycleBetween(start, addDays(start, step - 1), targetDate);
+  }
+
+  // Semi-monthly: find the most recent pay day on or before the target.
+  const anchorDay = Number(anchorDate.split('-')[2] ?? 1);
+  const [ty, tm] = targetDate.split('-').map(Number);
+  const year = ty ?? 1970;
+  const month = tm ?? 1;
+
+  const iso = (y: number, m: number, d: number) =>
+    `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+  // This month's pay days, plus the previous month's and the next month's, so
+  // a target sitting either side of a boundary is still covered.
+  const candidates: string[] = [];
+  for (const offset of [-1, 0, 1]) {
+    const zero = month - 1 + offset;
+    const y = year + Math.floor(zero / 12);
+    const m = ((zero % 12) + 12) % 12 + 1;
+    for (const day of semiMonthlyPayDays(anchorDay, y, m)) candidates.push(iso(y, m, day));
+  }
+  candidates.sort();
+
+  const startIndex = candidates.findLastIndex((date) => date <= targetDate);
+  const start = candidates[startIndex] ?? candidates[0]!;
+  const next = candidates[startIndex + 1] ?? addDays(start, 15);
+  return cycleBetween(start, addDays(next, -1), targetDate);
+}

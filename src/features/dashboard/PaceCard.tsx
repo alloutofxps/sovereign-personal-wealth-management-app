@@ -1,7 +1,7 @@
 /* Tier 2 — how fast the money is going, and the curve behind it. */
 
 import clsx from 'clsx';
-import { paceLabel, type PaceStatus } from '@/core/liquidity';
+import { CADENCE_NOUNS, paceLabel, type PaceStatus } from '@/core/liquidity';
 import type { DashboardData } from '@/app/dashboard/useDashboard';
 import { describeDate, shortDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
@@ -22,6 +22,9 @@ export function PaceCard({ data }: { data: DashboardData }) {
   const locale = useAppConfig((s) => s.locale);
   const { pacing } = data;
   const tone = TONE[pacing.status];
+  // Whatever the person actually budgets in. Somebody paid fortnightly is not
+  // living in months, and the bars should not tell them they are.
+  const periodNoun = CADENCE_NOUNS[data.cadence];
 
   return (
     <Card label="How fast you are spending" action={
@@ -32,7 +35,7 @@ export function PaceCard({ data }: { data: DashboardData }) {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2.5">
           <Bar
-            label="Month gone"
+            label={`${periodNoun.charAt(0).toUpperCase()}${periodNoun.slice(1)} gone`}
             percent={pacing.elapsedPercent}
             barClass="bg-ink-4"
             valueClass="text-ink-2"
@@ -42,6 +45,7 @@ export function PaceCard({ data }: { data: DashboardData }) {
             percent={pacing.spentPercent}
             barClass={tone.bar}
             valueClass={tone.text}
+            periodNoun={periodNoun}
           />
         </div>
 
@@ -72,11 +76,13 @@ function Bar({
   percent,
   barClass,
   valueClass,
+  periodNoun = 'month',
 }: {
   label: string;
   percent: number;
   barClass: string;
   valueClass: string;
+  periodNoun?: string;
 }) {
   const width = Math.min(100, Math.max(0, percent));
   const over = percent > 100;
@@ -104,7 +110,7 @@ function Bar({
       </div>
       {over && (
         <span className="text-micro text-caution">
-          That is a little past the even-spread line for this point in the month.
+          That is a little past the even-spread line for this point in the {periodNoun}.
         </span>
       )}
     </div>

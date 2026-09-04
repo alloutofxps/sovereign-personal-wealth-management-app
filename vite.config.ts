@@ -92,5 +92,30 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        advancedChunks: {
+          groups: [
+            {
+              /**
+               * The application plumbing the home screen already needs.
+               *
+               * Left to itself the bundler extracts a separate chunk for every
+               * one of these the moment a second lazy screen imports it, which
+               * is how adding one route turned five modules that were already
+               * inside the entry into five extra preloaded files. Same bytes,
+               * five more round trips, and gzip working on five small windows
+               * instead of one large one.
+               *
+               * Only modules the first paint loads anyway may be listed here —
+               * anything lazy-only would be dragged forward.
+               */
+              name: 'app-core',
+              test: /[\\/]src[\\/]app[\\/](dates|toast|ledger[\\/](actions|useLedger)|taxonomy[\\/]useTaxonomy)\.tsx?$/,
+            },
+          ],
+        },
+      },
+    },
   },
 });

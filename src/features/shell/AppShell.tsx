@@ -57,6 +57,13 @@ const AheadView = lazy(() =>
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
 );
+// The budget grid carries the multi-month planner and the cadence engine.
+// Nothing above this line may import from `@/core/budget` or
+// `@/app/budget/useBudget`, or the planner lands in the first paint.
+const BudgetGrid = lazy(() =>
+  import('@/features/budget/BudgetGrid').then((m) => ({ default: m.BudgetGrid })),
+);
+
 // Quarantined deliberately: the analytics chunk carries the Sankey geometry,
 // the ranking maths and the trailing-median engine, none of which anybody
 // needs to open the app. Nothing above this line may import from
@@ -179,6 +186,8 @@ function View({
       return <AheadView />;
     case 'independence':
       return <IndependenceView />;
+    case 'budget':
+      return <BudgetGrid />;
     case 'analytics':
       return <AnalyticsView />;
     case 'categories':

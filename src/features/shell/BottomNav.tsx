@@ -40,6 +40,7 @@ export function BottomNav({
             tab={tab}
             active={
               route === tab.route ||
+              (tab.route === 'home' && route === 'budget') ||
               (tab.route === 'forecast' &&
                 (route === 'debt' ||
                   route === 'independence' ||

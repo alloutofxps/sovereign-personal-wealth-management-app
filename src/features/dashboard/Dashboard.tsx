@@ -100,6 +100,13 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
             <span className="flex gap-3">
               <button
                 type="button"
+                onClick={() => navigate('budget')}
+                className="text-caption text-liquid"
+              >
+                Budget
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('analytics')}
                 className="text-caption text-liquid"
               >

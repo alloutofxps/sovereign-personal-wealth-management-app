@@ -11,11 +11,13 @@ import { useCallback } from 'react';
 import { minor, type Minor } from '@/core/money';
 import { isoDate, type AccountId } from '@/core/ledger';
 import {
+  CADENCE_NOUNS,
   calculatePacing,
   calculateSafeToSpend,
   daysBetween,
-  monthCycle,
+  paycheckCycle,
   toIsoDate,
+  type BudgetCadence,
   type Commitment,
   type Cycle,
   type PacingResult,
@@ -34,6 +36,7 @@ import {
 import { listScheduled, occurrencesWithin } from '@/data/repositories/scheduleRepo';
 import { potTargets } from '@/data/repositories/potsRepo';
 import { totalOwedToYou } from '@/data/repositories/claimsRepo';
+import { DEFAULT_BUDGET_SETTINGS, readBudgetSettings } from '@/data/repositories/budgetSettingsRepo';
 import { planFor, reservedForPots, type PotPlan } from '@/core/goals';
 import { useAppConfig } from '@/app/config/store';
 
@@ -58,6 +61,12 @@ export interface UpcomingBill {
 export interface DashboardData {
   today: string;
   cycle: Cycle;
+  /**
+   * The rhythm the cycle above was cut on. The daily allowance and the pacing
+   * bars only mean anything against the period a person actually budgets in,
+   * so somebody paid fortnightly gets a fortnight here, not a calendar month.
+   */
+  cadence: BudgetCadence;
   liquidity: SafeToSpendResult;
   pacing: PacingResult;
   /** What you have, in everyday accounts and savings. */
@@ -99,7 +108,16 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
 
   const query = useCallback(async (): Promise<DashboardData> => {
     const today = toIsoDate(new Date());
-    const cycle = monthCycle(today);
+
+    // The home screen and the budget grid must agree about where a period
+    // starts, or "left to spend" and "left in your pots" would be measured
+    // over different stretches of the same month.
+    const settings = await readBudgetSettings().catch(() => DEFAULT_BUDGET_SETTINGS);
+    const cycle = paycheckCycle(
+      settings.paycheckAnchor ?? today,
+      settings.cadence,
+      today,
+    );
     const horizonEnd = addDaysIso(today, HORIZON_DAYS);
 
     const [cash, liabilities, envelopes, byDay, scheduled, entryCount, targets, owedToYou] =
@@ -192,6 +210,7 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
       spendByDay: byDay,
       remaining: liquidity.safeToSpend,
       today,
+      periodNoun: CADENCE_NOUNS[settings.cadence],
     });
 
     const totalDebt = minor(debts.reduce((total, d) => total + d.amount, 0));
@@ -199,6 +218,7 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
     return {
       today,
       cycle,
+      cadence: settings.cadence,
       liquidity,
       pacing,
       liquidCash: cash,
@@ -221,7 +241,9 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
     };
   }, [bufferMinor]);
 
-  return useLiveQuery(query, [...LEDGER_TABLES, 'scheduled_items', 'claims']);
+  // `meta` is in the list because changing the budget cadence changes the
+  // period every figure above is measured over.
+  return useLiveQuery(query, [...LEDGER_TABLES, 'scheduled_items', 'claims', 'meta']);
 }
 
 function addDaysIso(iso: string, days: number): string {

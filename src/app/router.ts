@@ -11,6 +11,7 @@ export const ROUTES = [
   'home',
   'triage',
   'transactions',
+  'budget',
   'accounts',
   'pots',
   'forecast',

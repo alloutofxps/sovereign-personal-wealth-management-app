@@ -51,6 +51,13 @@ export interface PacingInput {
   /** What is still safe to spend across the rest of the cycle. */
   remaining: Minor;
   today: string;
+  /**
+   * What to call this stretch of time. Defaults to a month, because that is
+   * what most people budget in — but somebody paid fortnightly is not living
+   * in months, and being told about "the month" would be being told about
+   * somebody else's calendar.
+   */
+  periodNoun?: string;
 }
 
 export function calculatePacing(input: PacingInput): PacingResult {
@@ -88,6 +95,7 @@ export function calculatePacing(input: PacingInput): PacingResult {
     allowance,
     spent,
     remainingDays: input.cycle.remainingDays,
+    periodNoun: input.periodNoun ?? 'month',
   });
 
   return { status, message, elapsedPercent, spentPercent, spent, allowance, curve, cycle: input.cycle };
@@ -99,6 +107,7 @@ function describePace(input: {
   allowance: Minor;
   spent: Minor;
   remainingDays: number;
+  periodNoun: string;
 }): { status: PaceStatus; message: string } {
   if (input.allowance <= 0) {
     return {
@@ -115,7 +124,8 @@ function describePace(input: {
     return {
       status: 'fast',
       message:
-        `You are spending a bit faster than the month is passing. There are ` +
+        `You are spending a bit faster than the ${input.periodNoun} is passing. ` +
+        `There are ` +
         `${input.remainingDays} ${daysWord} to go, so the daily amount above has ` +
         `already been adjusted to fit.`,
     };
@@ -125,14 +135,17 @@ function describePace(input: {
     return {
       status: 'ahead',
       message:
-        `You are spending more slowly than the month is passing, so there is a ` +
+        `You are spending more slowly than the ${input.periodNoun} is passing, so ` +
+        `there is a ` +
         `little more room than usual over the next ${input.remainingDays} ${daysWord}.`,
     };
   }
 
   return {
     status: 'on_track',
-    message: `You are right on track with ${input.remainingDays} ${daysWord} of the month left.`,
+    message:
+      `You are right on track with ${input.remainingDays} ${daysWord} of the ` +
+      `${input.periodNoun} left.`,
   };
 }
 

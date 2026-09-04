@@ -9,7 +9,10 @@
 import { minor, type Minor } from '@/core/money';
 import {
   assign,
+  buildEntry,
   cardPayment,
+  credit,
+  debit,
   entryFromStatementLine,
   claimId as makeClaimId,
   entryId,
@@ -52,6 +55,9 @@ import {
 import { ACCOUNT_IDS, SYSTEM_ACCOUNTS } from '@/data/seed';
 
 const today = () => isoDate(toIsoDate(new Date()));
+
+/** Envelope-to-envelope moves live entirely in the budget book. */
+const BUDGET_BOOK = 'BUDGET' as const;
 
 /**
  * A fresh id and a date.
@@ -416,6 +422,72 @@ export async function putIntoPot(
       amount,
       system: SYSTEM_ACCOUNTS,
     }),
+  );
+}
+
+/**
+ * Move money into or out of an envelope, on a chosen date.
+ *
+ * The date is what makes multi-month budgeting work: assigning to next month
+ * is an ordinary assignment dated next month. The money leaves Ready-to-Assign
+ * the moment it is promised — which is correct, and is why the grid can show
+ * today's pool shrinking when you fund a future period.
+ *
+ * A negative delta hands money back, so a single call covers both directions
+ * and the grid never has to decide which of two functions to reach for.
+ */
+export async function assignOnDate(
+  envelopeId: AccountId,
+  envelopeName: string,
+  delta: Minor,
+  date: IsoDate,
+): Promise<void> {
+  if (delta === 0) return;
+
+  const base = { id: entryId(crypto.randomUUID()), date };
+  const forward = assign({
+    ...base,
+    envelopeId,
+    envelopeName,
+    amount: minor(Math.abs(delta)),
+    system: SYSTEM_ACCOUNTS,
+  });
+
+  if (delta > 0) {
+    await saveEntry(forward);
+    return;
+  }
+
+  await saveEntry({
+    ...forward,
+    description: `Took money back out of ${envelopeName}.`,
+    postings: forward.postings.map((posting) => ({ ...posting, amount: minor(-posting.amount) })),
+  });
+}
+
+/**
+ * Move money straight from one envelope to another.
+ *
+ * Used to cover an overspend. Two lines, not four: routing it through
+ * Ready-to-Assign would add a pair of legs that cancel each other out and say
+ * nothing, and would make the entry read as though the money had briefly been
+ * unassigned when it never was.
+ */
+export async function moveBetweenEnvelopes(
+  from: { id: AccountId; name: string },
+  to: { id: AccountId; name: string },
+  amount: Minor,
+  date: IsoDate,
+): Promise<void> {
+  if (amount <= 0) return;
+
+  await saveEntry(
+    buildEntry(
+      { id: entryId(crypto.randomUUID()), date },
+      'ASSIGN',
+      `Moved money from ${from.name} to ${to.name}.`,
+      [debit(BUDGET_BOOK, from.id, amount), credit(BUDGET_BOOK, to.id, amount)],
+    ),
   );
 }
 
