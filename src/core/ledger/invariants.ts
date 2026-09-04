@@ -277,7 +277,11 @@ const i6: Check = (snapshot) => {
   // tell somebody who saved hard into a pension that they had a terrible
   // month. The rule that protects transfers protects buys for the same reason.
   const neutral = snapshot.entries.filter(
-    (e) => e.kind === 'TRANSFER' || e.kind === 'CC_PAYMENT' || e.kind === 'INVESTMENT_BUY',
+    (e) =>
+      e.kind === 'TRANSFER' ||
+      e.kind === 'CC_PAYMENT' ||
+      e.kind === 'INVESTMENT_BUY' ||
+      e.kind === 'INVESTMENT_SELL',
   );
   const spending = contributionOf(snapshot, neutral, 'EXPENSE');
   const income = contributionOf(snapshot, neutral, 'INCOME');
@@ -300,8 +304,9 @@ const i6: Check = (snapshot) => {
       code: 'I6',
       rule: 'Moving your own money is not income',
       message:
-        `Moving money between your accounts has been counted as money coming in, ` +
-        `which would make your income look ${Math.abs(income)} higher than it is.`,
+        `Moving your own money — between accounts, or in and out of an investment — ` +
+        `has been counted as money coming in, which would make your income look ` +
+        `${Math.abs(income)} higher than it is.`,
       observed: income,
       expected: 0,
     });

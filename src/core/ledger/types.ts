@@ -229,6 +229,17 @@ export interface SystemAccounts {
   unrealizedGain: AccountId;
   /** FINANCIAL: the other direction. Equity, never an expense. */
   unrealizedLoss: AccountId;
+  /**
+   * FINANCIAL: a gain that has actually been taken, by selling.
+   *
+   * Equity, never income — for the same reason a valuation is not income. The
+   * money did not come from anywhere new; a holding that was already yours
+   * turned into cash that is also yours. Counting it as earnings would tell
+   * somebody who sold a fund that they had their best month in years.
+   */
+  realizedGain: AccountId;
+  /** FINANCIAL: a loss taken by selling. Equity, never an expense. */
+  realizedLoss: AccountId;
 }
 
 /* --- the journal --------------------------------------------------------- */
@@ -264,6 +275,8 @@ export type EntryKind =
    * check that enforces it for moving money between your own accounts.
    */
   | 'INVESTMENT_BUY'
+  /** Shares sold, or uninvested cash withdrawn. Also covered by I6. */
+  | 'INVESTMENT_SELL'
   /** Money paid out by something you hold. Real income, unlike a valuation. */
   | 'DIVIDEND';
 

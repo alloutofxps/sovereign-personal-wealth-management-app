@@ -70,6 +70,8 @@ const SYSTEM: SystemAccounts = {
   reimbursementsEnvelope: A.vReimb,
   unrealizedGain: accountId('eq-unrealized-gain'),
   unrealizedLoss: accountId('eq-unrealized-loss'),
+  realizedGain: accountId('eq-realized-gain'),
+  realizedLoss: accountId('eq-realized-loss'),
   dividendIncome: accountId('inc-dividends'),
   taxExpense: accountId('cat-tax'),
 };
@@ -105,6 +107,8 @@ const CHART: LedgerAccount[] = [
   account(A.opening, 'EQUITY', 'Starting balances'),
   account(SYSTEM.unrealizedGain, 'EQUITY', 'Gains on things you own'),
   account(SYSTEM.unrealizedLoss, 'EQUITY', 'Falls in what things are worth'),
+  account(SYSTEM.realizedGain, 'EQUITY', 'Gains you have taken'),
+  account(SYSTEM.realizedLoss, 'EQUITY', 'Losses you have taken'),
   account(SYSTEM.dividendIncome, 'INCOME', 'Money your investments paid out'),
   account(SYSTEM.taxExpense, 'EXPENSE', 'Tax taken at source'),
   account(A.salary, 'INCOME', 'Salary'),

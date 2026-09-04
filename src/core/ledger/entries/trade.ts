@@ -100,20 +100,88 @@ export function investmentBuy(p: InvestmentBuyParams): JournalEntry {
 /* --- selling ------------------------------------------------------------ */
 
 export interface InvestmentSellParams extends EntryBase {
-  amount: Minor;
   cashAccount: LedgerAccount;
   brokerageAccount: LedgerAccount;
+  /** What actually arrives in the bank, after any dealing fee. */
+  proceeds: Minor;
+  /** What the shares that went originally cost. From the tax lots. */
+  costBasisRelieved: Minor;
+  /** Proceeds less cost. Negative on a loss. */
+  realizedGain: Minor;
+  /** The pot the proceeds should land in. Defaults to money without a job. */
+  toEnvelopeId?: AccountId;
   system: SystemAccounts;
 }
 
 /**
- * Money taken back out of an investment account.
+ * Shares sold, and the gain taken.
  *
- * The mirror of a buy, and just as much not-income: selling a fund does not
- * make somebody richer, it makes them more liquid. The proceeds arrive as
- * money waiting to be given a job, which is exactly what they are.
+ * Three things about the shape of this entry are load-bearing.
+ *
+ * The gain goes to EQUITY, never INCOME. Selling a fund does not make anybody
+ * richer — a holding that was already theirs turned into cash that is also
+ * theirs — and counting the gain as earnings would tell somebody who sold a
+ * position that they had their best month in years, then quietly raise every
+ * average the app computes from their income.
+ *
+ * The brokerage account is relieved at what the shares *cost*, not at what
+ * they sold for. The difference is the gain, and it has to land somewhere
+ * nameable rather than being absorbed into the asset. Whatever unrealised
+ * gain was previously booked on those shares is then reversed by the next
+ * reconciliation against the register, which is where it belongs.
+ *
+ * The budget book gains the proceeds. Money coming back out of an investment
+ * genuinely is spendable again, so budgetable cash goes *up* and it arrives as
+ * money waiting for a job. (The brief specified these two the other way round,
+ * which would have reduced what is safe to spend by the amount just sold.)
  */
 export function investmentSell(p: InvestmentSellParams): JournalEntry {
+  const proceeds = requirePositiveAmount(p.proceeds, 'The money from a sale');
+
+  if (p.cashAccount.id === p.brokerageAccount.id) {
+    throw new LedgerError('Money has to move between two different accounts.');
+  }
+  if (p.costBasisRelieved < 0) {
+    throw new LedgerError('What shares cost cannot be a negative amount.');
+  }
+  if (proceeds - p.costBasisRelieved !== p.realizedGain) {
+    throw new LedgerError(
+      'The gain on this sale does not match the difference between what the shares ' +
+        'cost and what they sold for, so the record would not add up.',
+    );
+  }
+
+  const entersBudget = p.cashAccount.onBudget && p.cashAccount.liquid;
+  const gain = p.realizedGain;
+
+  return buildEntry(p, 'INVESTMENT_SELL', `Sold part of ${p.brokerageAccount.name}.`, [
+    debit(FIN, p.cashAccount.id, proceeds),
+    ...(p.costBasisRelieved > 0
+      ? [credit(FIN, p.brokerageAccount.id, p.costBasisRelieved)]
+      : []),
+    ...(gain > 0 ? [credit(FIN, p.system.realizedGain, gain)] : []),
+    ...(gain < 0 ? [debit(FIN, p.system.realizedLoss, minor(-gain))] : []),
+    ...(entersBudget
+      ? [
+          debit(BUD, p.system.budgetableCash, proceeds),
+          credit(BUD, p.toEnvelopeId ?? p.system.readyToAssign, proceeds),
+        ]
+      : []),
+  ]);
+}
+
+/**
+ * Money taken out of an investment account without selling anything.
+ *
+ * The plain withdrawal: uninvested cash sitting in a broker moving back to the
+ * bank. Nothing is realised because nothing was disposed of.
+ */
+export function investmentWithdraw(p: {
+  amount: Minor;
+  cashAccount: LedgerAccount;
+  brokerageAccount: LedgerAccount;
+  system: SystemAccounts;
+} & EntryBase): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'An amount to take out');
 
   if (p.cashAccount.id === p.brokerageAccount.id) {
@@ -122,7 +190,7 @@ export function investmentSell(p: InvestmentSellParams): JournalEntry {
 
   const entersBudget = p.cashAccount.onBudget && p.cashAccount.liquid;
 
-  return buildEntry(p, 'INVESTMENT_BUY', `Took money out of ${p.brokerageAccount.name}.`, [
+  return buildEntry(p, 'INVESTMENT_SELL', `Took money out of ${p.brokerageAccount.name}.`, [
     debit(FIN, p.cashAccount.id, amount),
     credit(FIN, p.brokerageAccount.id, amount),
     ...(entersBudget
@@ -141,8 +209,12 @@ export interface InvestmentDividendParams extends EntryBase {
   grossAmount: Minor;
   /** Tax deducted at source, which never reaches the account. */
   taxWithheld?: Minor;
-  /** Where the money after tax actually landed. */
+  /** Where the money after tax lands, when it is taken as cash. */
   cashAccount: LedgerAccount;
+  /** Where it stays, when it buys more shares instead. */
+  brokerageAccount?: LedgerAccount;
+  /** True when the payout bought more of the same thing rather than arriving. */
+  isReinvested?: boolean;
   /** What paid it, as the person would say it: "VWCE". */
   payer?: string;
   system: SystemAccounts;
@@ -151,14 +223,22 @@ export interface InvestmentDividendParams extends EntryBase {
 /**
  * Money paid out by something you hold.
  *
- * Real income, unlike a valuation — this is cash that arrived, and treating it
- * as anything else would understate what somebody earned.
+ * Real income, unlike a valuation or a sale — this is a return *on* the money
+ * rather than a return *of* it, and treating it as anything else would
+ * understate what somebody earned.
  *
  * Tax withheld is booked as an expense even though it never touched the
- * account. It is money that was earned and then taken, and hiding it by
- * recording only the net would show a lower income and a lower tax bill than
- * the person actually has. It is the one deduction they never get to choose,
- * which is exactly why it should be visible.
+ * account. It is money that was earned and then taken, and recording only the
+ * net would show a lower income and a lower tax bill than the person actually
+ * has. It is the one deduction they never get to choose, which is exactly why
+ * it should be visible.
+ *
+ * Reinvested is the case people get wrong. A dividend that buys more shares is
+ * still income — it was paid, it was taxable, it simply never stopped moving.
+ * Skipping it because no cash appeared in the bank understates a year's income
+ * by everything a growth portfolio produced. So the income is recorded either
+ * way; what changes is where the money lands, and whether the budget hears
+ * about it at all.
  */
 export function investmentDividend(p: InvestmentDividendParams): JournalEntry {
   const gross = requirePositiveAmount(p.grossAmount, 'A dividend');
@@ -175,16 +255,38 @@ export function investmentDividend(p: InvestmentDividendParams): JournalEntry {
   }
 
   const net = minor(gross - tax);
-  const landsOnBudget = p.cashAccount.onBudget && p.cashAccount.liquid;
+  const reinvested = p.isReinvested === true;
+
+  if (reinvested && !p.brokerageAccount) {
+    throw new LedgerError(
+      'A reinvested dividend needs to say which account bought the extra shares.',
+    );
+  }
+
+  // Where the money after tax ends up. Reinvested, it never leaves the
+  // investment account; taken as cash, it arrives in the bank.
+  const destination = reinvested ? p.brokerageAccount! : p.cashAccount;
+
+  // The budget only hears about money that becomes spendable. A reinvested
+  // dividend is income that was never available to spend for a moment, so
+  // Safe-to-Spend must not move — saying otherwise would offer somebody money
+  // that is sitting in a fund.
+  const landsOnBudget = !reinvested && p.cashAccount.onBudget && p.cashAccount.liquid;
 
   return buildEntry(
     p,
     'DIVIDEND',
-    p.payer ? `${p.payer} paid out.` : 'One of your investments paid out.',
+    p.payer
+      ? reinvested
+        ? `${p.payer} paid out, and it bought more shares.`
+        : `${p.payer} paid out.`
+      : reinvested
+        ? 'One of your investments paid out, and it bought more shares.'
+        : 'One of your investments paid out.',
     [
-      // The net is what actually arrived. A dividend fully taken by tax leaves
-      // no cash line at all, because no cash moved.
-      ...(net > 0 ? [debit(FIN, p.cashAccount.id, net)] : []),
+      // A dividend fully taken by tax leaves no line here, because nothing
+      // moved anywhere.
+      ...(net > 0 ? [debit(FIN, destination.id, net)] : []),
       ...(tax > 0 ? [debit(FIN, p.system.taxExpense, tax)] : []),
       credit(FIN, p.system.dividendIncome, gross),
       ...(landsOnBudget && net > 0

@@ -28,21 +28,42 @@ import {
   type IsoDate,
   type LedgerAccount,
 } from '@/core/ledger';
+// Deep import on purpose: see the note in the ledger barrel.
+import { investmentDividend, investmentSell } from '@/core/ledger/entries/trade';
 import {
+  allocationOf,
+  assertTargetsComplete,
+  planRebalance,
   reconcileTarget,
+  relieveLotsFIFO,
+  totalRemaining,
   totalsOf,
   type AssetClass,
   type Holding,
+  type RebalancePlan,
   type Security,
+  type TargetAllocation,
+  type TaxLot,
 } from '@/core/investments';
 import { SYSTEM_ACCOUNTS } from '@/data/seed';
 import { db, runBatch } from '../client';
-import { holdings, securities, securityPrices, valuations } from '../schema/tables';
+import {
+  holdings,
+  investmentTrades,
+  securities,
+  securityPrices,
+  targetAllocations,
+  taxLots,
+  valuations,
+} from '../schema/tables';
 import { currentValue } from './accountsRepo';
 import { listAccounts, saveEntry } from './ledgerRepo';
 
 export const INVESTMENT_TABLES = [
   'securities',
+  'tax_lots',
+  'investment_trades',
+  'target_allocations',
   'valuations',
   'holdings',
   'security_prices',
@@ -302,6 +323,13 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
 
   const securityId = existing[0] ? String(existing[0][0]) : newId('sec');
 
+  // The holding's id has to be known before the batch, because the tax lot
+  // points at it. Adding to a position you already hold reuses the row.
+  const heldRow = (await db.all(sql`
+    SELECT id FROM holdings WHERE account_id = ${input.accountId} AND security_id = ${securityId}
+     LIMIT 1`)) as unknown as Record<number, unknown>[];
+  const holdingId = heldRow[0] ? String(heldRow[0][0]) : newId('hold');
+
   const statements = [
     existing[0]
       ? db
@@ -331,7 +359,7 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
     db
       .insert(holdings)
       .values({
-        id: newId('hold'),
+        id: holdingId,
         accountId: input.accountId,
         securityId,
         quantity1e8: input.quantity1e8,
@@ -359,6 +387,43 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
         date,
         priceMinor: input.priceMinor,
         source: 'manual',
+        createdAt: now,
+      })
+      .toSQL(),
+
+    // Every purchase opens its own parcel. Which parcel a future sale takes
+    // decides the gain, so they cannot be reconstructed after the fact from a
+    // holding that only remembers a running total.
+    db
+      .insert(taxLots)
+      .values({
+        id: newId('lot'),
+        accountId: input.accountId,
+        securityId,
+        holdingId,
+        acquiredDate: date,
+        quantity1e8: input.quantity1e8,
+        remainingQuantity1e8: input.quantity1e8,
+        costBasisMinor: input.costBasis,
+        isClosed: 0,
+        createdAt: now,
+      })
+      .toSQL(),
+
+    db
+      .insert(investmentTrades)
+      .values({
+        id: newId('trade'),
+        accountId: input.accountId,
+        securityId,
+        tradeType: 'buy',
+        date,
+        quantity1e8: input.quantity1e8,
+        priceMinor: input.priceMinor,
+        grossAmountMinor: input.costBasis,
+        feesMinor: 0,
+        realizedGainMinor: null,
+        entryId: null,
         createdAt: now,
       })
       .toSQL(),
@@ -488,4 +553,493 @@ export async function priceHistory(
     priceMinor: minor(Number(row[1])),
     source: String(row[2]),
   }));
+}
+
+/* ===========================================================================
+ * SELLING
+ * ======================================================================== */
+
+function toTaxLot(row: Record<number, unknown>): TaxLot {
+  return {
+    id: String(row[0]),
+    accountId: String(row[1]),
+    securityId: String(row[2]),
+    holdingId: String(row[3]),
+    acquiredDate: String(row[4]),
+    quantity1e8: Number(row[5]),
+    remainingQuantity1e8: Number(row[6]),
+    costBasisMinor: minor(Number(row[7])),
+    isClosed: Number(row[8]) === 1,
+  };
+}
+
+/** Every parcel on record for one holding, whether open or spent. */
+export async function listTaxLots(
+  accountId: AccountId,
+  securityId: string,
+): Promise<TaxLot[]> {
+  const rows = (await db.all(sql`
+    SELECT id, account_id, security_id, holding_id, acquired_date,
+           quantity_1e8, remaining_quantity_1e8, cost_basis_minor, is_closed
+      FROM tax_lots
+     WHERE account_id = ${accountId} AND security_id = ${securityId}
+     ORDER BY acquired_date ASC, id ASC`)) as unknown as Record<number, unknown>[];
+  return rows.map(toTaxLot);
+}
+
+/**
+ * The parcels for a holding, inventing one if the holding predates them.
+ *
+ * A position recorded before this slice existed has a quantity and a cost but
+ * no parcels, and a sale cannot relieve what is not there. Rather than refuse
+ * to sell — which would strand an existing register — the unaccounted part of
+ * the holding is treated as a single parcel acquired on the day it was first
+ * priced. That is the most honest thing available: it says the cost is known
+ * and the acquisition dates are not, which is exactly the situation.
+ */
+async function lotsForSale(
+  accountId: AccountId,
+  securityId: string,
+  holding: Holding,
+): Promise<{ lots: TaxLot[]; opening: TaxLot | null }> {
+  const lots = await listTaxLots(accountId, securityId);
+  if (totalRemaining(lots) >= holding.quantity1e8) return { lots, opening: null };
+
+  const [row] = (await db.all(sql`
+    SELECT MIN(date) FROM security_prices WHERE security_id = ${securityId}`)) as unknown as Record<
+    number,
+    unknown
+  >[];
+
+  const missing = holding.quantity1e8 - totalRemaining(lots);
+  const knownCost = lots.reduce((sum, lot) => sum + lot.costBasisMinor, 0);
+
+  const opening: TaxLot = {
+    id: newId('lot'),
+    accountId,
+    securityId,
+    holdingId: holding.id,
+    acquiredDate: row?.[0] ? String(row[0]) : today(),
+    quantity1e8: missing,
+    remainingQuantity1e8: missing,
+    costBasisMinor: minor(Math.max(0, holding.costBasis - knownCost)),
+    isClosed: false,
+  };
+
+  return { lots: [opening, ...lots], opening };
+}
+
+export interface SellParams {
+  accountId: AccountId;
+  securityId: string;
+  cashAccountId: AccountId;
+  quantity1e8: number;
+  pricePerShare: Minor;
+  feesMinor?: Minor;
+  /** Where the proceeds land in the budget. Defaults to money without a job. */
+  toEnvelopeId?: AccountId;
+  date?: IsoDate;
+}
+
+export interface SellResult {
+  proceeds: Minor;
+  costBasisRelieved: Minor;
+  realizedGain: Minor;
+  sharesLeft: number;
+}
+
+/**
+ * Sell shares: relieve the parcels, move the money, take the gain.
+ *
+ * The parcel updates and the journal entry go into storage together. A sale
+ * that wrote one without the other would leave the register and the books
+ * telling different stories about the same trade, and neither would be
+ * obviously the wrong one.
+ */
+export async function executeSell(params: SellParams): Promise<SellResult> {
+  const date = params.date ?? today();
+  const holdingsHere = await listPortfolio(params.accountId);
+  const holding = holdingsHere.find((h) => h.security.id === params.securityId);
+
+  if (!holding) {
+    throw new LedgerError('You do not hold that, so there is nothing to sell.');
+  }
+
+  const accounts = await listAccounts();
+  const brokerage = accounts.find((a) => a.id === params.accountId);
+  const cash = accounts.find((a) => a.id === params.cashAccountId);
+  if (!brokerage || !cash) {
+    throw new LedgerError('One of those accounts could not be found, so nothing was recorded.');
+  }
+
+  const { lots, opening } = await lotsForSale(params.accountId, params.securityId, holding);
+
+  const disposal = relieveLotsFIFO({
+    lots,
+    sellQuantity1e8: params.quantity1e8,
+    salePriceMinor: params.pricePerShare,
+    ...(params.feesMinor === undefined ? {} : { feesMinor: params.feesMinor }),
+  });
+
+  const sharesLeft = holding.quantity1e8 - params.quantity1e8;
+  const costLeft = minor(Math.max(0, holding.costBasis - disposal.totalCostBasisRelieved));
+  const now = new Date().toISOString();
+
+  const alongside: { sql: string; params: unknown[] }[] = [];
+
+  // A parcel invented for a pre-existing holding has to be written down before
+  // it can be depleted, or the update below would touch nothing.
+  if (opening) {
+    const statement = db
+      .insert(taxLots)
+      .values({
+        id: opening.id,
+        accountId: opening.accountId,
+        securityId: opening.securityId,
+        holdingId: opening.holdingId,
+        acquiredDate: opening.acquiredDate,
+        quantity1e8: opening.quantity1e8,
+        remainingQuantity1e8: opening.quantity1e8,
+        costBasisMinor: opening.costBasisMinor,
+        isClosed: 0,
+        createdAt: now,
+      })
+      .toSQL();
+    alongside.push({ sql: statement.sql, params: statement.params });
+  }
+
+  for (const relief of disposal.relieved) {
+    const updated = disposal.updatedLots.find((l) => l.id === relief.lotId)!;
+    const statement = db
+      .update(taxLots)
+      .set({
+        remainingQuantity1e8: updated.remainingQuantity1e8,
+        isClosed: updated.isClosed ? 1 : 0,
+      })
+      .where(sql`${taxLots.id} = ${relief.lotId}`)
+      .toSQL();
+    alongside.push({ sql: statement.sql, params: statement.params });
+  }
+
+  // Selling out completely removes the holding; the parcels and the prices
+  // stay, so the history of what was owned survives the position.
+  const holdingStatement =
+    sharesLeft > 0
+      ? db
+          .update(holdings)
+          .set({ quantity1e8: sharesLeft, costBasis: costLeft, updatedAt: now })
+          .where(sql`${holdings.id} = ${holding.id}`)
+          .toSQL()
+      : db.delete(holdings).where(sql`${holdings.id} = ${holding.id}`).toSQL();
+  alongside.push({ sql: holdingStatement.sql, params: holdingStatement.params });
+
+  const entry = investmentSell({
+    id: toEntryId(newId('ent')),
+    date,
+    cashAccount: cash,
+    brokerageAccount: brokerage,
+    proceeds: disposal.totalProceeds,
+    costBasisRelieved: disposal.totalCostBasisRelieved,
+    realizedGain: disposal.realizedGain,
+    ...(params.toEnvelopeId ? { toEnvelopeId: params.toEnvelopeId } : {}),
+    system: SYSTEM_ACCOUNTS,
+  });
+
+  const tradeStatement = db
+    .insert(investmentTrades)
+    .values({
+      id: newId('trade'),
+      accountId: params.accountId,
+      securityId: params.securityId,
+      tradeType: 'sell',
+      date,
+      quantity1e8: params.quantity1e8,
+      priceMinor: params.pricePerShare,
+      grossAmountMinor: minor(disposal.totalProceeds + disposal.feesMinor),
+      feesMinor: disposal.feesMinor,
+      realizedGainMinor: disposal.realizedGain,
+      entryId: entry.id,
+      createdAt: now,
+    })
+    .toSQL();
+  alongside.push({ sql: tradeStatement.sql, params: tradeStatement.params });
+
+  // A trade is a price observation. Recording it keeps the register's view of
+  // what the rest of the position is worth honest, rather than leaving it at
+  // whatever it was last marked at before the sale happened.
+  const priceStatement = db
+    .insert(securityPrices)
+    .values({
+      id: newId('px'),
+      securityId: params.securityId,
+      date,
+      priceMinor: params.pricePerShare,
+      source: 'manual',
+      createdAt: now,
+    })
+    .toSQL();
+  alongside.push({ sql: priceStatement.sql, params: priceStatement.params });
+
+  // The sale takes the relieved cost off the account, so the register's last
+  // agreed figure has to come down by the same amount — otherwise the next
+  // reconciliation would read the drop as uninvested cash vanishing and
+  // quietly absorb any that was genuinely there.
+  const previousMark = await lastRegisterMark(params.accountId);
+  if (previousMark !== null) {
+    alongside.push(
+      registerMarkStatement(
+        params.accountId,
+        date,
+        minor(Math.max(0, previousMark - disposal.totalCostBasisRelieved)),
+      ),
+    );
+  }
+
+  await saveEntry(entry, alongside);
+  await syncAccountValue(params.accountId, date);
+
+  return {
+    proceeds: disposal.totalProceeds,
+    costBasisRelieved: disposal.totalCostBasisRelieved,
+    realizedGain: disposal.realizedGain,
+    sharesLeft,
+  };
+}
+
+/* ===========================================================================
+ * BEING PAID OUT
+ * ======================================================================== */
+
+export interface DividendParams {
+  accountId: AccountId;
+  securityId: string;
+  cashAccountId: AccountId;
+  grossAmount: Minor;
+  taxWithheld?: Minor;
+  isReinvested: boolean;
+  /** How many shares the reinvested money bought. */
+  quantityBought1e8?: number;
+  date?: IsoDate;
+}
+
+/**
+ * A dividend, whether it arrived as cash or bought more shares.
+ *
+ * Reinvested is the case people leave out, because nothing appeared in the
+ * bank. It is still income and it was still taxable — so it is recorded either
+ * way, and what changes is where the money went and whether the budget hears
+ * about it.
+ */
+export async function recordDividend(params: DividendParams): Promise<void> {
+  const date = params.date ?? today();
+  const accounts = await listAccounts();
+  const brokerage = accounts.find((a) => a.id === params.accountId);
+  const cash = accounts.find((a) => a.id === params.cashAccountId);
+
+  if (!brokerage || !cash) {
+    throw new LedgerError('One of those accounts could not be found, so nothing was recorded.');
+  }
+
+  const net = minor(params.grossAmount - (params.taxWithheld ?? 0));
+  const now = new Date().toISOString();
+  const alongside: { sql: string; params: unknown[] }[] = [];
+
+  const entry = investmentDividend({
+    id: toEntryId(newId('ent')),
+    date,
+    grossAmount: params.grossAmount,
+    ...(params.taxWithheld ? { taxWithheld: params.taxWithheld } : {}),
+    cashAccount: cash,
+    ...(params.isReinvested ? { brokerageAccount: brokerage, isReinvested: true } : {}),
+    ...(await payerName(params.securityId)),
+    system: SYSTEM_ACCOUNTS,
+  });
+
+  if (params.isReinvested && (params.quantityBought1e8 ?? 0) > 0) {
+    const bought = params.quantityBought1e8!;
+    const holdingsHere = await listPortfolio(params.accountId);
+    const holding = holdingsHere.find((h) => h.security.id === params.securityId);
+
+    if (!holding) {
+      throw new LedgerError(
+        'You do not hold that, so there is nothing for a dividend to be reinvested into.',
+      );
+    }
+
+    // The reinvested shares are a parcel of their own, acquired today at what
+    // the money bought. Folding them into an existing parcel would date them
+    // wrongly and change what a later sale realises.
+    const lotStatement = db
+      .insert(taxLots)
+      .values({
+        id: newId('lot'),
+        accountId: params.accountId,
+        securityId: params.securityId,
+        holdingId: holding.id,
+        acquiredDate: date,
+        quantity1e8: bought,
+        remainingQuantity1e8: bought,
+        costBasisMinor: net,
+        isClosed: 0,
+        createdAt: now,
+      })
+      .toSQL();
+    alongside.push({ sql: lotStatement.sql, params: lotStatement.params });
+
+    const holdingStatement = db
+      .update(holdings)
+      .set({
+        quantity1e8: holding.quantity1e8 + bought,
+        costBasis: minor(holding.costBasis + net),
+        updatedAt: now,
+      })
+      .where(sql`${holdings.id} = ${holding.id}`)
+      .toSQL();
+    alongside.push({ sql: holdingStatement.sql, params: holdingStatement.params });
+
+    // The account grew by the reinvested cash, so the last agreed register
+    // figure grows with it — the extra shares are not a market movement.
+    const previousMark = await lastRegisterMark(params.accountId);
+    if (previousMark !== null) {
+      alongside.push(registerMarkStatement(params.accountId, date, minor(previousMark + net)));
+    }
+  }
+
+  const tradeStatement = db
+    .insert(investmentTrades)
+    .values({
+      id: newId('trade'),
+      accountId: params.accountId,
+      securityId: params.securityId,
+      tradeType: params.isReinvested ? 'dividend_reinvest' : 'dividend_cash',
+      date,
+      quantity1e8: params.quantityBought1e8 ?? 0,
+      priceMinor: 0,
+      grossAmountMinor: params.grossAmount,
+      feesMinor: params.taxWithheld ?? 0,
+      realizedGainMinor: null,
+      entryId: entry.id,
+      createdAt: now,
+    })
+    .toSQL();
+  alongside.push({ sql: tradeStatement.sql, params: tradeStatement.params });
+
+  await saveEntry(entry, alongside);
+  if (params.isReinvested) await syncAccountValue(params.accountId, date);
+}
+
+async function payerName(securityId: string): Promise<{ payer?: string }> {
+  const [row] = (await db.all(sql`
+    SELECT symbol FROM securities WHERE id = ${securityId} LIMIT 1`)) as unknown as Record<
+    number,
+    unknown
+  >[];
+  return row?.[0] ? { payer: String(row[0]) } : {};
+}
+
+export interface TradeRow {
+  id: string;
+  tradeType: 'buy' | 'sell' | 'dividend_reinvest' | 'dividend_cash';
+  date: string;
+  quantity1e8: number;
+  priceMinor: Minor;
+  grossAmount: Minor;
+  fees: Minor;
+  realizedGain: Minor | null;
+  symbol: string;
+}
+
+/** Everything traded in one account, newest first. */
+export async function listTrades(accountId?: AccountId, limit = 40): Promise<TradeRow[]> {
+  const rows = (await db.all(sql`
+    SELECT t.id, t.trade_type, t.date, t.quantity_1e8, t.price_minor,
+           t.gross_amount_minor, t.fees_minor, t.realized_gain_minor, s.symbol
+      FROM investment_trades t
+      JOIN securities s ON s.id = t.security_id
+     ${accountId ? sql`WHERE t.account_id = ${accountId}` : sql``}
+     ORDER BY t.date DESC, t.created_at DESC
+     LIMIT ${limit}`)) as unknown as Record<number, unknown>[];
+
+  return rows.map((row) => ({
+    id: String(row[0]),
+    tradeType: String(row[1]) as TradeRow['tradeType'],
+    date: String(row[2]),
+    quantity1e8: Number(row[3]),
+    priceMinor: minor(Number(row[4])),
+    grossAmount: minor(Number(row[5])),
+    fees: minor(Number(row[6])),
+    realizedGain: row[7] === null || row[7] === undefined ? null : minor(Number(row[7])),
+    symbol: String(row[8]),
+  }));
+}
+
+/* ===========================================================================
+ * WHAT THE PORTFOLIO IS MEANT TO LOOK LIKE
+ * ======================================================================== */
+
+/** The saved targets, or an empty list when none have been set. */
+export async function listTargetAllocations(): Promise<TargetAllocation[]> {
+  const rows = (await db.all(sql`
+    SELECT asset_class, target_bp FROM target_allocations
+     WHERE target_bp > 0 ORDER BY target_bp DESC`)) as unknown as Record<number, unknown>[];
+
+  return rows.map((row) => ({
+    assetClass: String(row[0]) as AssetClass,
+    targetBp: basisPoints(Number(row[1])),
+  }));
+}
+
+/**
+ * Replace the targets wholesale.
+ *
+ * All or nothing, and validated first: a half-saved target set would be used
+ * to build a rebalancing plan on percentages that do not add up to a whole
+ * portfolio.
+ */
+export async function saveTargetAllocations(
+  allocations: readonly TargetAllocation[],
+): Promise<void> {
+  const kept = allocations.filter((a) => a.targetBp > 0);
+  assertTargetsComplete(kept);
+
+  const now = new Date().toISOString();
+  const statements = [
+    db.delete(targetAllocations).toSQL(),
+    ...kept.map((allocation) =>
+      db
+        .insert(targetAllocations)
+        .values({
+          id: newId('target'),
+          assetClass: allocation.assetClass,
+          targetBp: allocation.targetBp,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .toSQL(),
+    ),
+  ];
+
+  await runBatch(statements.map((s) => ({ sql: s.sql, params: s.params })));
+}
+
+/**
+ * How the portfolio compares with the targets, and what to do about it.
+ *
+ * Returns null rather than throwing when no targets have been set — not having
+ * decided what you want yet is an ordinary state, not an error.
+ */
+export async function getRebalancePlan(depositCash?: Minor): Promise<RebalancePlan | null> {
+  const targets = await listTargetAllocations();
+  if (targets.length === 0) return null;
+
+  const allocation = allocationOf(await listPortfolio());
+  const currentValues = new Map<AssetClass, Minor>(
+    allocation.slices.map((slice) => [slice.assetClass, slice.value]),
+  );
+
+  return planRebalance({
+    currentValues,
+    targets,
+    ...(depositCash === undefined ? {} : { depositCash }),
+  });
 }

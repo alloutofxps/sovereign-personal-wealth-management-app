@@ -36,9 +36,13 @@ import { BottomSheet, Button, Card, Input, Money } from '@/design/ui';
 export function HoldingDetailSheet({
   holding,
   onClose,
+  onSell,
+  onDividend,
 }: {
   holding: Holding | null;
   onClose: () => void;
+  onSell: () => void;
+  onDividend: () => void;
 }) {
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
@@ -153,6 +157,16 @@ export function HoldingDetailSheet({
             </p>
           </div>
         </Card>
+
+        {/* --- the two things you can do with a holding ---------------- */}
+        <div className="flex gap-2">
+          <Button variant="secondary" block onClick={onSell}>
+            Sell shares
+          </Button>
+          <Button variant="secondary" block onClick={onDividend}>
+            Record a payout
+          </Button>
+        </div>
 
         <Input
           label="Price per share"

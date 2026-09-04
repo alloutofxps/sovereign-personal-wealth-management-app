@@ -210,6 +210,49 @@ export const DDL: readonly string[] = [
      created_at  TEXT NOT NULL
    );`,
 
+  // v12. Share parcels, what was traded, and what the portfolio is meant to
+  // look like.
+  `CREATE TABLE IF NOT EXISTS tax_lots (
+     id                     TEXT PRIMARY KEY,
+     account_id             TEXT NOT NULL REFERENCES accounts(id),
+     security_id            TEXT NOT NULL REFERENCES securities(id),
+     holding_id             TEXT NOT NULL REFERENCES holdings(id),
+     acquired_date          TEXT NOT NULL,
+     quantity_1e8           INTEGER NOT NULL,
+     remaining_quantity_1e8 INTEGER NOT NULL,
+     cost_basis_minor       INTEGER NOT NULL,
+     is_closed              INTEGER NOT NULL DEFAULT 0,
+     created_at             TEXT NOT NULL
+   );`,
+
+  `CREATE TABLE IF NOT EXISTS investment_trades (
+     id                  TEXT PRIMARY KEY,
+     account_id          TEXT NOT NULL REFERENCES accounts(id),
+     security_id         TEXT NOT NULL REFERENCES securities(id),
+     trade_type          TEXT NOT NULL,
+     date                TEXT NOT NULL,
+     quantity_1e8        INTEGER NOT NULL DEFAULT 0,
+     price_minor         INTEGER NOT NULL DEFAULT 0,
+     gross_amount_minor  INTEGER NOT NULL,
+     fees_minor          INTEGER NOT NULL DEFAULT 0,
+     realized_gain_minor INTEGER,
+     entry_id            TEXT REFERENCES entries(id),
+     created_at          TEXT NOT NULL
+   );`,
+
+  `CREATE TABLE IF NOT EXISTS target_allocations (
+     id          TEXT PRIMARY KEY,
+     asset_class TEXT NOT NULL UNIQUE,
+     target_bp   INTEGER NOT NULL,
+     created_at  TEXT NOT NULL,
+     updated_at  TEXT NOT NULL
+   );`,
+
+  `CREATE INDEX IF NOT EXISTS idx_tax_lots_lookup ON tax_lots(account_id, security_id, is_closed, acquired_date ASC);`,
+  `CREATE INDEX IF NOT EXISTS idx_tax_lots_holding ON tax_lots(holding_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_trades_account_date ON investment_trades(account_id, date DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_trades_security ON investment_trades(security_id, date DESC);`,
+
   `CREATE UNIQUE INDEX IF NOT EXISTS uq_securities_symbol ON securities(symbol);`,
   `CREATE INDEX IF NOT EXISTS idx_securities_class ON securities(asset_class);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS uq_holdings_account_security ON holdings(account_id, security_id);`,

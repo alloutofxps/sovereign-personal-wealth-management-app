@@ -33,6 +33,9 @@ export const ACCOUNT_IDS = {
   // or expense: a house going up in value has not paid anybody anything.
   unrealizedGain: accountId('acc-unrealized-gain'),
   unrealizedLoss: accountId('acc-unrealized-loss'),
+  // Gains and losses actually taken, by selling. Equity, never income.
+  realizedGain: accountId('acc-realized-gain'),
+  realizedLoss: accountId('acc-realized-loss'),
   // Money paid out by things you hold, and the tax taken before it arrives.
   dividendIncome: accountId('inc-dividends'),
   taxExpense: accountId('cat-tax'),
@@ -71,6 +74,8 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   reimbursementsEnvelope: ACCOUNT_IDS.potFronted,
   unrealizedGain: ACCOUNT_IDS.unrealizedGain,
   unrealizedLoss: ACCOUNT_IDS.unrealizedLoss,
+  realizedGain: ACCOUNT_IDS.realizedGain,
+  realizedLoss: ACCOUNT_IDS.realizedLoss,
   dividendIncome: ACCOUNT_IDS.dividendIncome,
   taxExpense: ACCOUNT_IDS.taxExpense,
 };
@@ -161,6 +166,8 @@ export function starterChart(): LedgerAccount[] {
     make(ACCOUNT_IDS.openingBalances, 'EQUITY', 'Starting balances'),
     make(ACCOUNT_IDS.unrealizedGain, 'EQUITY', 'Gains on things you own'),
     make(ACCOUNT_IDS.unrealizedLoss, 'EQUITY', 'Falls in what things are worth'),
+    make(ACCOUNT_IDS.realizedGain, 'EQUITY', 'Gains you have taken'),
+    make(ACCOUNT_IDS.realizedLoss, 'EQUITY', 'Losses you have taken'),
 
     // --- money coming in ---
     make(ACCOUNT_IDS.salary, 'INCOME', 'Pay'),

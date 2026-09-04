@@ -50,6 +50,8 @@ const SYSTEM: SystemAccounts = {
   reimbursementsEnvelope: accountId('env-reimbursements'),
   unrealizedGain: A.gain,
   unrealizedLoss: A.loss,
+  realizedGain: accountId('eq-realized-gain'),
+  realizedLoss: accountId('eq-realized-loss'),
   dividendIncome: accountId('inc-dividends'),
   taxExpense: accountId('cat-tax'),
 };

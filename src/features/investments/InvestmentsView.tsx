@@ -25,6 +25,9 @@ import { FeeDragCard } from './FeeDragCard';
 import { HoldingDetailSheet } from './HoldingDetailSheet';
 import { HoldingsList } from './HoldingsList';
 import { InvestSheet } from './InvestSheet';
+import { RebalanceModal } from './RebalanceModal';
+import { RecordDividendSheet } from './RecordDividendSheet';
+import { SellHoldingSheet } from './SellHoldingSheet';
 import { UpdatePricesSheet } from './UpdatePricesSheet';
 
 export function InvestmentsView() {
@@ -36,6 +39,9 @@ export function InvestmentsView() {
   const [pricing, setPricing] = useState(false);
   const [investing, setInvesting] = useState(false);
   const [viewing, setViewing] = useState<Holding | null>(null);
+  const [selling, setSelling] = useState<Holding | null>(null);
+  const [payingOut, setPayingOut] = useState<Holding | null>(null);
+  const [rebalancing, setRebalancing] = useState(false);
 
   const data = portfolio.data;
   const up = (data?.totals.gainLoss ?? 0) > 0;
@@ -53,9 +59,14 @@ export function InvestmentsView() {
           </p>
         </div>
         {(data?.holdings.length ?? 0) > 0 && (
-          <Button variant="secondary" size="sm" onClick={() => setPricing(true)}>
-            Update prices
-          </Button>
+          <span className="flex shrink-0 gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setRebalancing(true)}>
+              Targets
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setPricing(true)}>
+              Update prices
+            </Button>
+          </span>
         )}
       </header>
 
@@ -176,7 +187,21 @@ export function InvestmentsView() {
             onClose={() => setInvesting(false)}
             accounts={data.accounts}
           />
-          <HoldingDetailSheet holding={viewing} onClose={() => setViewing(null)} />
+          <HoldingDetailSheet
+            holding={viewing}
+            onClose={() => setViewing(null)}
+            onSell={() => {
+              setSelling(viewing);
+              setViewing(null);
+            }}
+            onDividend={() => {
+              setPayingOut(viewing);
+              setViewing(null);
+            }}
+          />
+          <SellHoldingSheet holding={selling} onClose={() => setSelling(null)} />
+          <RecordDividendSheet holding={payingOut} onClose={() => setPayingOut(null)} />
+          <RebalanceModal open={rebalancing} onClose={() => setRebalancing(false)} />
         </>
       )}
     </div>

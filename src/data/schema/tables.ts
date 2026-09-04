@@ -77,6 +77,51 @@ export const holdings = sqliteTable('holdings', {
   updatedAt: text('updated_at').notNull(),
 });
 
+/**
+ * One parcel of shares, as bought.
+ *
+ * A holding says how much you have; a lot says when each part of it arrived
+ * and what that part cost. Selling relieves the oldest first, and the gain
+ * depends on which parcels went.
+ */
+export const taxLots = sqliteTable('tax_lots', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  securityId: text('security_id').notNull(),
+  holdingId: text('holding_id').notNull(),
+  acquiredDate: text('acquired_date').notNull(),
+  quantity1e8: integer('quantity_1e8').notNull(),
+  remainingQuantity1e8: integer('remaining_quantity_1e8').notNull(),
+  costBasisMinor: integer('cost_basis_minor').notNull(),
+  isClosed: integer('is_closed').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+/** What was traded and when. History, never a source of any balance. */
+export const investmentTrades = sqliteTable('investment_trades', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  securityId: text('security_id').notNull(),
+  tradeType: text('trade_type').notNull(),
+  date: text('date').notNull(),
+  quantity1e8: integer('quantity_1e8').notNull().default(0),
+  priceMinor: integer('price_minor').notNull().default(0),
+  grossAmountMinor: integer('gross_amount_minor').notNull(),
+  feesMinor: integer('fees_minor').notNull().default(0),
+  realizedGainMinor: integer('realized_gain_minor'),
+  entryId: text('entry_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+/** What the portfolio is meant to look like. Only meaningful as a whole set. */
+export const targetAllocations = sqliteTable('target_allocations', {
+  id: text('id').primaryKey(),
+  assetClass: text('asset_class').notNull(),
+  targetBp: integer('target_bp').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
 /** What one whole share was worth on a day. Append-only. */
 export const securityPrices = sqliteTable('security_prices', {
   id: text('id').primaryKey(),
@@ -224,5 +269,8 @@ export const TABLES = [
   'securities',
   'holdings',
   'security_prices',
+  'tax_lots',
+  'investment_trades',
+  'target_allocations',
 ] as const;
 export type TableName = (typeof TABLES)[number];

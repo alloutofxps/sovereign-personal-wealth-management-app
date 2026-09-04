@@ -333,6 +333,8 @@ const SYS: SystemAccounts = {
   reimbursementsEnvelope: ID.fronted,
   unrealizedGain: accountId('eq-unrealized-gain'),
   unrealizedLoss: accountId('eq-unrealized-loss'),
+  realizedGain: accountId('eq-realized-gain'),
+  realizedLoss: accountId('eq-realized-loss'),
   dividendIncome: accountId('inc-dividends'),
   taxExpense: accountId('cat-tax'),
 };

@@ -24,7 +24,12 @@ import {
   type LedgerSnapshot,
   type SystemAccounts,
 } from '../index';
-import { investmentBuy, investmentDividend, investmentSell } from './trade';
+import {
+  investmentBuy,
+  investmentDividend,
+  investmentSell,
+  investmentWithdraw,
+} from './trade';
 
 /* ===========================================================================
  * A CHART WITH SOMEWHERE TO INVEST
@@ -41,6 +46,8 @@ const A = {
   groceries: accountId('groceries'),
   gain: accountId('eq-gain'),
   loss: accountId('eq-loss'),
+  realizedGain: accountId('eq-realized-gain'),
+  realizedLoss: accountId('eq-realized-loss'),
   cash: accountId('budgetable-cash'),
   rta: accountId('ready-to-assign'),
   vGroceries: accountId('env-groceries'),
@@ -56,6 +63,8 @@ const SYSTEM: SystemAccounts = {
   reimbursementsEnvelope: A.vReimb,
   unrealizedGain: A.gain,
   unrealizedLoss: A.loss,
+  realizedGain: A.realizedGain,
+  realizedLoss: A.realizedLoss,
   dividendIncome: A.dividends,
   taxExpense: A.tax,
 };
@@ -99,6 +108,8 @@ const CHART: LedgerAccount[] = [
   account(A.opening, 'EQUITY', 'Starting balances'),
   account(A.gain, 'EQUITY', 'Gains on things you own'),
   account(A.loss, 'EQUITY', 'Falls in what things are worth'),
+  account(A.realizedGain, 'EQUITY', 'Gains you have taken'),
+  account(A.realizedLoss, 'EQUITY', 'Losses you have taken'),
   account(A.salary, 'INCOME', 'Pay'),
   account(A.dividends, 'INCOME', 'Money your investments paid out'),
   account(A.tax, 'EXPENSE', 'Tax taken at source'),
@@ -260,9 +271,9 @@ describe('putting money into an investment account', () => {
   });
 });
 
-describe('taking money back out', () => {
+describe('taking uninvested cash back out', () => {
   it('brings it back as money waiting to be given a job', () => {
-    const entry = investmentSell({
+    const entry = investmentWithdraw({
       ...base(),
       amount: minor(50_000),
       cashAccount: CHECKING,
@@ -292,7 +303,7 @@ describe('taking money back out', () => {
     const before = totalIncome(snapshot(entries));
 
     entries.push(
-      investmentSell({
+      investmentWithdraw({
         ...base(),
         amount: minor(50_000),
         cashAccount: CHECKING,
@@ -302,6 +313,107 @@ describe('taking money back out', () => {
     );
 
     expect(totalIncome(snapshot(entries))).toBe(before);
+  });
+});
+
+/* ===========================================================================
+ * SELLING, AND THE GAIN THAT COMES WITH IT
+ * ---------------------------------------------------------------------------
+ * A capital gain is not earnings. Somebody who sells a fund has not had a good
+ * month at work; they have turned one thing they owned into another.
+ * ======================================================================== */
+
+describe('selling shares', () => {
+  /** €2,500 of proceeds on shares that cost €2,200: a €300 gain. */
+  const sale = () =>
+    investmentSell({
+      ...base(),
+      cashAccount: CHECKING,
+      brokerageAccount: BROKERAGE,
+      proceeds: minor(250_000),
+      costBasisRelieved: minor(220_000),
+      realizedGain: minor(30_000),
+      system: SYSTEM,
+    });
+
+  it('books the gain against equity, never against income', () => {
+    const entry = sale();
+
+    expect(entry.kind).toBe('INVESTMENT_SELL');
+    expect(entry.postings.find((p) => p.accountId === A.checking)!.amount).toBe(250_000);
+    expect(entry.postings.find((p) => p.accountId === A.brokerage)!.amount).toBe(-220_000);
+    expect(entry.postings.find((p) => p.accountId === A.realizedGain)!.amount).toBe(-30_000);
+    expect(entry.postings.find((p) => p.accountId === A.dividends)).toBeUndefined();
+  });
+
+  it('books a loss against equity, never against spending', () => {
+    const entry = investmentSell({
+      ...base(),
+      cashAccount: CHECKING,
+      brokerageAccount: BROKERAGE,
+      proceeds: minor(180_000),
+      costBasisRelieved: minor(220_000),
+      realizedGain: minor(-40_000),
+      system: SYSTEM,
+    });
+
+    expect(entry.postings.find((p) => p.accountId === A.realizedLoss)!.amount).toBe(40_000);
+    expect(entry.postings.find((p) => p.accountId === A.tax)).toBeUndefined();
+  });
+
+  it('makes the whole proceeds spendable again', () => {
+    const budget = sale().postings.filter((p) => p.book === 'BUDGET');
+    // Up, not down: the money genuinely is available again.
+    expect(budget.find((p) => p.accountId === A.cash)!.amount).toBe(250_000);
+    expect(budget.find((p) => p.accountId === A.rta)!.amount).toBe(-250_000);
+  });
+
+  it('can send the proceeds straight into a pot instead', () => {
+    const entry = investmentSell({
+      ...base(),
+      cashAccount: CHECKING,
+      brokerageAccount: BROKERAGE,
+      proceeds: minor(250_000),
+      costBasisRelieved: minor(220_000),
+      realizedGain: minor(30_000),
+      toEnvelopeId: A.vGroceries,
+      system: SYSTEM,
+    });
+
+    const budget = entry.postings.filter((p) => p.book === 'BUDGET');
+    expect(budget.find((p) => p.accountId === A.vGroceries)!.amount).toBe(-250_000);
+    expect(budget.find((p) => p.accountId === A.rta)).toBeUndefined();
+  });
+
+  it('refuses a gain that does not match the figures it sits between', () => {
+    expect(() =>
+      investmentSell({
+        ...base(),
+        cashAccount: CHECKING,
+        brokerageAccount: BROKERAGE,
+        proceeds: minor(250_000),
+        costBasisRelieved: minor(220_000),
+        realizedGain: minor(99_999),
+        system: SYSTEM,
+      }),
+    ).toThrow(/does not match/);
+  });
+
+  it('leaves spending and income at zero, and lifts what is ready to assign', () => {
+    const entries = [paid(300_000)];
+    const spendingBefore = totalSpending(snapshot(entries));
+    const incomeBefore = totalIncome(snapshot(entries));
+
+    entries.push(sale());
+    const after = snapshot(entries);
+
+    expect(totalSpending(after)).toBe(spendingBefore);
+    expect(totalIncome(after)).toBe(incomeBefore);
+    // Net worth moves by the gain, because a gain is real — it is simply not
+    // earnings.
+    expect(netWorth(after)).toBe(netWorth(snapshot([entries[0]!])) + 30_000);
+    expect(checkInvariant('I6', after)).toEqual([]);
+    expect(checkInvariants(after)).toEqual([]);
   });
 });
 

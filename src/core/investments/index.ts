@@ -34,6 +34,30 @@ export {
   formatShare,
 } from './assetAllocation';
 
+export type { DisposalResult, LotRelief, TaxLot } from './disposals';
+export {
+  DisposalError,
+  describeBudgetEffect,
+  describeDisposal,
+  openLotsInOrder,
+  relieveLotsFIFO,
+  totalRemaining,
+} from './disposals';
+
+export type {
+  DepositAllocation,
+  RebalanceLine,
+  RebalancePlan,
+  TargetAllocation,
+} from './rebalance';
+export {
+  RebalanceError,
+  assertTargetsComplete,
+  describeDepositStep,
+  describeRebalance,
+  planRebalance,
+} from './rebalance';
+
 export type { FeeDrag, FeeProjection } from './feeDrag';
 export {
   ASSUMED_GROSS_RETURN_BP,

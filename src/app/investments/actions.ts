@@ -15,7 +15,7 @@ import { entryId, isoDate, type AccountId, type IsoDate } from '@/core/ledger';
 import {
   investmentBuy,
   investmentDividend,
-  investmentSell,
+  investmentWithdraw,
 } from '@/core/ledger/entries/trade';
 import { toIsoDate } from '@/core/liquidity';
 import { accountsById, saveEntry } from '@/data/repositories/ledgerRepo';
@@ -69,15 +69,23 @@ export async function recordInvestmentBuy(input: RecordInvestmentBuyInput): Prom
   );
 }
 
-/** Money taken back out of an investment account. Never income. */
-export async function recordInvestmentSell(input: RecordInvestmentBuyInput): Promise<void> {
+/**
+ * Uninvested cash taken back out of an investment account.
+ *
+ * Not a sale — nothing was disposed of, so nothing is realised. Selling shares
+ * goes through the register, in `investmentsRepo.executeSell`, because it has
+ * to relieve tax lots in the same transaction as the journal entry.
+ */
+export async function recordInvestmentWithdrawal(
+  input: RecordInvestmentBuyInput,
+): Promise<void> {
   const { cashAccount, otherAccount } = await twoAccounts(
     input.cashAccountId,
     input.brokerageAccountId,
   );
 
   await saveEntry(
-    investmentSell({
+    investmentWithdraw({
       ...newEntry(input.date),
       amount: input.amount,
       cashAccount,
