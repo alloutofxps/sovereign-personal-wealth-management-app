@@ -44,6 +44,7 @@ import {
   type ClaimKind,
 } from '@/data/repositories/claimsRepo';
 import {
+  isStillUnreviewed,
   markReviewedStatement,
   returnToQueueStatement,
   type StagedRow,
@@ -160,6 +161,13 @@ export async function confirmStagedRow(
   row: StagedRow,
   choice: StagedChoice,
 ): Promise<EntryId> {
+  // Refuse a row that has already been dealt with. Without this a second tap
+  // — or a stale sheet still on screen — files the same bank line twice and
+  // the money is counted twice over.
+  if (!(await isStillUnreviewed(row.id))) {
+    throw new Error('That one has already been filed, so nothing has been changed.');
+  }
+
   const account = (await accountsById()).get(row.accountId);
   if (!account) {
     throw new Error('The account that row came from could not be found.');

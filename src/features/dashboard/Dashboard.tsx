@@ -97,13 +97,22 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
             <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
               What you have recorded
             </h2>
-            <button
-              type="button"
-              onClick={() => navigate('transactions')}
-              className="text-caption text-liquid"
-            >
-              See everything
-            </button>
+            <span className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('analytics')}
+                className="text-caption text-liquid"
+              >
+                Where it went
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('transactions')}
+                className="text-caption text-liquid"
+              >
+                See everything
+              </button>
+            </span>
           </div>
 
           <Card padding="none">

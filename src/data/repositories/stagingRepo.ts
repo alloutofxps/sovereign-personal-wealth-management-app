@@ -48,6 +48,24 @@ export async function listUnreviewed(limit = 200): Promise<StagedRow[]> {
   return rows.map(toStaged);
 }
 
+/**
+ * Is this row still waiting, or has it already been filed?
+ *
+ * Read immediately before writing, because a row confirmed twice becomes two
+ * journal entries for one bank line — the same money counted twice, with
+ * nothing on screen to say why. The queue update and the entry already commit
+ * together, which stops a row being marked reviewed without an entry; this is
+ * the other direction.
+ */
+export async function isStillUnreviewed(id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ status: stagedTransactions.status })
+    .from(stagedTransactions)
+    .where(eq(stagedTransactions.id, id))
+    .limit(1);
+  return row?.status === 'unreviewed';
+}
+
 export async function countUnreviewed(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)` })

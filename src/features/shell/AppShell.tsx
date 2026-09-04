@@ -57,6 +57,13 @@ const AheadView = lazy(() =>
 const IndependenceView = lazy(() =>
   import('@/features/simulations/IndependenceView').then((m) => ({ default: m.IndependenceView })),
 );
+// Quarantined deliberately: the analytics chunk carries the Sankey geometry,
+// the ranking maths and the trailing-median engine, none of which anybody
+// needs to open the app. Nothing above this line may import from
+// `@/core/analytics`, `@/charts/SankeyFlow` or `@/charts/CategoryBars`.
+const AnalyticsView = lazy(() =>
+  import('@/features/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView })),
+);
 const CategoryManagerView = lazy(() =>
   import('@/features/categories/CategoryManagerView').then((m) => ({
     default: m.CategoryManagerView,
@@ -172,6 +179,8 @@ function View({
       return <AheadView />;
     case 'independence':
       return <IndependenceView />;
+    case 'analytics':
+      return <AnalyticsView />;
     case 'categories':
       return <CategoryManagerView />;
     case 'settings':

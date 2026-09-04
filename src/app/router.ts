@@ -15,6 +15,7 @@ export const ROUTES = [
   'pots',
   'forecast',
   'calendar',
+  'analytics',
   'debt',
   'independence',
   'categories',

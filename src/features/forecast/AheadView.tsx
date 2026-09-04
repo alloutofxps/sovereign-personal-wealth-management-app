@@ -9,7 +9,7 @@
  * segmented control says outright that they exist.
  * ======================================================================== */
 
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useRoute, type Route } from '@/app/router';
 import { Tabs } from '@/design/ui';
 import { CalendarView } from '@/features/calendar/CalendarView';
@@ -17,11 +17,24 @@ import { SubscriptionAudit } from '@/features/calendar/SubscriptionAudit';
 import { DebtPayoffView } from '@/features/simulations/DebtPayoffView';
 import { ForecastView } from './ForecastView';
 
-type Pane = 'forecast' | 'calendar' | 'debt';
+/**
+ * The analytics pane is lazy even from here.
+ *
+ * It was a plain import, which put the Sankey geometry, the ranking maths and
+ * the trailing-median engine into this chunk — so opening the forecast
+ * downloaded all of it for somebody who never touched the analytics tab. First
+ * paint was unaffected, which is exactly what made it easy to miss.
+ */
+const AnalyticsView = lazy(() =>
+  import('@/features/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView })),
+);
+
+type Pane = 'forecast' | 'calendar' | 'analytics' | 'debt';
 
 const ROUTE_FOR: Record<Pane, Route> = {
   forecast: 'forecast',
   calendar: 'calendar',
+  analytics: 'analytics',
   debt: 'debt',
 };
 
@@ -33,6 +46,7 @@ const ROUTE_FOR: Record<Pane, Route> = {
  */
 function paneFor(route: Route): Pane {
   if (route === 'calendar') return 'calendar';
+  if (route === 'analytics') return 'analytics';
   if (route === 'debt') return 'debt';
   return 'forecast';
 }
@@ -43,7 +57,12 @@ export function AheadView() {
 
   // Keep the document in step when somebody arrives on a bare route.
   useEffect(() => {
-    if (route !== 'forecast' && route !== 'calendar' && route !== 'debt') {
+    if (
+      route !== 'forecast' &&
+      route !== 'calendar' &&
+      route !== 'analytics' &&
+      route !== 'debt'
+    ) {
       navigate('forecast');
     }
   }, [route, navigate]);
@@ -57,6 +76,7 @@ export function AheadView() {
         tabs={[
           { value: 'forecast', label: 'Forecast' },
           { value: 'calendar', label: 'Calendar' },
+          { value: 'analytics', label: 'Where it went' },
           { value: 'debt', label: 'Payoff' },
         ]}
       />
@@ -67,6 +87,10 @@ export function AheadView() {
         <ForecastView />
       ) : pane === 'calendar' ? (
         <CalendarView />
+      ) : pane === 'analytics' ? (
+        <Suspense fallback={<div className="min-h-[50dvh]" aria-hidden="true" />}>
+          <AnalyticsView />
+        </Suspense>
       ) : (
         <DebtPayoffView />
       )}
