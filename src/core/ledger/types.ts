@@ -217,8 +217,20 @@ export interface SystemAccounts {
   reimbursementsEnvelope: AccountId;
   /** FINANCIAL: money paid out by things you hold. Real income. */
   dividendIncome: AccountId;
-  /** FINANCIAL: tax withheld at source, which never reaches your account. */
-  taxExpense: AccountId;
+  /**
+   * FINANCIAL: tax withheld at source, which never reaches your account.
+   *
+   * EQUITY, not EXPENSE — and that distinction is the whole point. EXPENSE in
+   * this ledger does not mean "a cost", it means "money you chose to spend",
+   * and every spending figure, the daily burn rate, the pacing curve and
+   * Safe-to-Spend are built on that meaning. Tax deducted before a dividend
+   * reached you was never money you could have kept, so counting it as
+   * spending would show a month of purchases nobody made.
+   *
+   * Debited, like `realizedLoss` — something that reduced what you are worth
+   * without being a purchase.
+   */
+  investmentTaxWithheld: AccountId;
   /**
    * FINANCIAL: where a rise in what something is worth is booked.
    *

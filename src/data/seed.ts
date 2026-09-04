@@ -38,7 +38,9 @@ export const ACCOUNT_IDS = {
   realizedLoss: accountId('acc-realized-loss'),
   // Money paid out by things you hold, and the tax taken before it arrives.
   dividendIncome: accountId('inc-dividends'),
-  taxExpense: accountId('cat-tax'),
+  // Kept its original id so every posting ever made to it comes along; see
+  // migrations/v13.ts for why it is equity rather than an expense.
+  investmentTaxWithheld: accountId('cat-tax'),
   // Money coming in
   salary: accountId('inc-salary'),
   otherIncome: accountId('inc-other'),
@@ -77,7 +79,7 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   realizedGain: ACCOUNT_IDS.realizedGain,
   realizedLoss: ACCOUNT_IDS.realizedLoss,
   dividendIncome: ACCOUNT_IDS.dividendIncome,
-  taxExpense: ACCOUNT_IDS.taxExpense,
+  investmentTaxWithheld: ACCOUNT_IDS.investmentTaxWithheld,
 };
 
 /** A spending category and the pot that funds it, kept side by side. */
@@ -173,7 +175,7 @@ export function starterChart(): LedgerAccount[] {
     make(ACCOUNT_IDS.salary, 'INCOME', 'Pay'),
     make(ACCOUNT_IDS.otherIncome, 'INCOME', 'Other money in'),
     make(ACCOUNT_IDS.dividendIncome, 'INCOME', 'Money your investments paid out'),
-    make(ACCOUNT_IDS.taxExpense, 'EXPENSE', 'Tax taken at source'),
+    make(ACCOUNT_IDS.investmentTaxWithheld, 'EQUITY', 'Tax taken from your investments'),
 
     // --- what you spend on ---
     ...STARTER_GROUPS.map((g) => make(g.id, 'EXPENSE', g.name)),

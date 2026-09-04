@@ -73,7 +73,7 @@ const SYSTEM: SystemAccounts = {
   realizedGain: accountId('eq-realized-gain'),
   realizedLoss: accountId('eq-realized-loss'),
   dividendIncome: accountId('inc-dividends'),
-  taxExpense: accountId('cat-tax'),
+  investmentTaxWithheld: accountId('cat-tax'),
 };
 
 function account(
@@ -110,7 +110,7 @@ const CHART: LedgerAccount[] = [
   account(SYSTEM.realizedGain, 'EQUITY', 'Gains you have taken'),
   account(SYSTEM.realizedLoss, 'EQUITY', 'Losses you have taken'),
   account(SYSTEM.dividendIncome, 'INCOME', 'Money your investments paid out'),
-  account(SYSTEM.taxExpense, 'EXPENSE', 'Tax taken at source'),
+  account(SYSTEM.investmentTaxWithheld, 'EQUITY', 'Tax taken from your investments'),
   account(A.salary, 'INCOME', 'Salary'),
   account(A.groceries, 'EXPENSE', 'Groceries'),
   account(A.transport, 'EXPENSE', 'Transport'),

@@ -66,7 +66,7 @@ const SYSTEM: SystemAccounts = {
   realizedGain: A.realizedGain,
   realizedLoss: A.realizedLoss,
   dividendIncome: A.dividends,
-  taxExpense: A.tax,
+  investmentTaxWithheld: A.tax,
 };
 
 function account(
@@ -112,7 +112,7 @@ const CHART: LedgerAccount[] = [
   account(A.realizedLoss, 'EQUITY', 'Losses you have taken'),
   account(A.salary, 'INCOME', 'Pay'),
   account(A.dividends, 'INCOME', 'Money your investments paid out'),
-  account(A.tax, 'EXPENSE', 'Tax taken at source'),
+  account(A.tax, 'EQUITY', 'Tax taken from your investments'),
   account(A.groceries, 'EXPENSE', 'Food shopping'),
   account(A.cash, 'BUDGETABLE_CASH', 'Money you can spend'),
   account(A.rta, 'READY_TO_ASSIGN', 'Not given a job yet'),
@@ -465,6 +465,54 @@ describe('being paid out by something you hold', () => {
 
     expect(entry.postings.find((p) => p.accountId === A.tax)).toBeUndefined();
     expect(entry.postings.find((p) => p.accountId === A.checking)!.amount).toBe(10_000);
+  });
+
+  it('keeps tax taken at source out of what you spent', () => {
+    // The rule this pins down: EXPENSE in this ledger means "money you chose
+    // to spend". Tax deducted before a dividend reached you was never money
+    // you could have kept, and booking it as spending would show a month of
+    // purchases nobody made — and on a large enough portfolio, tip that month
+    // into a deficit warning over it.
+    const entries = [paid(300_000)];
+    const spendingBefore = totalSpending(snapshot(entries));
+
+    entries.push(
+      investmentDividend({
+        ...base(),
+        grossAmount: minor(10_000),
+        taxWithheld: minor(1_500),
+        cashAccount: CHECKING,
+        payer: 'VWCE',
+        system: SYSTEM,
+      }),
+    );
+
+    const after = snapshot(entries);
+    expect(totalSpending(after)).toBe(spendingBefore);
+    // The gross is still income, because it was still earned.
+    expect(totalIncome(after)).toBe(totalIncome(snapshot([entries[0]!])) + 10_000);
+    // And the tax is still recorded, against equity, so it stays visible.
+    const tax = entries[1]!.postings.find((p) => p.accountId === A.tax)!;
+    expect(tax.amount).toBe(1_500);
+    expect(ACCOUNTS.get(A.tax)!.type).toBe('EQUITY');
+    expect(checkInvariants(after)).toEqual([]);
+  });
+
+  it('leaves what you can spend equal to what actually arrived', () => {
+    const entry = investmentDividend({
+      ...base(),
+      grossAmount: minor(10_000),
+      taxWithheld: minor(1_500),
+      cashAccount: CHECKING,
+      system: SYSTEM,
+    });
+
+    // Net cash is exact: the €85 that turned up, not the €100 declared.
+    expect(entry.postings.find((p) => p.accountId === A.checking)!.amount).toBe(8_500);
+    expect(
+      entry.postings.filter((p) => p.book === 'BUDGET').find((p) => p.accountId === A.cash)!
+        .amount,
+    ).toBe(8_500);
   });
 
   it('refuses more tax than the dividend was worth', () => {

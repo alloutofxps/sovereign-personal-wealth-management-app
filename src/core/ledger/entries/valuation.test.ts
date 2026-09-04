@@ -53,7 +53,7 @@ const SYSTEM: SystemAccounts = {
   realizedGain: accountId('eq-realized-gain'),
   realizedLoss: accountId('eq-realized-loss'),
   dividendIncome: accountId('inc-dividends'),
-  taxExpense: accountId('cat-tax'),
+  investmentTaxWithheld: accountId('cat-tax'),
 };
 
 function account(

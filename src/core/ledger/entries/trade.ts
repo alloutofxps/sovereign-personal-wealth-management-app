@@ -227,11 +227,17 @@ export interface InvestmentDividendParams extends EntryBase {
  * rather than a return *of* it, and treating it as anything else would
  * understate what somebody earned.
  *
- * Tax withheld is booked as an expense even though it never touched the
- * account. It is money that was earned and then taken, and recording only the
- * net would show a lower income and a lower tax bill than the person actually
- * has. It is the one deduction they never get to choose, which is exactly why
- * it should be visible.
+ * Tax withheld is recorded even though it never touched the account: the gross
+ * is what was earned, and showing only the net would understate both the
+ * income and what was taken from it. It is the one deduction nobody gets to
+ * choose, which is exactly why it should be visible.
+ *
+ * It lands in equity rather than in an expense account. EXPENSE in this ledger
+ * means "money you chose to spend" — the daily burn rate, the pacing curve and
+ * Safe-to-Spend are all built on that meaning — and tax deducted before the
+ * money reached you was never money you could have kept. Booking it as
+ * spending would show a month of purchases nobody made, and on a large enough
+ * portfolio would tip a month into a deficit warning over it.
  *
  * Reinvested is the case people get wrong. A dividend that buys more shares is
  * still income — it was paid, it was taxable, it simply never stopped moving.
@@ -287,7 +293,7 @@ export function investmentDividend(p: InvestmentDividendParams): JournalEntry {
       // A dividend fully taken by tax leaves no line here, because nothing
       // moved anywhere.
       ...(net > 0 ? [debit(FIN, destination.id, net)] : []),
-      ...(tax > 0 ? [debit(FIN, p.system.taxExpense, tax)] : []),
+      ...(tax > 0 ? [debit(FIN, p.system.investmentTaxWithheld, tax)] : []),
       credit(FIN, p.system.dividendIncome, gross),
       ...(landsOnBudget && net > 0
         ? [debit(BUD, p.system.budgetableCash, net), credit(BUD, p.system.readyToAssign, net)]
