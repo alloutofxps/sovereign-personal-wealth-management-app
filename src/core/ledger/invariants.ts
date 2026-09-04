@@ -27,7 +27,9 @@
  * their books without knowing what a posting is.
  * ======================================================================== */
 
-import { type Minor } from '@/core/money';
+import { minorUnitExponent, type CurrencyCode, type Minor } from '@/core/money';
+// Deep import on purpose: see the note in the money barrel.
+import { convertCurrency, convertMinorUnits, rate1e6 } from '@/core/money/fx';
 import { allRawBalances, bookTotal, totalWhere } from './balances';
 import {
   BOOK_BY_TYPE,
@@ -36,6 +38,7 @@ import {
   type Book,
   type EntryId,
   type JournalEntry,
+  type LedgerAccount,
   type LedgerSnapshot,
 } from './types';
 
@@ -57,7 +60,15 @@ export interface InvariantViolation {
 
 type Check = (snapshot: LedgerSnapshot) => InvariantViolation[];
 
-/* --- I1: both books balance, on every single entry ---------------------- */
+/* --- I1: both books balance, on every single entry ----------------------
+ *
+ * Asserted on the reporting currency, because that is the only figure every
+ * line of a cross-currency entry shares. €1,000 out and $1,080 in is a correct
+ * transfer whose native amounts sum to 80; "does this balance?" is only
+ * answerable once both sides are expressed the same way. For an entry that
+ * never left the base currency the two are identical, so nothing changes for
+ * the overwhelming majority of what this ledger holds.
+ * ---------------------------------------------------------------------- */
 
 const i1: Check = (snapshot) => {
   const violations: InvariantViolation[] = [];
@@ -65,7 +76,7 @@ const i1: Check = (snapshot) => {
     for (const book of ['FINANCIAL', 'BUDGET'] as Book[]) {
       const lines = entry.postings.filter((p) => p.book === book);
       if (lines.length === 0) continue;
-      const total = lines.reduce((sum, p) => sum + p.amount, 0);
+      const total = lines.reduce((sum, p) => sum + p.baseAmount, 0);
       if (total !== 0) {
         violations.push({
           code: 'I1',
@@ -83,13 +94,65 @@ const i1: Check = (snapshot) => {
   return violations;
 };
 
-/* --- I2: exact integers, one currency ----------------------------------- */
+/* --- I2: the FX residual is posted explicitly ---------------------------
+ *
+ * Restored to its Phase 1 specification now that there is more than one
+ * currency to have a residual between.
+ *
+ * Converting several lines of one entry rounds each of them on its own, so the
+ * base amounts can land a unit apart from each other. That unit has to go
+ * somewhere, and the entire rule is that it goes somewhere *nameable*: an
+ * explicit posting to the rounding-variance account, rather than being nudged
+ * into whichever line is largest and disappearing.
+ *
+ * The check has teeth because it works the other way round. Every line except
+ * the variance account must have a base amount that is exactly its own native
+ * amount converted at its own rate. If a builder quietly adjusted a line to
+ * make the books balance, that line no longer matches its rate and this says
+ * so — which is the only way to catch a residual that was hidden rather than
+ * posted.
+ *
+ * The integer checks stay here too. An amount that is not a whole number, or
+ * is nothing at all, is the same class of failure: arithmetic that cannot be
+ * relied on to the penny.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * What a line's base amount ought to be, given its own rate.
+ *
+ * Exponent-aware when both currencies are known, because ¥16,000 and €160.00
+ * are the same integer meaning a hundredfold different amount. When they are
+ * not known the two are assumed to have two decimal places, which is true of
+ * every pair this app can currently produce and makes the check a no-op rather
+ * than a false alarm.
+ */
+function expectedBaseAmount(
+  posting: { amount: Minor; fxRateScaled: number },
+  account: LedgerAccount | undefined,
+  baseCurrency: string | undefined,
+): Minor {
+  const rate = rate1e6(posting.fxRateScaled);
+  const quote = account?.currency ?? null;
+
+  if (!quote || !baseCurrency || quote === baseCurrency) {
+    return convertCurrency(posting.amount, rate, 'quoteToBase');
+  }
+
+  return convertMinorUnits({
+    amount: posting.amount,
+    rateScaled: rate,
+    direction: 'quoteToBase',
+    quoteExponent: minorUnitExponent(quote as CurrencyCode),
+    baseExponent: minorUnitExponent(baseCurrency as CurrencyCode),
+  });
+}
 
 const i2: Check = (snapshot) => {
   const violations: InvariantViolation[] = [];
+
   for (const entry of snapshot.entries) {
     for (const posting of entry.postings) {
-      if (!Number.isSafeInteger(posting.amount)) {
+      if (!Number.isSafeInteger(posting.amount) || !Number.isSafeInteger(posting.baseAmount)) {
         violations.push({
           code: 'I2',
           rule: 'Amounts are exact whole numbers',
@@ -110,8 +173,42 @@ const i2: Check = (snapshot) => {
           accountId: posting.accountId,
         });
       }
+
+      // Every line has to be its own amount at its own rate. A line that is
+      // not is a line somebody adjusted to force a balance.
+      //
+      // Skipped when the amounts are not whole numbers: that has already been
+      // reported just above, and the conversion below is integer arithmetic
+      // that would throw rather than report anything useful about it.
+      if (
+        !Number.isSafeInteger(posting.amount) ||
+        !Number.isSafeInteger(posting.baseAmount) ||
+        !Number.isSafeInteger(posting.fxRateScaled) ||
+        posting.fxRateScaled <= 0
+      ) {
+        continue;
+      }
+
+      const account = snapshot.accounts.get(posting.accountId);
+      const expected = expectedBaseAmount(posting, account, snapshot.baseCurrency);
+      if (posting.baseAmount !== expected) {
+        violations.push({
+          code: 'I2',
+          rule: 'Every converted line matches the rate it was converted at',
+          message:
+            `A line in "${entry.description}" says it was converted at ` +
+            `${(posting.fxRateScaled / 1_000_000).toFixed(6)} but does not come to that. ` +
+            `A rounding difference has been absorbed into it instead of being ` +
+            `recorded on its own.`,
+          entryId: entry.id,
+          accountId: posting.accountId,
+          observed: posting.baseAmount,
+          expected,
+        });
+      }
     }
   }
+
   return violations;
 };
 
@@ -430,6 +527,8 @@ const i10: Check = (snapshot) => {
     if (!original) continue;
 
     const pair: LedgerSnapshot = { ...snapshot, entries: [original, entry] };
+
+    // The reporting currency, which is what every balance is read in.
     for (const [accountId, balance] of allRawBalances(pair)) {
       if (balance !== 0) {
         violations.push({
@@ -438,6 +537,32 @@ const i10: Check = (snapshot) => {
           message:
             `Cancelling "${original.description}" left ${Math.abs(balance)} behind on one ` +
             `of your accounts, so the correction did not fully undo it.`,
+          entryId: entry.id,
+          accountId,
+          observed: balance,
+          expected: 0,
+        });
+      }
+    }
+
+    // And the native side, account by account. Restored to its Phase 1 form:
+    // a multi-currency reversal that cancelled what you are worth while
+    // leaving the dollar account a few dollars out would pass every other
+    // check in this file and be plainly wrong on the statement.
+    const native = new Map<AccountId, number>();
+    for (const posting of [...original.postings, ...entry.postings]) {
+      native.set(posting.accountId, (native.get(posting.accountId) ?? 0) + posting.amount);
+    }
+
+    for (const [accountId, balance] of native) {
+      if (balance !== 0) {
+        violations.push({
+          code: 'I10',
+          rule: 'A cancelled record leaves nothing behind',
+          message:
+            `Cancelling "${original.description}" left ${Math.abs(balance)} behind in the ` +
+            `currency of one of your accounts, even though what you are worth came back ` +
+            `to where it started.`,
           entryId: entry.id,
           accountId,
           observed: balance,

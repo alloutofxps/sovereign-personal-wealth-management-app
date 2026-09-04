@@ -93,6 +93,10 @@ export {
 // who opens the app, including the many people who hold no investments at all.
 // Import them from './entries/trade' directly, from lazily loaded code only.
 
+// Deliberately not re-exported alongside the trade builders: see the note
+// above. Cross-currency work is reached from lazily loaded code only.
+export type { TransferCrossCurrencyParams } from './entries/transferCrossCurrency';
+
 export type { DepreciationTerms, ValuationParams } from './entries/valuation';
 export { depreciatedValue, describeDepreciation, valuation } from './entries/valuation';
 
@@ -110,6 +114,7 @@ export { entryFromStatementLine, needsCardCreditChoice } from './entries/fromSta
 export type { BalanceFilter } from './balances';
 export {
   allRawBalances,
+  baseBalance,
   bookTotal,
   eachPosting,
   liquidCash,

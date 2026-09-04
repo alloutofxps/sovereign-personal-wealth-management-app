@@ -335,6 +335,9 @@ const SYS: SystemAccounts = {
   unrealizedLoss: accountId('eq-unrealized-loss'),
   realizedGain: accountId('eq-realized-gain'),
   realizedLoss: accountId('eq-realized-loss'),
+  fxRoundingVariance: accountId('eq-fx-rounding'),
+  fxConversionFee: accountId('eq-fx-fee'),
+  unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
   dividendIncome: accountId('inc-dividends'),
   investmentTaxWithheld: accountId('cat-tax'),
 };

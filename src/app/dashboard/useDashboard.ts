@@ -142,7 +142,7 @@ export function useDashboard(): LiveQueryResult<DashboardData> {
 
     const debts: DebtLine[] = liabilities
       .filter((row) => row.amount !== 0)
-      .map((row) => ({ id: row.id, name: row.name, amount: row.amount }));
+      .map((row) => ({ id: row.id, name: row.name, amount: row.baseAmount }));
 
     const cardCommitments: Commitment[] = debts.map((debt) => ({
       label: debt.name,

@@ -33,22 +33,25 @@ import { useAccounts, useBalances } from '@/app/ledger/useLedger';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
+import { useFx } from '@/app/fx/useFx';
 import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
 import { WriteOffSheet } from './WriteOffSheet';
 import { DebtTermsSheet } from './DebtTermsSheet';
 import { AccountDetailSheet } from './AccountDetailSheet';
+import { ConvertCurrencySheet } from './ConvertCurrencySheet';
 import { CreateAccountSheet } from './CreateAccountSheet';
 import { RecordValuationSheet } from './RecordValuationSheet';
 
-const ORDER: AccountGroup[] = ['cash', 'investments', 'property', 'debts'];
+const ORDER: AccountGroup[] = ['cash', 'foreign', 'investments', 'property', 'debts'];
 
 export function AccountsView() {
   const [, navigate] = useRoute();
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
   const dashboard = useDashboard();
+  const fx = useFx();
   const accounts = useAccounts();
   const balances = useBalances();
   const claims = useLiveQuery(useCallback(() => listOpenClaims(), []), CLAIM_TABLES);
@@ -60,6 +63,7 @@ export function AccountsView() {
   const [writingOff, setWritingOff] = useState<Claim | null>(null);
   const [editingTerms, setEditingTerms] = useState<DebtTermsRow | null>(null);
   const [adding, setAdding] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [viewing, setViewing] = useState<LedgerAccount | null>(null);
   const [revaluing, setRevaluing] = useState<LedgerAccount | null>(null);
   const [collapsed, setCollapsed] = useState<Set<AccountGroup>>(new Set());
@@ -69,6 +73,13 @@ export function AccountsView() {
 
   const amountFor = useCallback(
     (id: AccountId): Minor => balances.data?.get(id)?.presented ?? minor(0),
+    [balances.data],
+  );
+
+  // What an account is worth in the currency you report in. Summing `presented`
+  // across accounts would add dollars to euros.
+  const baseFor = useCallback(
+    (id: AccountId): Minor => balances.data?.get(id)?.presentedBase ?? minor(0),
     [balances.data],
   );
 
@@ -98,30 +109,30 @@ export function AccountsView() {
   const sections = useMemo(() => {
     const byGroup = new Map<AccountGroup, LedgerAccount[]>();
     for (const account of live) {
-      const group = groupOf(account);
+      const group = groupOf(account, fx.baseCurrency);
       byGroup.set(group, [...(byGroup.get(group) ?? []), account]);
     }
     return byGroup;
-  }, [live]);
+  }, [live, fx.baseCurrency]);
 
   // The three figures in the header come from the same balances as every row
   // below them, so the sum a person does by eye always comes out.
   const have = useMemo(
     () =>
       minor(
-        live.filter((a) => a.type === 'ASSET').reduce((sum, a) => sum + amountFor(a.id), 0) +
+        live.filter((a) => a.type === 'ASSET').reduce((sum, a) => sum + baseFor(a.id), 0) +
           // Money other people owe you is still yours, so it counts here even
           // though it is shown further down rather than as an account.
           fronted,
       ),
-    [live, amountFor, fronted],
+    [live, baseFor, fronted],
   );
   const owe = useMemo(
     () =>
       minor(
-        live.filter((a) => a.type === 'LIABILITY').reduce((sum, a) => sum + amountFor(a.id), 0),
+        live.filter((a) => a.type === 'LIABILITY').reduce((sum, a) => sum + baseFor(a.id), 0),
       ),
-    [live, amountFor],
+    [live, baseFor],
   );
   const worth = minor(have - owe);
 
@@ -146,9 +157,16 @@ export function AccountsView() {
             Everything you have, everything you owe, and everything that is put by.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
-          Add an account
-        </Button>
+        <span className="flex shrink-0 gap-2">
+          {fx.hasForeign && (
+            <Button variant="secondary" size="sm" onClick={() => setConverting(true)}>
+              Convert
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+            Add an account
+          </Button>
+        </span>
       </header>
 
       {/* --- the arithmetic, stated ---------------------------------------- */}
@@ -185,8 +203,9 @@ export function AccountsView() {
         const rows = sections.get(group) ?? [];
         if (rows.length === 0 && group !== 'cash') return null;
 
+        // Section totals mix currencies, so they are in the reporting one.
         const total = minor(
-          rows.reduce((sum, a) => sum + amountFor(a.id), 0),
+          rows.reduce((sum, a) => sum + baseFor(a.id), 0),
         );
         const isCollapsed = collapsed.has(group);
 
@@ -358,6 +377,7 @@ export function AccountsView() {
       </Section>
 
       <CreateAccountSheet open={adding} onClose={() => setAdding(false)} />
+      <ConvertCurrencySheet open={converting} onClose={() => setConverting(false)} />
 
       <AccountDetailSheet
         account={viewing}
@@ -424,8 +444,15 @@ function AccountRow({
   onPay: () => void;
 }) {
   const money = useMoney();
+  const fx = useFx();
   const owed = account.type === 'LIABILITY';
   const covered = owed && (amount === 0 || reserved >= amount);
+
+  // A foreign account reads in its own currency first, because that is what
+  // its statement says. What it is worth in yours goes underneath, quietly and
+  // marked as an estimate — the rate was typed on some particular day.
+  const foreign = fx.isForeign(account.currency);
+  const approx = foreign ? fx.approxInBase(amount, account.currency!) : null;
 
   return (
     <li className="flex flex-col gap-3 px-4 py-3.5">
@@ -437,11 +464,20 @@ function AccountRow({
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5">
-          <Money
-            value={amount}
-            size="lead"
-            tone={owed && amount > 0 ? 'neutral' : amount === 0 ? 'muted' : 'neutral'}
-          />
+          <span className="flex flex-col items-end">
+            {foreign ? (
+              <span className="tnum text-lead text-ink">
+                {fx.formatIn(amount, account.currency!)}
+              </span>
+            ) : (
+              <Money
+                value={amount}
+                size="lead"
+                tone={owed && amount > 0 ? 'neutral' : amount === 0 ? 'muted' : 'neutral'}
+              />
+            )}
+            {approx && <span className="tnum text-micro text-ink-3">{approx}</span>}
+          </span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="m9 6 6 6-6 6"

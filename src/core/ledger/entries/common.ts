@@ -11,7 +11,7 @@
  * always produce byte-identical output and the tests can be exhaustive.
  * ======================================================================== */
 
-import { ZERO, minor, type Minor } from '@/core/money';
+import { IDENTITY_RATE, ZERO, minor, type Minor } from '@/core/money';
 import {
   LedgerError,
   type AccountId,
@@ -29,8 +29,19 @@ import {
 export interface PostingSpec {
   book: Book;
   accountId: AccountId;
-  /** Signed. Positive is a debit, negative is a credit. */
+  /** Signed, in the account's own currency. Positive is a debit. */
   amount: Minor;
+  /**
+   * The same line in the household's reporting currency.
+   *
+   * Omitted for anything already in the base currency, which is almost
+   * everything — the builder then sets it equal to `amount` at a rate of one,
+   * so a single-currency entry is byte-for-byte what it was before any of this
+   * existed.
+   */
+  baseAmount?: Minor;
+  /** Quote-per-base rate at 1e6. Defaults to exactly one. */
+  fxRateScaled?: number;
   memo?: string;
   /** Overrides the entry-level clearance for this line only. */
   clearance?: Clearance;
@@ -107,6 +118,11 @@ export function buildEntry(
     book: spec.book,
     accountId: spec.accountId,
     amount: spec.amount,
+    // Equal to the native amount at a rate of one unless a builder says
+    // otherwise, so an entry in the base currency is exactly what it always
+    // was and nothing downstream can tell the difference.
+    baseAmount: spec.baseAmount ?? spec.amount,
+    fxRateScaled: spec.fxRateScaled ?? IDENTITY_RATE,
     clearance: spec.clearance ?? defaultClearance,
     // A line's own memo wins; the entry's note falls to the first line.
     memo: spec.memo ?? (index === 0 ? (base.memo ?? null) : null),
@@ -144,14 +160,69 @@ export function assertBalanced(
       );
     }
 
-    const total = lines.reduce((sum, p) => sum + p.amount, 0);
+    // Balance is asserted on the reporting currency, because that is the only
+    // figure every line of a cross-currency entry shares. €1,000 out and
+    // $1,080 in is a correct transfer whose native amounts sum to 80; the
+    // question "does this balance?" is only answerable once both sides are
+    // expressed the same way.
+    const total = lines.reduce((sum, p) => sum + p.baseAmount, 0);
     if (total !== 0) {
       throw new LedgerError(
         `${kind} entry ${id} does not balance in the ${book} book: ` +
           `the lines total ${total} instead of 0.`,
       );
     }
+
+    // When every line of a book is in one currency the native amounts have to
+    // balance as well — there is no conversion to explain a gap, so a gap is
+    // simply a bug. This keeps the guarantee the single-currency ledger had.
+    const oneCurrency = lines.every((p) => p.fxRateScaled === IDENTITY_RATE);
+    if (oneCurrency) {
+      const native = lines.reduce((sum, p) => sum + p.amount, 0);
+      if (native !== 0) {
+        throw new LedgerError(
+          `${kind} entry ${id} does not balance in the ${book} book: ` +
+            `the lines total ${native} instead of 0.`,
+        );
+      }
+    }
   }
+}
+
+/**
+ * The line that makes a converted entry balance to the penny.
+ *
+ * Converting each line at the same rate rounds each one on its own, so several
+ * lines can land a unit apart from each other. Somebody has to carry that
+ * unit, and the choice of who is the whole point: nudging it into the largest
+ * line hides it, and dropping it breaks the books. It goes to a named equity
+ * account instead, where it can be pointed at.
+ *
+ * The variance account is denominated in the base currency, so its native
+ * amount *is* the residual — the brief specified `amount = 0` there, which the
+ * `postings` table has refused since v1 (`CHECK (amount <> 0)`) and which would
+ * anyway describe a line for nothing at all.
+ */
+export function fxResidualSpec(
+  book: Book,
+  varianceAccountId: AccountId,
+  specs: readonly PostingSpec[],
+): PostingSpec[] {
+  const lines = specs.filter((s) => s.book === book);
+  if (lines.length === 0) return [];
+
+  const residual = -lines.reduce((sum, s) => sum + (s.baseAmount ?? s.amount), 0);
+  if (residual === 0) return [];
+
+  return [
+    {
+      book,
+      accountId: varianceAccountId,
+      amount: minor(residual),
+      baseAmount: minor(residual),
+      memo: 'The cent that converting could not place.',
+    },
+  ];
 }
 
 /**
@@ -172,6 +243,11 @@ export function reverseEntry(
     book: p.book,
     accountId: p.accountId,
     amount: minor(-p.amount),
+    // Both sides, or a reversal would undo what the statement says while
+    // leaving what you are worth exactly where it was. Invariant I10 checks
+    // for precisely that.
+    baseAmount: minor(-p.baseAmount),
+    fxRateScaled: p.fxRateScaled,
     clearance: p.clearance,
     memo: p.memo,
     sequence: index,

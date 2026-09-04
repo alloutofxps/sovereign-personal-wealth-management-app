@@ -65,6 +65,9 @@ const SYSTEM: SystemAccounts = {
   unrealizedLoss: A.loss,
   realizedGain: A.realizedGain,
   realizedLoss: A.realizedLoss,
+  fxRoundingVariance: accountId('eq-fx-rounding'),
+  fxConversionFee: accountId('eq-fx-fee'),
+  unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
   dividendIncome: A.dividends,
   investmentTaxWithheld: A.tax,
 };

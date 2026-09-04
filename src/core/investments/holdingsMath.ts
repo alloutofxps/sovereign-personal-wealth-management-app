@@ -61,6 +61,17 @@ export interface Holding {
   priceMinor: Minor;
   /** The day that price was recorded, or null while none has been. */
   pricedOn: string | null;
+  /**
+   * The exchange rate on the day the position was first acquired.
+   *
+   * Null when the security is in the reporting currency, or when no rate was
+   * on record that far back. Without it there is nothing to compare today's
+   * rate against, so the return simply is not split — better than splitting it
+   * against a rate that was assumed.
+   */
+  purchaseRateScaled?: number | null;
+  /** The day the earliest parcel was acquired. */
+  acquiredOn?: string | null;
 }
 
 export interface HoldingValue {

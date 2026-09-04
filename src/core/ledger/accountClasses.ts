@@ -30,7 +30,7 @@ import {
 } from './types';
 
 /** Which of the four sections of the balance sheet a class belongs in. */
-export type AccountGroup = 'cash' | 'investments' | 'property' | 'debts';
+export type AccountGroup = 'cash' | 'foreign' | 'investments' | 'property' | 'debts';
 
 export interface ClassProfile {
   type: LedgerAccountType;
@@ -157,6 +157,7 @@ export const CLASS_PROFILES: Record<AccountClass, ClassProfile> = {
 /** How each group is headed on the accounts screen. */
 export const GROUP_TITLES: Record<AccountGroup, string> = {
   cash: 'Money in hand',
+  foreign: 'Money in other currencies',
   investments: 'Investments and retirement',
   property: 'Property and things you own',
   debts: 'What you owe',
@@ -164,14 +165,32 @@ export const GROUP_TITLES: Record<AccountGroup, string> = {
 
 export const GROUP_HINTS: Record<AccountGroup, string> = {
   cash: 'Money you could spend today. This is what safe-to-spend is worked out from.',
+  foreign:
+    'Yours, and counted in what you are worth — but not money you can spend here until ' +
+    'you have converted it, so it is left out of safe-to-spend.',
   investments: 'Yours, but not money you would spend this week.',
   property: 'Things you own that are worth something. Tap one to say what it is worth now.',
   debts: 'Cards, loans and anything else that comes off what you are worth.',
 };
 
-/** Which section an account belongs under. */
-export function groupOf(account: LedgerAccount): AccountGroup {
-  if (account.accountClass) return CLASS_PROFILES[account.accountClass].group;
+/**
+ * Which section an account belongs under.
+ *
+ * Money in another currency gets its own, and that is not tidiness. A dollar
+ * account sitting under "Money in hand" would be adding to a total whose hint
+ * says it is what safe-to-spend is worked out from — and it is not, because it
+ * has to be converted first. Somebody reading that heading would be told they
+ * can spend money they cannot.
+ */
+export function groupOf(account: LedgerAccount, baseCurrency?: string): AccountGroup {
+  const foreign = Boolean(
+    account.currency && (baseCurrency ? account.currency !== baseCurrency : true),
+  );
+
+  if (account.accountClass) {
+    const group = CLASS_PROFILES[account.accountClass].group;
+    return foreign && group === 'cash' ? 'foreign' : group;
+  }
   // The three accounts that predate v10 carry no class. Read them from what
   // they already are rather than guessing: they are the originals, and the
   // originals are an everyday account, a savings account and a card.
@@ -193,6 +212,13 @@ export function isRevaluable(account: LedgerAccount): boolean {
 export interface AccountDraft {
   name: string;
   accountClass: AccountClass;
+  /**
+   * What it is denominated in. Omitted, or equal to the base currency, means
+   * ordinary money the household can spend.
+   */
+  currency?: string | null;
+  /** What the household reports in. Needed only to recognise a foreign one. */
+  baseCurrency?: string;
   /** Always positive: what it holds, or what is owed on it. */
   startingBalance: Minor;
   institution?: string | null;
@@ -252,7 +278,23 @@ export function planAccountCreation(
     throw new LedgerError('That is not a kind of account this app knows about.');
   }
 
-  const onBudget = draft.onBudget ?? profile.onBudget;
+  // An account in another currency is never part of the budget, however
+  // everyday it looks. Budgetable cash mirrors on-budget liquid assets exactly
+  // (I4), and an account whose worth moves whenever a rate moves cannot hold
+  // that mirror still. It is also simply true: dollars are not money you can
+  // spend on this week's euro shopping until you have converted them.
+  const foreign = Boolean(
+    draft.currency && draft.baseCurrency && draft.currency !== draft.baseCurrency,
+  );
+
+  if (foreign && draft.onBudget === true) {
+    throw new LedgerError(
+      `${name} is in ${draft.currency}, so it cannot be part of a budget kept in ` +
+        `${draft.baseCurrency}. It will still count towards what you are worth.`,
+    );
+  }
+
+  const onBudget = foreign ? false : (draft.onBudget ?? profile.onBudget);
   if (onBudget && !profile.liquid) {
     throw new LedgerError(
       `${name} is not money you could spend today, so it cannot be part of your budget. ` +
@@ -279,6 +321,7 @@ export function planAccountCreation(
     paymentEnvelopeId: isCard ? ids.paymentEnvelope : null,
     envelopeRole: null,
     accountClass: draft.accountClass,
+    currency: draft.currency ?? null,
     institution: draft.institution?.trim() || null,
     depreciationModel: draft.depreciationModel ?? null,
     depreciationRateBp: draft.depreciationRateBp ?? null,

@@ -72,6 +72,9 @@ const SYSTEM: SystemAccounts = {
   unrealizedLoss: accountId('eq-unrealized-loss'),
   realizedGain: accountId('eq-realized-gain'),
   realizedLoss: accountId('eq-realized-loss'),
+  fxRoundingVariance: accountId('eq-fx-rounding'),
+  fxConversionFee: accountId('eq-fx-fee'),
+  unrealizedFxGainLoss: accountId('eq-fx-unrealized'),
   dividendIncome: accountId('inc-dividends'),
   investmentTaxWithheld: accountId('cat-tax'),
 };
@@ -337,7 +340,10 @@ describe('each invariant rejects a violation', () => {
 
   it('I1 catches an entry that does not add up', () => {
     const broken = forge((e) => {
+      // Both currencies: I1 is asserted on what the household reports in, so
+      // a forgery that moved only the native side would not be a forgery.
       e.postings[0]!.amount = m(999);
+      e.postings[0]!.baseAmount = m(999);
       return e;
     });
     expect(checkInvariant('I1', broken)[0]?.code).toBe('I1');
@@ -347,7 +353,9 @@ describe('each invariant rejects a violation', () => {
   it('I2 catches a fractional amount', () => {
     const broken = forge((e) => {
       e.postings[0]!.amount = 12_000.5 as Minor;
+      e.postings[0]!.baseAmount = 12_000.5 as Minor;
       e.postings[1]!.amount = -12_000.5 as Minor;
+      e.postings[1]!.baseAmount = -12_000.5 as Minor;
       return e;
     });
     expect(checkInvariant('I2', broken).map((v) => v.code)).toContain('I2');
@@ -377,11 +385,11 @@ describe('each invariant rejects a violation', () => {
     // Forge extra budgetable cash that no real account backs.
     const forged = structuredClone(entries[0]!);
     forged.postings = forged.postings.map((p) =>
-      p.accountId === A.cash ? { ...p, amount: m(999) } : p,
+      p.accountId === A.cash ? { ...p, amount: m(999), baseAmount: m(999) } : p,
     );
     // Rebalance the budget book so only I4 fires, not I1.
     forged.postings = forged.postings.map((p) =>
-      p.accountId === A.rta ? { ...p, amount: m(-999) } : p,
+      p.accountId === A.rta ? { ...p, amount: m(-999), baseAmount: m(-999) } : p,
     );
     expect(checkInvariant('I4', snapshot([forged]))[0]?.message).toMatch(/does not match/);
   });

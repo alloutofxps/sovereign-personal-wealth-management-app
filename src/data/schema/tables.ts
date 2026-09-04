@@ -44,6 +44,8 @@ export const accounts = sqliteTable('accounts', {
   depreciationModel: text('depreciation_model'),
   depreciationRateBp: integer('depreciation_rate_bp'),
   salvageValue: integer('salvage_value'),
+  /** v14. Null means the household's base currency. */
+  currency: text('currency'),
 });
 
 /**
@@ -132,6 +134,17 @@ export const securityPrices = sqliteTable('security_prices', {
   createdAt: text('created_at').notNull(),
 });
 
+/** Historical exchange rates. One euro buys `rateScaled`/1e6 of the quote. */
+export const fxRates = sqliteTable('fx_rates', {
+  id: text('id').primaryKey(),
+  baseCurrency: text('base_currency').notNull(),
+  quoteCurrency: text('quote_currency').notNull(),
+  rateScaled: integer('rate_scaled').notNull(),
+  date: text('date').notNull(),
+  source: text('source').notNull().default('manual'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const valuations = sqliteTable('valuations', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull(),
@@ -172,6 +185,8 @@ export const entries = sqliteTable(
     createdAt: text('created_at').notNull(),
     /** Set on the entries that open and settle money you fronted. */
     claimId: text('claim_id'),
+    /** v14. Which rate a cross-currency entry was struck at, in words. */
+    fxNote: text('fx_note'),
   },
   (t) => [index('entries_date_idx').on(t.date)],
 );
@@ -188,6 +203,10 @@ export const postings = sqliteTable(
     clearance: text('clearance').notNull(),
     memo: text('memo'),
     sequence: integer('sequence').notNull(),
+    /** v14. What this line is worth in the currency you report in. */
+    baseAmount: integer('base_amount').notNull().default(0),
+    /** v14. Quote-per-base rate at 1e6. Exactly 1_000_000 when already base. */
+    fxRateScaled: integer('fx_rate_scaled').notNull().default(1_000_000),
   },
   (t) => [
     index('postings_account_idx').on(t.accountId),
@@ -272,5 +291,6 @@ export const TABLES = [
   'tax_lots',
   'investment_trades',
   'target_allocations',
+  'fx_rates',
 ] as const;
 export type TableName = (typeof TABLES)[number];

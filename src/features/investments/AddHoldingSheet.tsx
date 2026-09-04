@@ -21,6 +21,7 @@ import {
 } from '@/core/investments';
 import { addHolding } from '@/data/repositories/investmentsRepo';
 import { useMoney } from '@/app/money/useMoney';
+import { useFx } from '@/app/fx/useFx';
 import { toast } from '@/app/toast';
 import { BottomSheet, Button, Input, Select } from '@/design/ui';
 
@@ -34,6 +35,7 @@ export function AddHoldingSheet({
   accounts: readonly LedgerAccount[];
 }) {
   const money = useMoney();
+  const fx = useFx();
 
   const [accountId, setAccountId] = useState('');
   const [symbol, setSymbol] = useState('');
@@ -84,6 +86,10 @@ export function AddHoldingSheet({
         name,
         assetClass,
         expenseRatioBp: basisPoints(feeBp),
+        // A holding in a foreign account is priced in that account's currency
+        // — which is what the statement quotes, and the only figure a person
+        // could type without doing the conversion in their head first.
+        ...(account?.currency ? { currency: account.currency } : {}),
         quantity1e8: parseQuantity(shares),
         costBasis: minor(cost),
         priceMinor: minor(price),
@@ -170,6 +176,9 @@ export function AddHoldingSheet({
             onChange={(e) => setPriceText(e.target.value)}
             placeholder="118.50"
             inputMode="decimal"
+            {...(account?.currency && fx.isForeign(account.currency)
+              ? { hint: `In ${account.currency}, as your statement quotes it.` }
+              : {})}
           />
           <Input
             label="What it all cost"

@@ -18,6 +18,19 @@ export type Minor = number & { readonly [minorBrand]: 'Minor' };
 /** JS integers are exact to 2^53−1 — about 90 trillion major units. */
 export const MINOR_MAX = Number.MAX_SAFE_INTEGER;
 
+/**
+ * Exchange rates are integers at this scale: 1.085215 → 1_085_215.
+ *
+ * Here rather than beside the conversion arithmetic because entry construction
+ * needs the constant and nothing else — and importing it from `fx.ts` dragged
+ * the whole BigInt conversion module onto the first paint for the sake of one
+ * number.
+ */
+export const RATE_SCALE = 1_000_000;
+
+/** A currency against itself. Always exactly one. */
+export const IDENTITY_RATE = RATE_SCALE;
+
 export class MoneyError extends Error {
   override name = 'MoneyError';
 }

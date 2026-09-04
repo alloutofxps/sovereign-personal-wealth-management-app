@@ -17,6 +17,9 @@ import {
   investmentDividend,
   investmentWithdraw,
 } from '@/core/ledger/entries/trade';
+import { transferCrossCurrency } from '@/core/ledger/entries/transferCrossCurrency';
+import { getRateAsOf } from '@/data/repositories/fxRepo';
+import { useAppConfig } from '@/app/config/store';
 import { toIsoDate } from '@/core/liquidity';
 import { accountsById, saveEntry } from '@/data/repositories/ledgerRepo';
 import { SYSTEM_ACCOUNTS } from '@/data/seed';
@@ -118,6 +121,60 @@ export async function recordDividend(input: RecordDividendInput): Promise<void> 
       ...(input.taxWithheld ? { taxWithheld: input.taxWithheld } : {}),
       cashAccount,
       ...(input.payer ? { payer: input.payer } : {}),
+      system: SYSTEM_ACCOUNTS,
+    }),
+  );
+}
+
+/* ===========================================================================
+ * MOVING MONEY BETWEEN CURRENCIES
+ * ======================================================================== */
+
+export interface RecordCrossCurrencyTransferInput {
+  fromAccountId: AccountId;
+  toAccountId: AccountId;
+  /** What left, in the sending account's own currency. */
+  fromAmount: Minor;
+  /** What arrived, in the receiving account's own currency. */
+  toAmount: Minor;
+  fromEnvelopeId?: AccountId;
+  date?: IsoDate;
+}
+
+/**
+ * A transfer between two accounts in different currencies.
+ *
+ * The rates are looked up as of the transfer's date rather than taken from the
+ * caller: a rate is only true on a day, and letting a screen pass one in is how
+ * a figure from today ends up attached to last January's transfer.
+ */
+export async function recordCrossCurrencyTransfer(
+  input: RecordCrossCurrencyTransferInput,
+): Promise<void> {
+  const accounts = await accountsById();
+  const fromAccount = accounts.get(input.fromAccountId);
+  const toAccount = accounts.get(input.toAccountId);
+
+  if (!fromAccount || !toAccount) {
+    throw new Error('One of those accounts could not be found, so nothing has been recorded.');
+  }
+
+  const entry = newEntry(input.date);
+  const baseCurrency = useAppConfig.getState().currencyCode;
+
+  const from = await getRateAsOf(fromAccount.currency ?? baseCurrency, entry.date, baseCurrency);
+  const to = await getRateAsOf(toAccount.currency ?? baseCurrency, entry.date, baseCurrency);
+
+  await saveEntry(
+    transferCrossCurrency({
+      ...entry,
+      fromAccount,
+      toAccount,
+      fromAmount: input.fromAmount,
+      toAmount: input.toAmount,
+      fromRateScaled: from.rate,
+      toRateScaled: to.rate,
+      ...(input.fromEnvelopeId ? { fromEnvelopeId: input.fromEnvelopeId } : {}),
       system: SYSTEM_ACCOUNTS,
     }),
   );

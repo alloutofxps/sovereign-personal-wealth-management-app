@@ -17,10 +17,12 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor } from '@/core/money';
 import { CLASS_PROFILES, type AccountClass } from '@/core/ledger';
+import { COMMON_CURRENCIES } from '@/core/money';
+import { useAppConfig } from '@/app/config/store';
 import { createAccount } from '@/data/repositories/accountsRepo';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Input } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Input, Select } from '@/design/ui';
 
 /**
  * The five choices, in the order somebody would think of them.
@@ -82,11 +84,13 @@ const FAMILIES: {
 
 export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const money = useMoney();
+  const baseCurrency = useAppConfig((s) => s.currencyCode);
   const [chosen, setChosen] = useState<AccountClass | null>(null);
   const [name, setName] = useState('');
   const [institution, setInstitution] = useState('');
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [offBudget, setOffBudget] = useState(false);
+  const [currency, setCurrency] = useState('');
   const [busy, setBusy] = useState(false);
 
   function reset() {
@@ -95,6 +99,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
     setInstitution('');
     setAmount(minor(0));
     setOffBudget(false);
+    setCurrency('');
   }
 
   function close() {
@@ -104,6 +109,9 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
 
   const profile = chosen ? CLASS_PROFILES[chosen] : null;
   const owed = profile?.type === 'LIABILITY';
+  // An account in another currency is never part of the budget, so the
+  // override below stops being offered the moment one is chosen.
+  const foreign = currency !== '' && currency !== baseCurrency;
 
   async function save() {
     if (!chosen || !name.trim()) return;
@@ -114,7 +122,8 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
         accountClass: chosen,
         startingBalance: amount,
         ...(institution.trim() ? { institution } : {}),
-        ...(profile?.onBudget && offBudget ? { onBudget: false } : {}),
+        ...(foreign ? { currency, baseCurrency } : {}),
+        ...(profile?.onBudget && offBudget && !foreign ? { onBudget: false } : {}),
       });
 
       toast(
@@ -202,6 +211,26 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             autoFocus
           />
 
+          <Select
+            label="Currency"
+            value={currency || baseCurrency}
+            onChange={(e) => setCurrency(e.target.value === baseCurrency ? '' : e.target.value)}
+            options={[
+              { value: baseCurrency, label: `${baseCurrency} — what you report in` },
+              ...COMMON_CURRENCIES.filter((c) => c !== baseCurrency).map((c) => ({
+                value: c,
+                label: c,
+              })),
+            ]}
+            {...(foreign
+              ? {
+                  hint:
+                    `Shown in ${currency} first, with an estimate in ${baseCurrency} ` +
+                    `underneath. Add a rate in Settings and the estimate appears.`,
+                }
+              : {})}
+          />
+
           <Input
             label="Who holds it (optional)"
             value={institution}
@@ -230,15 +259,20 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             )}
           >
             <p className="text-caption text-ink-2">
-              {offBudget
+              {foreign
+                ? `Money in ${currency} is yours and counts towards what you are worth, but it ` +
+                  `is not money you can spend on a ${baseCurrency} shop without converting it ` +
+                  `first — so it stays out of your budget.`
+                : offBudget
                 ? 'This will be kept out of your budget. It still counts towards what you ' +
                   'are worth, but nothing here will be treated as money you can spend.'
                 : profile.explains}
             </p>
           </div>
 
-          {/* The one override worth offering, and only in the safe direction. */}
-          {profile.onBudget && (
+          {/* The one override worth offering, and only in the safe direction.
+              Not offered on a foreign account: those are never budgeted. */}
+          {profile.onBudget && !foreign && (
             <label className="flex items-start gap-3 rounded-md border border-line px-3.5 py-3">
               <input
                 type="checkbox"

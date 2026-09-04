@@ -11,6 +11,7 @@ import { toast } from '@/app/toast';
 import { Button, Card } from '@/design/ui';
 import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { DataAndSecurity } from './DataAndSecurity';
+import { FxRatesSheet } from './FxRatesSheet';
 
 export function SettingsView() {
   const [, navigate] = useRoute();
@@ -19,6 +20,7 @@ export function SettingsView() {
   const setCurrency = useAppConfig((s) => s.setCurrency);
   const storage = getStorageStatus();
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [editingRates, setEditingRates] = useState(false);
   const [working, setWorking] = useState(false);
 
   async function startAgain() {
@@ -72,6 +74,23 @@ export function SettingsView() {
       <ProtectStorage context="settings" />
 
       <DataAndSecurity />
+
+      <Card label="Exchange rates and currencies">
+        <div className="flex flex-col gap-3">
+          <p className="text-caption text-ink-2">
+            Everything is reported in {currencyCode}. Anything you hold in another currency is
+            shown in its own currency first, with an estimate in {currencyCode} underneath —
+            worked out from rates you give it, because nothing here goes online.
+          </p>
+          <div>
+            <Button variant="secondary" size="sm" onClick={() => setEditingRates(true)}>
+              Exchange rates
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <FxRatesSheet open={editingRates} onClose={() => setEditingRates(false)} />
 
       <Card label="Where your data lives">
         <p className="text-caption text-ink-2">

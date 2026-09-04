@@ -205,6 +205,8 @@ export async function searchEntries(
       book: row.book as Book,
       accountId: row.accountId as AccountId,
       amount: minor(row.amount),
+      baseAmount: minor(row.baseAmount),
+      fxRateScaled: row.fxRateScaled,
       clearance: row.clearance as Clearance,
       memo: row.memo,
       sequence: row.sequence,

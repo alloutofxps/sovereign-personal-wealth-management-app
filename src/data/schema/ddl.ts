@@ -67,6 +67,8 @@ export const DDL: readonly string[] = [
      -- three accounts that predate the idea; see migrations/v10.ts.
      class               TEXT,
      institution         TEXT,
+     -- v14. Null means the household's base currency.
+     currency            TEXT,
      -- How a car or a laptop loses value on its own, with no transaction.
      depreciation_model  TEXT,
      depreciation_rate_bp INTEGER,
@@ -83,7 +85,9 @@ export const DDL: readonly string[] = [
      sealed                INTEGER NOT NULL DEFAULT 0 CHECK (sealed IN (0,1)),
      created_at            TEXT NOT NULL,
      -- Set on the two entries that open and settle money you fronted.
-     claim_id              TEXT
+     claim_id              TEXT,
+     -- v14. Which rate a cross-currency entry was struck at, in words.
+     fx_note               TEXT
    );`,
 
   `CREATE TABLE IF NOT EXISTS postings (
@@ -95,7 +99,12 @@ export const DDL: readonly string[] = [
      amount     INTEGER NOT NULL CHECK (amount <> 0),
      clearance  TEXT NOT NULL CHECK (clearance IN ('pending','cleared')),
      memo       TEXT,
-     sequence   INTEGER NOT NULL
+     sequence   INTEGER NOT NULL,
+     -- v14. What the line is worth in the currency you report in, and the rate
+     -- it was struck at. Equal to amount, and exactly 1.000000, for anything
+     -- already in the base currency, which is most of it.
+     base_amount    INTEGER NOT NULL DEFAULT 0,
+     fx_rate_scaled INTEGER NOT NULL DEFAULT 1000000
    );`,
 
   // Patterns that file a statement row without being asked twice.
@@ -212,6 +221,21 @@ export const DDL: readonly string[] = [
 
   // v12. Share parcels, what was traded, and what the portfolio is meant to
   // look like.
+  // v14. Historical exchange rates, quote-per-base.
+  `CREATE TABLE IF NOT EXISTS fx_rates (
+     id             TEXT PRIMARY KEY,
+     base_currency  TEXT NOT NULL,
+     quote_currency TEXT NOT NULL,
+     rate_scaled    INTEGER NOT NULL,
+     date           TEXT NOT NULL,
+     source         TEXT NOT NULL DEFAULT 'manual',
+     created_at     TEXT NOT NULL
+   );`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_rates_pair_date ON fx_rates(base_currency, quote_currency, date);`,
+  `CREATE INDEX IF NOT EXISTS idx_fx_rates_lookup ON fx_rates(quote_currency, date DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_postings_base_book ON postings(book, base_amount);`,
+
   `CREATE TABLE IF NOT EXISTS tax_lots (
      id                     TEXT PRIMARY KEY,
      account_id             TEXT NOT NULL REFERENCES accounts(id),

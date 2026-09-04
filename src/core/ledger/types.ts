@@ -161,6 +161,15 @@ export interface LedgerAccount {
    * orphaning every posting that points at it and changing what past months
    * add up to, so retiring means hiding it from what comes next.
    */
+  /**
+   * What this account is denominated in. Null means the base currency.
+   *
+   * Null rather than the base code, so an account created before there were
+   * other currencies is unambiguously "whatever you report in" rather than
+   * frozen to whichever currency that was at the time.
+   */
+  currency?: string | null;
+
   archivedAt?: string | null;
   colorToken?: string | null;
   icon?: string | null;
@@ -252,6 +261,27 @@ export interface SystemAccounts {
   realizedGain: AccountId;
   /** FINANCIAL: a loss taken by selling. Equity, never an expense. */
   realizedLoss: AccountId;
+  /**
+   * FINANCIAL: where the cent that conversion cannot place goes.
+   *
+   * Converting several lines of one entry at the same rate can leave the base
+   * amounts a unit short of balancing, because each line rounds on its own.
+   * That unit has to be put somewhere nameable rather than nudged into
+   * whichever line happens to be last — invariant I2 exists to say so. Over a
+   * lifetime this account holds a few cents, and being able to point at them
+   * is the entire difference between a ledger and a spreadsheet.
+   */
+  fxRoundingVariance: AccountId;
+  /**
+   * FINANCIAL: what a bank's spread cost on a conversion.
+   *
+   * Equity rather than an expense: the money is genuinely gone, but nobody
+   * chose to spend it, and it must not appear in a burn-rate curve any more
+   * than withholding tax does.
+   */
+  fxConversionFee: AccountId;
+  /** FINANCIAL: what a currency's movement did to a foreign balance. Equity. */
+  unrealizedFxGainLoss: AccountId;
 }
 
 /* --- the journal --------------------------------------------------------- */
@@ -290,7 +320,9 @@ export type EntryKind =
   /** Shares sold, or uninvested cash withdrawn. Also covered by I6. */
   | 'INVESTMENT_SELL'
   /** Money paid out by something you hold. Real income, unlike a valuation. */
-  | 'DIVIDEND';
+  | 'DIVIDEND'
+  /** A foreign balance restated at today's rate. Nothing moved; the rate did. */
+  | 'FX_REVALUATION';
 
 /**
  * Whether the bank has settled this line yet.
@@ -307,8 +339,24 @@ export interface Posting {
   entryId: EntryId;
   book: Book;
   accountId: AccountId;
-  /** Signed minor units. Positive is a debit, negative is a credit. */
+  /**
+   * Signed minor units in the account's own currency. Positive is a debit.
+   *
+   * This is what the statement says, and it stays exact: a dollar account's
+   * lines are dollars, to the cent, whatever the euro was doing that day.
+   */
   amount: Minor;
+  /**
+   * The same line in the household's reporting currency.
+   *
+   * This is the figure every balance and every invariant is asserted on,
+   * because it is the only one all the lines of a cross-currency entry share.
+   * Equal to `amount` — exactly, not approximately — whenever the account is
+   * already in the base currency, which is most of the time.
+   */
+  baseAmount: Minor;
+  /** Quote-per-base rate at 1e6 this line was converted at. 1_000_000 if base. */
+  fxRateScaled: number;
   clearance: Clearance;
   memo: string | null;
   /** Stable ordering for the audit view. */
@@ -390,4 +438,14 @@ export interface LedgerSnapshot {
   accounts: ReadonlyMap<AccountId, LedgerAccount>;
   entries: readonly JournalEntry[];
   claims?: readonly ReimbursementClaim[];
+  /**
+   * What the household reports in.
+   *
+   * Optional, and only needed to check conversions between currencies whose
+   * minor units are different sizes — a yen has none and a dinar has three, so
+   * the same integer means a hundredfold different amount of money. Absent, the
+   * checks assume both sides have two decimal places, which is true of every
+   * pair this app can currently produce.
+   */
+  baseCurrency?: string;
 }

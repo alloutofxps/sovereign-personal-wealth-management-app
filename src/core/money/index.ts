@@ -3,7 +3,9 @@
 
 export type { Minor } from './minor';
 export {
+  IDENTITY_RATE,
   MINOR_MAX,
+  RATE_SCALE,
   MoneyError,
   ZERO,
   abs,
@@ -67,3 +69,18 @@ export {
   formatRate,
   monthlyInterest,
 } from './rate';
+
+// The conversion routines are deliberately NOT re-exported here. This barrel
+// is pulled in on the first paint by anything that formats money at all, and a
+// re-export is edge enough to drag the whole BigInt conversion module along
+// with it — in front of everybody, including the many people who only ever
+// hold one currency. Every consumer of it is lazily loaded, so they import
+// from './fx' directly.
+export type { ConversionDirection, Rate1e6 } from './fx';
+
+// Splitting a return into what the asset did and what the currency did is
+// deliberately NOT re-exported here. This barrel is pulled in on the first
+// paint — invariant I2 converts every line — and a re-export is edge enough to
+// drag the decomposition, and every sentence explaining it, along with it.
+// Import from './fxReturns' directly, from lazily loaded code only.
+export type { ReturnDecomposition } from './fxReturns';

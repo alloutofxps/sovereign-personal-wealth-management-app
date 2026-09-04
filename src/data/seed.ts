@@ -36,6 +36,11 @@ export const ACCOUNT_IDS = {
   // Gains and losses actually taken, by selling. Equity, never income.
   realizedGain: accountId('acc-realized-gain'),
   realizedLoss: accountId('acc-realized-loss'),
+  // Multi-currency. All equity: money that moved, or failed to place, without
+  // anybody choosing to spend it.
+  fxRoundingVariance: accountId('acc-fx-rounding'),
+  fxConversionFee: accountId('acc-fx-fee'),
+  unrealizedFxGainLoss: accountId('acc-fx-unrealized'),
   // Money paid out by things you hold, and the tax taken before it arrives.
   dividendIncome: accountId('inc-dividends'),
   // Kept its original id so every posting ever made to it comes along; see
@@ -78,6 +83,9 @@ export const SYSTEM_ACCOUNTS: SystemAccounts = {
   unrealizedLoss: ACCOUNT_IDS.unrealizedLoss,
   realizedGain: ACCOUNT_IDS.realizedGain,
   realizedLoss: ACCOUNT_IDS.realizedLoss,
+  fxRoundingVariance: ACCOUNT_IDS.fxRoundingVariance,
+  fxConversionFee: ACCOUNT_IDS.fxConversionFee,
+  unrealizedFxGainLoss: ACCOUNT_IDS.unrealizedFxGainLoss,
   dividendIncome: ACCOUNT_IDS.dividendIncome,
   investmentTaxWithheld: ACCOUNT_IDS.investmentTaxWithheld,
 };
@@ -170,6 +178,9 @@ export function starterChart(): LedgerAccount[] {
     make(ACCOUNT_IDS.unrealizedLoss, 'EQUITY', 'Falls in what things are worth'),
     make(ACCOUNT_IDS.realizedGain, 'EQUITY', 'Gains you have taken'),
     make(ACCOUNT_IDS.realizedLoss, 'EQUITY', 'Losses you have taken'),
+    make(ACCOUNT_IDS.fxRoundingVariance, 'EQUITY', 'Rounding on currency conversions'),
+    make(ACCOUNT_IDS.fxConversionFee, 'EQUITY', 'What converting currency cost'),
+    make(ACCOUNT_IDS.unrealizedFxGainLoss, 'EQUITY', 'Currency movements on what you hold'),
 
     // --- money coming in ---
     make(ACCOUNT_IDS.salary, 'INCOME', 'Pay'),

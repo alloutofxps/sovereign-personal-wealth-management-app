@@ -52,6 +52,7 @@ function toAccount(row: AccountRow): LedgerAccount {
     // v10. Null on the three accounts that predate it, which is read as "one
     // of the originals" rather than guessed at from the type.
     accountClass: (row.class as LedgerAccount['accountClass']) ?? null,
+    currency: row.currency ?? null,
     institution: row.institution ?? null,
     depreciationModel: (row.depreciationModel as LedgerAccount['depreciationModel']) ?? null,
     depreciationRateBp: row.depreciationRateBp ?? null,
@@ -163,6 +164,8 @@ export async function saveEntry(
         clearance: posting.clearance,
         memo: posting.memo,
         sequence: posting.sequence,
+        baseAmount: posting.baseAmount,
+        fxRateScaled: posting.fxRateScaled,
       })
       .toSQL(),
   );
@@ -207,6 +210,8 @@ export async function listRecentEntries(limit = 50): Promise<EntryWithPostings[]
       book: row.book as Book,
       accountId: row.accountId as AccountId,
       amount: minor(row.amount),
+      baseAmount: minor(row.baseAmount),
+      fxRateScaled: row.fxRateScaled,
       clearance: row.clearance as Clearance,
       memo: row.memo,
       sequence: row.sequence,
@@ -246,6 +251,8 @@ export async function entryById(id: EntryId): Promise<EntryWithPostings | null> 
         book: p.book as Book,
         accountId: p.accountId as AccountId,
         amount: minor(p.amount),
+        baseAmount: minor(p.baseAmount),
+        fxRateScaled: p.fxRateScaled,
         clearance: p.clearance as Clearance,
         memo: p.memo,
         sequence: p.sequence,
@@ -285,10 +292,18 @@ export async function countEntries(): Promise<number> {
 
 export interface AccountBalance {
   accountId: AccountId;
-  /** Raw signed total: debits positive, credits negative. */
+  /** Raw signed total in the account's own currency. */
   raw: Minor;
   /** As a person reads it — a card with money owed shows a positive number. */
   presented: Minor;
+  /**
+   * The same, in the currency the household reports in.
+   *
+   * Identical to `presented` for anything already in the base currency. Sum
+   * this across accounts, never `presented` — adding dollars to euros produces
+   * a number that looks like money and is not.
+   */
+  presentedBase: Minor;
 }
 
 export async function accountBalances(): Promise<Map<AccountId, AccountBalance>> {
@@ -296,6 +311,7 @@ export async function accountBalances(): Promise<Map<AccountId, AccountBalance>>
     .select({
       accountId: postings.accountId,
       total: sql<number>`sum(${postings.amount})`,
+      base: sql<number>`sum(${postings.baseAmount})`,
       normal: accounts.normal,
     })
     .from(postings)
@@ -305,12 +321,15 @@ export async function accountBalances(): Promise<Map<AccountId, AccountBalance>>
   return new Map(
     rows.map((row) => {
       const raw = minor(Number(row.total));
+      const base = minor(Number(row.base));
+      const flip = row.normal === 'CREDIT';
       return [
         row.accountId as AccountId,
         {
           accountId: row.accountId as AccountId,
           raw,
-          presented: minor(row.normal === 'CREDIT' ? -raw : raw),
+          presented: minor(flip ? -raw : raw),
+          presentedBase: minor(flip ? -base : base),
         },
       ];
     }),
@@ -320,7 +339,7 @@ export async function accountBalances(): Promise<Map<AccountId, AccountBalance>>
 /** Cash you could actually spend today, across on-budget liquid accounts. */
 export async function spendableCash(): Promise<Minor> {
   const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .select({ total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)` })
     .from(postings)
     .innerJoin(accounts, eq(accounts.id, postings.accountId))
     .where(sql`${accounts.type} = 'ASSET' AND ${accounts.onBudget} = 1 AND ${accounts.liquid} = 1`);
@@ -330,7 +349,7 @@ export async function spendableCash(): Promise<Minor> {
 /** Total spending over a date range, net of refunds. */
 export async function spendingBetween(from: IsoDate, to: IsoDate): Promise<Minor> {
   const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .select({ total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)` })
     .from(postings)
     .innerJoin(accounts, eq(accounts.id, postings.accountId))
     .innerJoin(entries, eq(entries.id, postings.entryId))
@@ -346,7 +365,7 @@ export async function spendingBetween(from: IsoDate, to: IsoDate): Promise<Minor
  */
 export async function spendByDay(from: IsoDate, to: IsoDate): Promise<Map<string, Minor>> {
   const rows = await db
-    .select({ date: entries.date, total: sql<number>`sum(${postings.amount})` })
+    .select({ date: entries.date, total: sql<number>`sum(${postings.baseAmount})` })
     .from(postings)
     .innerJoin(accounts, eq(accounts.id, postings.accountId))
     .innerJoin(entries, eq(entries.id, postings.entryId))
@@ -359,7 +378,9 @@ export async function spendByDay(from: IsoDate, to: IsoDate): Promise<Map<string
 /** Presented balances for every account of a given type. */
 export async function balancesByType(
   type: 'LIABILITY' | 'ENVELOPE' | 'ASSET',
-): Promise<{ id: AccountId; name: string; amount: Minor; role: string | null }[]> {
+): Promise<
+  { id: AccountId; name: string; amount: Minor; baseAmount: Minor; role: string | null }[]
+> {
   const rows = await db
     .select({
       id: accounts.id,
@@ -367,6 +388,7 @@ export async function balancesByType(
       role: accounts.envelopeRole,
       normal: accounts.normal,
       total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+      base: sql<number>`coalesce(sum(${postings.baseAmount}), 0)`,
     })
     .from(accounts)
     .leftJoin(postings, eq(postings.accountId, accounts.id))
@@ -375,10 +397,14 @@ export async function balancesByType(
 
   return rows.map((row) => {
     const raw = Number(row.total);
+    const base = Number(row.base);
+    const flip = row.normal === 'CREDIT';
     return {
       id: row.id as AccountId,
       name: row.name,
-      amount: minor(row.normal === 'CREDIT' ? -raw : raw),
+      amount: minor(flip ? -raw : raw),
+      // Sum this across accounts, never `amount`.
+      baseAmount: minor(flip ? -base : base),
       role: row.role,
     };
   });
@@ -393,7 +419,7 @@ export async function balancesByType(
  */
 export async function netWorthAsOf(date: IsoDate): Promise<Minor> {
   const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .select({ total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)` })
     .from(postings)
     .innerJoin(accounts, eq(accounts.id, postings.accountId))
     .innerJoin(entries, eq(entries.id, postings.entryId))
@@ -410,7 +436,7 @@ export async function netWorthAsOf(date: IsoDate): Promise<Minor> {
 /** Everything you own, including money other people owe you. */
 export async function totalAssets(): Promise<Minor> {
   const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${postings.amount}), 0)` })
+    .select({ total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)` })
     .from(postings)
     .innerJoin(accounts, eq(accounts.id, postings.accountId))
     .where(eq(accounts.type, 'ASSET'));
@@ -444,7 +470,7 @@ export async function monthlySpendByCategory(
     .select({
       id: accounts.id,
       name: accounts.name,
-      total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+      total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)`,
     })
     .from(accounts)
     .leftJoin(postings, eq(postings.accountId, accounts.id))
@@ -492,7 +518,7 @@ export async function debtTerms(): Promise<DebtTermsRow[]> {
       minPayment: accounts.minPayment,
       creditLimit: accounts.creditLimit,
       dueDay: accounts.dueDay,
-      total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
+      total: sql<number>`coalesce(sum(${postings.baseAmount}), 0)`,
     })
     .from(accounts)
     .leftJoin(postings, eq(postings.accountId, accounts.id))

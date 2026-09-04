@@ -113,7 +113,20 @@ export async function listPortfolio(accountId?: AccountId): Promise<Holding[]> {
              ORDER BY p.date DESC, p.created_at DESC LIMIT 1),
            (SELECT p.date FROM security_prices p
              WHERE p.security_id = s.id
-             ORDER BY p.date DESC, p.created_at DESC LIMIT 1)
+             ORDER BY p.date DESC, p.created_at DESC LIMIT 1),
+           s.currency,
+           -- The day the earliest parcel arrived, and what the currency was
+           -- worth then. Both derived rather than stored: the lots already
+           -- know when they were bought, and the rate table already knows what
+           -- a currency was worth on a day, so a third copy could only drift.
+           (SELECT MIN(l.acquired_date) FROM tax_lots l
+             WHERE l.holding_id = h.id),
+           (SELECT f.rate_scaled FROM fx_rates f
+             WHERE f.quote_currency = s.currency
+               AND f.date <= COALESCE(
+                     (SELECT MIN(l.acquired_date) FROM tax_lots l WHERE l.holding_id = h.id),
+                     date('now'))
+             ORDER BY f.date DESC LIMIT 1)
       FROM holdings h
       JOIN securities s ON s.id = h.security_id
       JOIN accounts a   ON a.id = h.account_id
@@ -139,6 +152,9 @@ export async function listPortfolio(accountId?: AccountId): Promise<Holding[]> {
     // otherwise, which is more honest than assuming it is worth what it cost.
     priceMinor: minor(Number(row[11] ?? 0)),
     pricedOn: row[12] === null || row[12] === undefined ? null : String(row[12]),
+    acquiredOn: row[14] === null || row[14] === undefined ? null : String(row[14]),
+    purchaseRateScaled:
+      row[15] === null || row[15] === undefined ? null : Number(row[15]),
   }));
 }
 
@@ -287,8 +303,16 @@ export interface AddHoldingInput {
   quantity1e8: number;
   /** What the whole position cost, in minor units. */
   costBasis: Minor;
-  /** Minor units for one whole share, today. */
+  /** Minor units for one whole share, today, in the security's own currency. */
   priceMinor: Minor;
+  /**
+   * What the security is priced in. Defaults to the household's currency.
+   *
+   * A US fund quotes in dollars whatever account holds it, so this belongs to
+   * the security rather than to the holding — which is also why correcting it
+   * corrects every account that holds the same thing.
+   */
+  currency?: string;
   asOf?: IsoDate;
 }
 
@@ -338,6 +362,7 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
             name,
             assetClass: input.assetClass,
             expenseRatioBp: input.expenseRatioBp,
+            ...(input.currency ? { currency: input.currency } : {}),
             ...(input.isin?.trim() ? { isin: input.isin.trim() } : {}),
           })
           .where(sql`${securities.id} = ${securityId}`)
@@ -350,7 +375,7 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
             name,
             isin: input.isin?.trim() || null,
             assetClass: input.assetClass,
-            currency: 'EUR',
+            currency: input.currency ?? 'EUR',
             expenseRatioBp: input.expenseRatioBp,
             createdAt: now,
           })

@@ -18,6 +18,7 @@ import { V10 } from './migrations/v10';
 import { V11 } from './migrations/v11';
 import { V12 } from './migrations/v12';
 import { V13 } from './migrations/v13';
+import { V14 } from './migrations/v14';
 
 export type { SchemaCapabilities };
 
@@ -133,6 +134,7 @@ export const MIGRATIONS: readonly MigrationStep[] = [
   V11,
   V12,
   V13,
+  V14,
 ];
 
 export const LATEST_VERSION = MIGRATIONS.reduce((max, step) => Math.max(max, step.to), 1);

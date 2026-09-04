@@ -8,7 +8,7 @@
  * complete sentences a person would recognise — never as accounting terms.
  * ======================================================================== */
 
-import type { Minor } from '@/core/money';
+import { minor, type Minor } from '@/core/money';
 import {
   LedgerError,
   type AccountId,
@@ -46,12 +46,29 @@ export interface OpeningBalanceParams extends EntryBase {
    * £200,000 mortgage as £200,000 of wealth.
    */
   normal?: Normal;
+  /**
+   * The account's own currency, when it is not the one you report in.
+   *
+   * The figure typed is what the statement says — $5,000 — and the rate turns
+   * that into what it is worth. Booking a dollar balance one-for-one against
+   * euros would put a fifth of it on the balance sheet that is not there.
+   */
+  rateScaled?: number;
+  /** What the opening figure is worth in the reporting currency. */
+  baseAmount?: Minor;
   system: SystemAccounts;
 }
 
 export function openingBalance(p: OpeningBalanceParams): JournalEntry {
   const amount = requirePositiveAmount(p.amount, 'An opening balance');
   const owed = p.normal === 'CREDIT';
+
+  // The equity side is always in the reporting currency, so it carries the
+  // converted figure as its own amount. The account's side keeps what the
+  // statement says, and the two balance on what they are worth.
+  const inBase = p.baseAmount ?? amount;
+  const foreign = p.rateScaled !== undefined && p.rateScaled !== 1_000_000;
+  const rate = { fxRateScaled: p.rateScaled ?? 1_000_000 };
 
   if (owed && p.countsAsBudgetableCash) {
     throw new LedgerError(
@@ -66,11 +83,17 @@ export function openingBalance(p: OpeningBalanceParams): JournalEntry {
       ? `What was already owed on ${p.accountName}.`
       : `Starting balance for ${p.accountName}.`,
     owed
-      ? [credit(FIN, p.accountId, amount), debit(FIN, p.system.openingBalances, amount)]
+      ? [
+          { ...credit(FIN, p.accountId, amount), baseAmount: minor(-inBase), ...rate },
+          { ...debit(FIN, p.system.openingBalances, inBase), baseAmount: inBase },
+        ]
       : [
-          debit(FIN, p.accountId, amount),
-          credit(FIN, p.system.openingBalances, amount),
-          ...(p.countsAsBudgetableCash
+          { ...debit(FIN, p.accountId, amount), baseAmount: inBase, ...rate },
+          { ...credit(FIN, p.system.openingBalances, inBase), baseAmount: minor(-inBase) },
+          // A foreign account is never on budget, so this branch and the one
+          // above are mutually exclusive in practice — the guard is here so a
+          // caller cannot produce a budget leg in the wrong currency.
+          ...(p.countsAsBudgetableCash && !foreign
             ? [
                 debit(BUD, p.system.budgetableCash, amount),
                 credit(BUD, p.system.readyToAssign, amount),

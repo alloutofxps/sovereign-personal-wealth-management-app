@@ -80,6 +80,7 @@ function insertAccount(account: LedgerAccount, extra: Record<string, unknown> = 
       envelopeRole: account.envelopeRole,
       sortOrder: 100,
       class: account.accountClass ?? null,
+      currency: account.currency ?? null,
       institution: account.institution ?? null,
       depreciationModel: account.depreciationModel ?? null,
       depreciationRateBp: account.depreciationRateBp ?? null,
@@ -87,6 +88,40 @@ function insertAccount(account: LedgerAccount, extra: Record<string, unknown> = 
       ...extra,
     })
     .toSQL();
+}
+
+/**
+ * What a foreign opening figure is worth, at the rate on that day.
+ *
+ * Returns null when there is no rate on record — the account is still created,
+ * and its balance simply has no estimate in the reporting currency until
+ * somebody adds one. Refusing to create it would be worse: the account exists
+ * whether or not this app knows the rate.
+ */
+async function rateFor(
+  currency: string,
+  date: IsoDate,
+  baseCurrency: string,
+  amount: Minor,
+): Promise<{ rateScaled: number; inBase: Minor } | null> {
+  if (currency === baseCurrency) return null;
+
+  try {
+    const { getRateAsOf } = await import('./fxRepo');
+    const { toBaseCurrency } = await import('@/core/money/fx');
+    const { rate } = await getRateAsOf(currency, date, baseCurrency);
+    return {
+      rateScaled: rate,
+      inBase: toBaseCurrency({
+        amount,
+        rateScaled: rate,
+        quoteCurrency: currency as never,
+        baseCurrency: baseCurrency as never,
+      }),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -121,6 +156,15 @@ export async function createAccount(params: CreateAccountParams): Promise<Create
 
   if (plan.needsOpeningEntry) {
     const date = params.asOf ?? today();
+
+    // A foreign opening figure is what the statement says; what it is worth
+    // comes from the rate on that day. Without this a $5,000 account would
+    // open on the balance sheet as €5,000.
+    const foreign =
+      plan.account.currency && params.baseCurrency
+        ? await rateFor(plan.account.currency, date, params.baseCurrency, params.startingBalance)
+        : null;
+
     await saveEntry(
       openingBalance({
         id: toEntryId(newId('ent')),
@@ -130,6 +174,9 @@ export async function createAccount(params: CreateAccountParams): Promise<Create
         countsAsBudgetableCash: plan.account.onBudget && plan.account.liquid,
         accountName: plan.account.name,
         normal: plan.account.normal,
+        ...(foreign
+          ? { rateScaled: foreign.rateScaled, baseAmount: foreign.inBase }
+          : {}),
         system: SYSTEM_ACCOUNTS,
       }),
       // The first mark, for anything whose value can move. Without it there is

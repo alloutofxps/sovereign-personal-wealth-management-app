@@ -11,6 +11,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { basisPoints, minor, type Minor } from '@/core/money';
 import type { AccountId } from '@/core/ledger';
+import { rate1e6, type Rate1e6 } from '@/core/money/fx';
+// Deep import on purpose: see the note in the money barrel.
+import {
+  decomposeInvestmentReturn,
+  describeDecomposition,
+  formatReturnBp,
+} from '@/core/money/fxReturns';
 import {
   ASSET_CLASS_NAMES,
   formatExpenseRatio,
@@ -30,6 +37,7 @@ import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
+import { useFx } from '@/app/fx/useFx';
 import { toast } from '@/app/toast';
 import { BottomSheet, Button, Card, Input, Money } from '@/design/ui';
 
@@ -45,6 +53,7 @@ export function HoldingDetailSheet({
   onDividend: () => void;
 }) {
   const money = useMoney();
+  const fx = useFx();
   const locale = useAppConfig((s) => s.locale);
 
   const [priceText, setPriceText] = useState('');
@@ -69,6 +78,32 @@ export function HoldingDetailSheet({
   }
 
   const value = valueOf(holding);
+
+  // The split only means anything when there is a rate on both ends: what the
+  // currency was doing when it was bought, and what it is doing now. Without
+  // the first there is nothing to compare against, so nothing is shown rather
+  // than a figure resting on an assumed rate.
+  const currency = holding.security.currency;
+  const foreign = fx.isForeign(currency);
+  /** Amounts about this holding, in the currency it is actually quoted in. */
+  const show = (amount: Minor) =>
+    foreign ? fx.formatIn(amount, currency) : money.format(amount);
+  const approx = foreign ? fx.approxInBase(value.marketValue, currency) : null;
+  const currentRate = fx.rates.get(currency)?.rateScaled ?? null;
+  const purchaseRate = holding.purchaseRateScaled ?? null;
+
+  const split =
+    foreign && currentRate !== null && purchaseRate !== null && holding.costBasis > 0
+      ? decomposeInvestmentReturn({
+          // Per-share cost against the current price, so the split is about
+          // the security rather than about how much of it was bought.
+          initialNativePrice: perShareCost(holding),
+          initialRateScaled: rate1e6(purchaseRate) as Rate1e6,
+          currentNativePrice: holding.priceMinor,
+          currentRateScaled: currentRate as Rate1e6,
+        })
+      : null;
+
   const newPrice = toMinor(priceText);
   const newFeeBp = toBp(feeText);
 
@@ -143,20 +178,58 @@ export function HoldingDetailSheet({
         {/* --- what it is worth ---------------------------------------- */}
         <Card>
           <div className="flex flex-col gap-2">
-            <Money value={value.marketValue} size="figure" />
+            {/* A dollar holding reads in dollars. Its statement says dollars,
+                and converting it silently would leave the person unable to
+                check this screen against that one. */}
+            {foreign ? (
+              <span className="tnum text-figure text-ink">{show(value.marketValue)}</span>
+            ) : (
+              <Money value={value.marketValue} size="figure" />
+            )}
+            {approx && <p className="tnum text-caption text-ink-3">{approx}</p>}
             <p className="text-caption text-ink-2">
-              {formatQuantity(holding.quantity1e8)} shares at {money.format(holding.priceMinor)}
+              {formatQuantity(holding.quantity1e8)} shares at {show(holding.priceMinor)}
               {holding.pricedOn ? `, priced ${describeDate(holding.pricedOn, locale)}` : ''}.
             </p>
             <p className="text-caption text-ink-2">
-              It cost {money.format(holding.costBasis)}, so it is{' '}
+              It cost {show(holding.costBasis)}, so it is{' '}
               {value.gainLoss === 0
                 ? 'exactly where it started'
-                : `${value.gainLoss > 0 ? 'up' : 'down'} ${money.format(minor(Math.abs(value.gainLoss)))} (${formatReturn(value.returnBp)})`}
+                : `${value.gainLoss > 0 ? 'up' : 'down'} ${show(minor(Math.abs(value.gainLoss)))} (${formatReturn(value.returnBp)})`}
               .
             </p>
           </div>
         </Card>
+
+        {/* --- was it the fund, or was it the currency? ---------------- */}
+        {foreign && split && (
+          <Card label="Where the return came from">
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <Split label="The holding" value={formatReturnBp(split.assetReturnBp)} />
+                <Split label={holding.security.currency} value={formatReturnBp(split.fxReturnBp)} />
+                <Split
+                  label={`In ${fx.baseCurrency}`}
+                  value={formatReturnBp(split.totalBaseReturnBp)}
+                  emphasis
+                />
+              </div>
+              <p className="text-caption text-ink-2">
+                {describeDecomposition(split, {
+                  quoteCurrency: holding.security.currency,
+                  baseCurrency: fx.baseCurrency,
+                })}
+              </p>
+              {split.interactionBp !== 0 && (
+                <p className="text-caption text-ink-3">
+                  The three do not simply add up, and that is not a rounding error: a currency
+                  move applies to the gain as well as to what you originally put in. That
+                  overlap comes to {formatReturnBp(split.interactionBp)}.
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* --- the two things you can do with a holding ---------------- */}
         <div className="flex gap-2">
@@ -173,7 +246,12 @@ export function HoldingDetailSheet({
           value={priceText}
           onChange={(e) => setPriceText(e.target.value)}
           inputMode="decimal"
-          hint="Recording a new price changes what the account is worth, and nothing else."
+          hint={
+            foreign
+              ? `In ${currency}, as your statement quotes it. Recording a new price changes ` +
+                `what the account is worth, and nothing else.`
+              : 'Recording a new price changes what the account is worth, and nothing else.'
+          }
         />
 
         <Input
@@ -205,7 +283,13 @@ export function HoldingDetailSheet({
                       {describeDate(mark.date, locale)}
                       {mark.source === 'csv' ? ' · pasted' : ''}
                     </span>
-                    <Money value={mark.priceMinor} size="caption" />
+                    {foreign ? (
+                      <span className="tnum text-caption text-ink">
+                        {show(mark.priceMinor)}
+                      </span>
+                    ) : (
+                      <Money value={mark.priceMinor} size="caption" />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -223,6 +307,34 @@ export function HoldingDetailSheet({
         </div>
       </div>
     </BottomSheet>
+  );
+}
+
+/** One share's worth of what the whole position cost. */
+function perShareCost(holding: Holding): Minor {
+  return minor(
+    Math.round((holding.costBasis * 100_000_000) / Math.max(1, holding.quantity1e8)),
+  );
+}
+
+function Split({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-line bg-raised px-3 py-2.5">
+      <span className="truncate text-micro uppercase tracking-[0.1em] text-ink-3">{label}</span>
+      <span
+        className={`tnum text-caption ${emphasis ? 'font-medium text-ink' : 'text-ink-2'}`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 
