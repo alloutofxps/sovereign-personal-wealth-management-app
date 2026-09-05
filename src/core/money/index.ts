@@ -84,3 +84,9 @@ export type { ConversionDirection, Rate1e6 } from './fx';
 // drag the decomposition, and every sentence explaining it, along with it.
 // Import from './fxReturns' directly, from lazily loaded code only.
 export type { ReturnDecomposition } from './fxReturns';
+
+// The arithmetic evaluator is deliberately NOT re-exported here, for the same
+// reason as the two above: this barrel loads on the first paint, and the
+// parser is only ever reached from the keypad, which is inside a lazily loaded
+// sheet. Import from './expression' directly.
+export type { EvaluationResult } from './expression';

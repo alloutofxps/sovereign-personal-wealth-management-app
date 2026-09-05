@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { minor, type Minor } from '@/core/money';
+import { minor, mulDivRound, type Minor } from '@/core/money';
 import { describeCycle } from '@/core/liquidity';
 import { describeReadyToAssign } from '@/core/budget';
 import {
@@ -21,6 +21,12 @@ import {
   useBudgetPeriod,
   type BudgetRow,
 } from '@/app/budget/useBudget';
+import {
+  describeEnvelopePace,
+  envelopePace,
+  paceTone,
+  type EnvelopePace,
+} from '@/core/budget';
 import { assignOnDate } from '@/app/ledger/actions';
 import { toIsoDate } from '@/core/liquidity';
 import { useAppConfig } from '@/app/config/store';
@@ -45,6 +51,13 @@ export function BudgetGrid() {
   const [showSetup, setShowSetup] = useState(false);
 
   const data = budget.data;
+
+  // How far through the period the calendar has got, in basis points. A past
+  // period is wholly gone and a future one has not started, so both sit at the
+  // ends rather than being measured against today.
+  const periodProgressBp = data
+    ? mulDivRound(minor(data.cycle.elapsedDays), 10_000, minor(data.cycle.totalDays))
+    : 0;
   const pill = data
     ? describeReadyToAssign(data.plan.readyToAssign, (amount) => money.format(amount))
     : null;
@@ -190,6 +203,7 @@ export function BudgetGrid() {
                       onAssign={() => setAssigning(row)}
                       onCover={() => setCovering(row)}
                       onActivity={() => navigate('transactions')}
+                      periodProgressBp={periodProgressBp}
                     />
                   ))}
                 </ul>
@@ -203,6 +217,7 @@ export function BudgetGrid() {
                 onAssign={() => setAssigning(row)}
                 onCover={() => setCovering(row)}
                 onActivity={() => navigate('transactions')}
+                periodProgressBp={periodProgressBp}
               />
             ))}
           </ul>
@@ -255,14 +270,24 @@ function Row({
   onAssign,
   onCover,
   onActivity,
+  periodProgressBp,
 }: {
   row: BudgetRow;
   onAssign: () => void;
   onCover: () => void;
   onActivity: () => void;
+  periodProgressBp: number;
 }) {
+  const pace = envelopePace({
+    assignedMinor: row.assigned,
+    // Activity is stored as a negative for money going out; the pacing engine
+    // asks for what was spent, as a positive.
+    activityMinor: minor(Math.abs(row.activity)),
+    periodProgressBp,
+  });
+
   return (
-    <li className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 px-4 py-2.5">
+    <li className="grid grid-cols-[1fr_auto_auto_auto] items-start gap-x-3 px-4 py-2.5">
       <button
         type="button"
         onClick={row.overspent ? onCover : onAssign}
@@ -307,8 +332,50 @@ function Row({
           // done its job is not an alert.
           tone={row.available > 0 ? 'liquid' : row.available < 0 ? 'deficit' : 'muted'}
         />
+        <PacingBar pace={pace} name={row.name} />
       </button>
     </li>
+  );
+}
+
+/**
+ * How fast one pot is going, against how fast the period is.
+ *
+ * Two pixels high and the width of the Available column. It is reference
+ * information somebody looks for when they are looking for it — a full-width
+ * bar on every row would make the grid about pacing, which is not what the
+ * grid is for.
+ *
+ * The tick is the calendar. When the fill is left of it there is more money
+ * than month; when it is right, the pot is going faster than the days are.
+ */
+function PacingBar({ pace, name }: { pace: EnvelopePace; name: string }) {
+  if (pace.status === 'unbudgeted') return null;
+
+  const filled = Math.min(100, pace.spentPercentBp / 100);
+  const marker = Math.min(100, pace.periodProgressBp / 100);
+  const tone = paceTone(pace);
+
+  return (
+    <span
+      className="relative mt-1 block h-[2px] w-full overflow-hidden rounded-pill bg-line"
+      role="img"
+      aria-label={describeEnvelopePace(pace, name)}
+      title={describeEnvelopePace(pace, name)}
+    >
+      <span
+        className={clsx(
+          'absolute inset-y-0 left-0 rounded-pill',
+          tone === 'caution' ? 'bg-caution' : tone === 'liquid' ? 'bg-liquid' : 'bg-ink-4',
+        )}
+        style={{ width: `${filled}%` }}
+      />
+      {/* Where the calendar has got to. */}
+      <span
+        className="absolute inset-y-0 w-px bg-ink-3"
+        style={{ left: `${marker}%` }}
+      />
+    </span>
   );
 }
 

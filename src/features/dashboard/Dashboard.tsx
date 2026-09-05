@@ -23,12 +23,18 @@ import { Button, Card, Money } from '@/design/ui';
 // appears on demand, and it brings the whole audit view and the statement-check
 // wording with it — none of which belongs in front of a person who has opened
 // the app to see one number.
+// The other sheet that only exists once somebody asks for it. It carries the
+// whole keypad, and the keypad now carries an arithmetic parser — none of
+// which belongs in front of a person opening the app to read one number.
+const AddBillSheet = lazy(() =>
+  import('./AddBillSheet').then((m) => ({ default: m.AddBillSheet })),
+);
+
 const PaymentDetailsSheet = lazy(() =>
   import('@/features/entry/PaymentDetailsSheet').then((m) => ({
     default: m.PaymentDetailsSheet,
   })),
 );
-import { AddBillSheet } from './AddBillSheet';
 import { BalanceCard } from './BalanceCard';
 import { GettingStarted } from './GettingStarted';
 import { PaceCard } from './PaceCard';
@@ -162,7 +168,11 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
       )}
 
       <SafeToSpendSheet open={explaining} onClose={() => setExplaining(false)} data={data} />
-      <AddBillSheet open={addingBill} onClose={() => setAddingBill(false)} />
+      {addingBill && (
+        <Suspense fallback={null}>
+          <AddBillSheet open={addingBill} onClose={() => setAddingBill(false)} />
+        </Suspense>
+      )}
       {looking && (
         <Suspense fallback={null}>
           <PaymentDetailsSheet entry={looking} onClose={() => setLooking(null)} />

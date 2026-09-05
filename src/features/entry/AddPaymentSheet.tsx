@@ -368,7 +368,8 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             onChange={setAmount}
             onSubmit={() => canContinue && setStep('details')}
             label="Amount"
-            hint="Tap the numbers — they fill in from the right."
+            allowMath
+            hint="Tap the numbers — they fill in from the right. Split a bill with ÷."
           />
         </div>
       ) : kind === 'income' ? (

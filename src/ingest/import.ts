@@ -8,6 +8,7 @@
  * statement is in, the totals are quietly wrong, and nothing ever says so.
  * ======================================================================== */
 
+import { normalizePayee } from '@/core/taxonomy/payeeNormalizer';
 import type { Minor } from '@/core/money';
 import { detectDelimiter, findHeaderRow, guessColumns, parseDelimited, type ColumnRole, type Delimiter } from './csv';
 import { dedupeKey, detectDateFormat, parseAmount, parseDate, type DateOrder } from './values';
@@ -37,7 +38,17 @@ export interface ParsedFile {
 
 export interface CandidateRow {
   date: string;
+  /**
+   * What the bank called it, tidied into something recognisable.
+   *
+   * `SumUp *KOFFIE 0031204 Amsterdam` becomes `Koffie`. This is what the
+   * person sees and what rules match on, which is the point: the reference
+   * number in the raw string is different on every visit, so a rule written
+   * against it would match once and never again.
+   */
   description: string;
+  /** Exactly what the bank sent, before any tidying. */
+  rawDescription: string;
   amount: Minor;
   dedupeKey: string;
   /** The original line, kept so the person can always see what came in. */
@@ -130,8 +141,13 @@ export function buildCandidates(
       return;
     }
 
-    const description = (row[mapping.description] ?? '').trim() || 'No description';
-    const key = dedupeKey({ accountId, date, amount, description });
+    const rawDescription = (row[mapping.description] ?? '').trim() || 'No description';
+    const description = normalizePayee(rawDescription) || rawDescription;
+
+    // The key is taken from the raw string, not the tidied one. Two shops that
+    // tidy down to the same name are still two different lines on a statement,
+    // and collapsing them would silently drop one as a duplicate.
+    const key = dedupeKey({ accountId, date, amount, description: rawDescription });
 
     // A statement can legitimately contain the same coffee twice in a day, so
     // repeats within one file are kept and only flagged against what is
@@ -141,7 +157,15 @@ export function buildCandidates(
     while (seen.has(uniqueKey)) uniqueKey = `${key}#${++repeat}`;
     seen.add(uniqueKey);
 
-    rows.push({ date, description, amount, dedupeKey: uniqueKey, raw, lineNumber });
+    rows.push({
+      date,
+      description,
+      rawDescription,
+      amount,
+      dedupeKey: uniqueKey,
+      raw,
+      lineNumber,
+    });
   });
 
   return { rows, rejected };

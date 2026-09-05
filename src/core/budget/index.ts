@@ -23,3 +23,12 @@ export {
   quickAssignToTargets,
   rankCoverSources,
 } from './multiMonth';
+
+export type { EnvelopePace, EnvelopePaceInput, PaceStatus } from './envelopePacing';
+export {
+  AHEAD_NOTICE_BP,
+  UNDER_NOTICE_BP,
+  describePace as describeEnvelopePace,
+  envelopePace,
+  paceTone,
+} from './envelopePacing';

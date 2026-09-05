@@ -13,8 +13,15 @@
  * ======================================================================== */
 
 import clsx from 'clsx';
-import { useCallback, useEffect, useRef } from 'react';
-import { currencyDisplayName, type Minor } from '@/core/money';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  currencyDisplayName,
+  minor,
+  minorUnitExponent,
+  toDecimalString,
+  type CurrencyCode,
+  type Minor,
+} from '@/core/money';
 import {
   DEFAULT_MAX_DIGITS,
   appendDigit,
@@ -22,7 +29,10 @@ import {
   negate,
   removeLastDigit,
 } from '@/core/money/keypad';
+// Deep import on purpose: see the note in the money barrel.
+import { tryEvaluate } from '@/core/money/expression';
 import { useMoney } from '@/app/money/useMoney';
+import { useAppConfig } from '@/app/config/store';
 import { Money } from './Money';
 
 export interface NumpadProps {
@@ -34,6 +44,18 @@ export interface NumpadProps {
   maxDigits?: number;
   /** Show a key that flips the sign, for corrections and refunds. */
   allowNegative?: boolean;
+  /**
+   * Show the four operator keys, so a bill can be split where it is entered.
+   *
+   * Off by default. A keypad asking for one figure — a credit limit, a target —
+   * has nothing to work out, and four extra keys would be four extra things to
+   * read past.
+   */
+  allowMath?: boolean;
+  /** The working so far, reported up so the readout can show it. */
+  onWorkingChange?: (working: string) => void;
+  /** Whether the term being typed is money or a plain count. */
+  onTermChange?: (term: 'amount' | 'count') => void;
   className?: string;
 }
 
@@ -51,6 +73,9 @@ export function Numpad({
   onSubmit,
   maxDigits = DEFAULT_MAX_DIGITS,
   allowNegative = false,
+  allowMath = false,
+  onWorkingChange,
+  onTermChange,
   className,
 }: NumpadProps) {
   /**
@@ -66,6 +91,41 @@ export function Numpad({
   const lastEmitted = useRef<Minor | null>(null);
   if (value !== lastEmitted.current) current.current = value;
 
+  /**
+   * The part of the sum already committed: "45.20 + ", say.
+   *
+   * The digits being typed right now stay in `current` as an ordinary amount,
+   * so every existing behaviour — the ref, the overflow guard, the backspace —
+   * works exactly as it did. Only when an operator is pressed does the figure
+   * move into this string and the entry start again.
+   */
+  const [working, setWorking] = useState('');
+
+  /**
+   * Whether the term being typed is money or a count.
+   *
+   * Money is entered from the right — "4 5 5 0" is 45.50 — which is exactly
+   * right for an amount and exactly wrong for a multiplier: pressing 2 after ×
+   * would mean two cents, when nobody has ever meant that. Multiplying money by
+   * money is meaningless anyway; you multiply it by a number of things. So × and
+   * ÷ switch the next term to whole units, and + and − switch it back.
+   */
+  const [term, setTerm] = useState<'amount' | 'count'>('amount');
+
+  // How many decimal places this currency has, so a term written into the
+  // working reads the way the readout above it does. Yen has none; most have
+  // two; a few have three.
+  const currency = useAppConfig((state) => state.currencyCode);
+  const exponent = minorUnitExponent(currency as CurrencyCode);
+
+  const report = useCallback(
+    (next: string) => {
+      setWorking(next);
+      onWorkingChange?.(next);
+    },
+    [onWorkingChange],
+  );
+
   const emit = useCallback(
     (next: Minor) => {
       if (next === current.current) return;
@@ -78,8 +138,13 @@ export function Numpad({
   );
 
   const pushDigit = useCallback(
-    (digit: number) => emit(appendDigit(current.current, digit, maxDigits)),
-    [emit, maxDigits],
+    (digit: number) =>
+      emit(
+        term === 'count'
+          ? countDigit(current.current, digit, maxDigits)
+          : appendDigit(current.current, digit, maxDigits),
+      ),
+    [emit, maxDigits, term],
   );
   const pushDouble = useCallback(
     () => emit(appendZeros(current.current, 2, maxDigits)),
@@ -87,6 +152,48 @@ export function Numpad({
   );
   const backspace = useCallback(() => emit(removeLastDigit(current.current)), [emit]);
   const toggleSign = useCallback(() => emit(negate(current.current)), [emit]);
+
+  /** Commit what is on screen and start the next term. */
+  const pushOperator = useCallback(
+    (operator: '+' | '−' | '×' | '÷') => {
+      const shown = toDecimalString(current.current, exponent);
+      report(`${working}${shown} ${operator} `);
+      setTerm(operator === '×' || operator === '÷' ? 'count' : 'amount');
+      emit(minor(0));
+      tick();
+    },
+    [working, report, emit, exponent],
+  );
+
+  /**
+   * Work the sum out, and put the answer where the figure was.
+   *
+   * A sum that does not come out leaves everything exactly as it was rather
+   * than clearing it. Somebody one keystroke from finishing should not lose
+   * what they typed because they pressed equals a moment early.
+   */
+  const evaluateNow = useCallback(() => {
+    if (working === '') return;
+    const answer = tryEvaluate(`${working}${toDecimalString(current.current, exponent)}`);
+    if (answer === null) return;
+    report('');
+    setTerm('amount');
+    emit(answer);
+    tick();
+  }, [working, report, emit, exponent]);
+
+  // Clearing the entry clears the working too, so the pad never keeps half a
+  // sum nobody can see the start of.
+  useEffect(() => {
+    onTermChange?.(term);
+  }, [term, onTermChange]);
+
+  useEffect(() => {
+    if (value === 0 && lastEmitted.current === null && working !== '') {
+      report('');
+      setTerm('amount');
+    }
+  }, [value, working, report]);
 
   // Physical keyboard on desktop. The on-screen pad stays the mobile path.
   useEffect(() => {
@@ -112,21 +219,59 @@ export function Numpad({
       } else if (event.key === 'Enter' && onSubmit) {
         event.preventDefault();
         onSubmit();
-      } else if (event.key === '-' && allowNegative) {
+      } else if (event.key === '-' && allowNegative && !allowMath) {
         event.preventDefault();
         toggleSign();
+      } else if (allowMath && (event.key === '=' || event.key === 'Enter')) {
+        // Equals first: finishing the sum is what Enter means while one is
+        // half-written, and submitting an unevaluated figure would record the
+        // last term rather than the answer.
+        event.preventDefault();
+        if (working !== '') evaluateNow();
+        else onSubmit?.();
+      } else if (allowMath && ['+', '-', '*', '/'].includes(event.key)) {
+        event.preventDefault();
+        pushOperator(
+          event.key === '+' ? '+' : event.key === '-' ? '−' : event.key === '*' ? '×' : '÷',
+        );
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [pushDigit, backspace, toggleSign, onSubmit, allowNegative]);
+  }, [
+    pushDigit,
+    backspace,
+    toggleSign,
+    onSubmit,
+    allowNegative,
+    allowMath,
+    working,
+    evaluateNow,
+    pushOperator,
+  ]);
 
   return (
-    <div
-      className={clsx('grid grid-cols-3 gap-1.5 select-none', className)}
-      role="group"
-      aria-label="Amount keypad"
-    >
+    <div className={clsx('flex flex-col gap-1.5 select-none', className)}>
+      {/* A fourth column would shrink every key on a phone, so the operators
+          sit in their own row above the pad instead. */}
+      {allowMath && (
+        <div className="grid grid-cols-5 gap-1.5" role="group" aria-label="Arithmetic">
+          {(['+', '−', '×', '÷'] as const).map((operator) => (
+            <Key key={operator} onPress={() => pushOperator(operator)} label={OPERATOR_NAMES[operator]} muted>
+              <span className="text-lead leading-none">{operator}</span>
+            </Key>
+          ))}
+          <Key onPress={evaluateNow} label="Work it out" muted>
+            <span className="text-lead leading-none">=</span>
+          </Key>
+        </div>
+      )}
+
+      <div
+        className="grid grid-cols-3 gap-1.5"
+        role="group"
+        aria-label="Amount keypad"
+      >
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
         <Key key={digit} onPress={() => pushDigit(digit)} label={String(digit)}>
           {digit}
@@ -147,12 +292,34 @@ export function Numpad({
         0
       </Key>
 
-      <Key onPress={backspace} label="Delete" muted>
-        <BackspaceIcon />
-      </Key>
+        <Key onPress={backspace} label="Delete" muted>
+          <BackspaceIcon />
+        </Key>
+      </div>
     </div>
   );
 }
+
+/**
+ * Build a whole number from keystrokes: 2, then 5, is twenty-five.
+ *
+ * Held in the same minor-unit type as everything else, scaled up so that a
+ * count of 2 is the value 2.00 — which is what it means as a multiplier, and
+ * what makes `12.25 × 2.00` come out at 24.50.
+ */
+function countDigit(currentValue: Minor, digit: number, maxDigits: number): Minor {
+  const units = Math.trunc(currentValue / 100);
+  const next = units * 10 + digit;
+  if (String(next).length > Math.max(1, maxDigits - 2)) return currentValue;
+  return minor(next * 100);
+}
+
+const OPERATOR_NAMES: Record<'+' | '−' | '×' | '÷', string> = {
+  '+': 'Add',
+  '−': 'Subtract',
+  '×': 'Multiply by',
+  '÷': 'Divide by',
+};
 
 function Key({
   children,
@@ -212,6 +379,14 @@ export function AmountInput({ label, hint, className, ...numpad }: AmountInputPr
   const money = useMoney();
   const isEmpty = numpad.value === 0;
 
+  // The sum so far, shown above the figure while one is being built. The
+  // keypad owns it; this only displays it, so the two can never disagree.
+  const [working, setWorking] = useState('');
+
+  // Mirrored up from the keypad, so a multiplier is not shown with a currency
+  // symbol in front of it. "× €2.00" reads as two euros; it is two of a thing.
+  const [term, setTerm] = useState<'amount' | 'count'>('amount');
+
   return (
     <div className={clsx('flex flex-col gap-5', className)}>
       <div className="flex flex-col items-center gap-1.5 pt-1">
@@ -220,20 +395,40 @@ export function AmountInput({ label, hint, className, ...numpad }: AmountInputPr
             {label}
           </span>
         )}
+        {working !== '' && (
+          <span className="tnum text-caption text-ink-3" aria-label="Working so far">
+            {working}
+          </span>
+        )}
         <div aria-live="polite" aria-atomic="true">
-          <Money
-            value={numpad.value}
-            size="anchor"
-            tone={isEmpty ? 'muted' : 'auto'}
-            className={clsx('transition-opacity', isEmpty && 'opacity-35')}
-          />
+          {term === 'count' ? (
+            <span
+              className={clsx(
+                'tnum text-anchor font-medium text-ink transition-opacity',
+                isEmpty && 'opacity-35',
+              )}
+            >
+              {Math.trunc(numpad.value / 100)}
+            </span>
+          ) : (
+            <Money
+              value={numpad.value}
+              size="anchor"
+              tone={isEmpty ? 'muted' : 'auto'}
+              className={clsx('transition-opacity', isEmpty && 'opacity-35')}
+            />
+          )}
         </div>
         <span className="min-h-4 text-caption text-ink-3">
-          {hint ?? `Amounts here are in ${currencyDisplayName(money.currency, money.locale)}.`}
+          {term === 'count'
+            ? 'How many. Press = to work it out.'
+            : working !== ''
+            ? 'Press = to work it out.'
+            : (hint ?? `Amounts here are in ${currencyDisplayName(money.currency, money.locale)}.`)}
         </span>
       </div>
 
-      <Numpad {...numpad} />
+      <Numpad {...numpad} onWorkingChange={setWorking} onTermChange={setTerm} />
     </div>
   );
 }

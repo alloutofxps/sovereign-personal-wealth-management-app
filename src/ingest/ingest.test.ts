@@ -204,7 +204,12 @@ describe('importing a statement', () => {
     expect(result.rows[0]?.amount).toBe(-4235);
     expect(result.rows[1]?.amount).toBe(2500_00);
     expect(result.rows[0]?.date).toBe('2026-09-03');
-    expect(result.rows[0]?.description).toBe('TESCO STORES 3428');
+    // Tidied for the person and for rule matching — the store number differs
+    // between branches and the shop does not.
+    expect(result.rows[0]?.description).toBe('Tesco Stores');
+    // And the original kept, because it is what the bank actually sent and the
+    // only thing that can be checked against a statement.
+    expect(result.rows[0]?.rawDescription).toBe('TESCO STORES 3428');
   });
 
   it('reads a single signed column without flipping its sign', () => {
