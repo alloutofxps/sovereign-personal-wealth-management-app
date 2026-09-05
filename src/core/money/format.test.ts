@@ -197,8 +197,15 @@ describe('no hardcoded currency in the app', () => {
     // bank file is read correctly — rather than something being rendered. The
     // Intl rule below still applies everywhere, because reaching for the
     // formatter directly is a design mistake wherever it happens.
+    //
+    // `dev/` is exempt for the same reason: it is scaffolding loaded by hand
+    // from a console, it renders nothing to anybody, and the amounts in its
+    // summaries are describing a fixture rather than reporting somebody's
+    // money. The exemption is a directory rather than a pattern, so it cannot
+    // quietly grow to cover code that does render.
     const offenders = files
       .filter((f) => !/\.test\.tsx?$/.test(f))
+      .filter((f) => !/[\\/]dev[\\/]/.test(f))
       .map((f) => ({ file: f.slice(SRC_ROOT.length), code: stripComments(readFileSync(f, 'utf8')) }))
       .filter(({ code }) => CURRENCY_LITERAL.test(code))
       .map(({ file, code }) => `${file}: ${code.match(CURRENCY_LITERAL)?.[0]}`);
