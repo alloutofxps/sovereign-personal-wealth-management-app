@@ -52,13 +52,24 @@ export default defineConfig({
         // then cannot reach its own database. Fonts are here for the same
         // reason — a local-first ledger must not need the network to render.
         globPatterns: ['**/*.{js,css,html,wasm,woff2,woff,png,svg,webmanifest}'],
+        // The plugin puts the web manifest and the icons it names into the
+        // precache list itself. Letting the glob find them as well is how the
+        // same file ends up in there twice, so the glob stands aside for the
+        // four the plugin already owns. The favicon and the Apple touch icon
+        // are not among them, and stay matched here.
+        globIgnores: ['manifest.webmanifest', 'icons/icon-*.png', 'icons/maskable-*.png'],
         // The SQLite binary is roughly 900 KB and the default ceiling is two,
         // so raise it explicitly rather than discovering the miss in the wild.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },
-      includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
+      // `includeAssets` is deliberately not set. The glob above already
+      // matches every .svg and .png in dist/, and listing them again put six
+      // files into the precache manifest twice. Identical revisions make that
+      // harmless right up until it is not: Workbox rejects two entries for one
+      // URL whose revisions disagree, and it rejects them by failing the whole
+      // service worker install — no offline, and no way to ship an update.
       manifest: {
         id: '/',
         name: 'Sovereign',
