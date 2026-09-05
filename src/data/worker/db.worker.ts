@@ -30,6 +30,7 @@ import {
   type SchemaCapabilities,
 } from '../schema/migrations/v7';
 import { MIGRATIONS } from '../schema/migrations';
+import { TABLES } from '../schema/tables';
 import {
   isWrite,
   tablesWrittenBy,
@@ -313,6 +314,26 @@ async function replaceDatabase(bytes: Uint8Array): Promise<void> {
     capi.SQLITE_DESERIALIZE_FREEONCLOSE | capi.SQLITE_DESERIALIZE_RESIZEABLE,
   );
   database.checkRc(rc);
+
+  // What just arrived is a whole database of unknown age. A backup taken two
+  // years ago is exactly the file somebody restores in an emergency, and it
+  // has none of the columns added since — so it has to be stepped forward the
+  // same way an old local database is, or the app comes back up reading
+  // columns that are not there.
+  const restored = currentVersion(database);
+  if (restored > SCHEMA_VERSION) {
+    throw new Error(
+      `That backup was saved by a newer version of Sovereign than the one running here, ` +
+        `so it has not been restored. Reload the page to pick up the newer version and ` +
+        `try again.`,
+    );
+  }
+
+  const capabilities = probeCapabilities(database);
+  migrate(database, capabilities);
+  for (const statement of DDL) database.exec(statement);
+  for (const statement of searchSchemaStatements(capabilities)) database.exec(statement);
+  setVersion(database, SCHEMA_VERSION);
 }
 
 function requireDb(): Database {
@@ -393,8 +414,10 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       case 'import': {
         await open();
         await replaceDatabase(request.bytes);
-        // Everything on screen is now looking at the wrong data.
-        announce(['accounts', 'entries', 'postings', 'scheduled_items', 'claims', 'staged_transactions', 'meta']);
+        // Everything on screen is now looking at the wrong data — not some of
+        // it. Naming tables by hand here is how a restored backup came to
+        // leave half the app showing the previous database.
+        announce([...TABLES]);
         post({ id: request.id, ok: true });
         break;
       }
@@ -407,7 +430,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         await poolUtil?.wipeFiles();
         await open();
         post({ id: request.id, ok: true });
-        announce(['accounts', 'entries', 'postings', 'meta']);
+        announce([...TABLES]);
         break;
       }
     }

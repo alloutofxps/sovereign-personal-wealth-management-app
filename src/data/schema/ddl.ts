@@ -107,6 +107,10 @@ export const DDL: readonly string[] = [
      clearance  TEXT NOT NULL CHECK (clearance IN ('pending','cleared')),
      memo       TEXT,
      sequence   INTEGER NOT NULL,
+     -- v16. When you checked this line against a bank statement, or null if
+     -- you never have. This is what "locked" means; there is no third
+     -- clearance value, because that would be the same fact stored twice.
+     reconciled_at  TEXT,
      -- v14. What the line is worth in the currency you report in, and the rate
      -- it was struck at. Equal to amount, and exactly 1.000000, for anything
      -- already in the base currency, which is most of it.
@@ -271,6 +275,23 @@ export const DDL: readonly string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS uq_fx_rates_pair_date ON fx_rates(base_currency, quote_currency, date);`,
   `CREATE INDEX IF NOT EXISTS idx_fx_rates_lookup ON fx_rates(quote_currency, date DESC);`,
   `CREATE INDEX IF NOT EXISTS idx_postings_base_book ON postings(book, base_amount);`,
+
+  // v16. Checking an account against its statement.
+  `CREATE TABLE IF NOT EXISTS reconciliations (
+     id                TEXT PRIMARY KEY,
+     account_id        TEXT NOT NULL REFERENCES accounts(id),
+     statement_date    TEXT NOT NULL CHECK (statement_date LIKE '____-__-__'),
+     statement_balance INTEGER NOT NULL,
+     cleared_balance   INTEGER NOT NULL,
+     discrepancy       INTEGER NOT NULL DEFAULT 0,
+     status            TEXT NOT NULL DEFAULT 'completed'
+                         CHECK (status IN ('completed','reconciled_with_adjustment')),
+     created_at        TEXT NOT NULL
+   );`,
+  `CREATE INDEX IF NOT EXISTS idx_reconciliations_account_date
+     ON reconciliations(account_id, statement_date DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_postings_clearance
+     ON postings(account_id, clearance, reconciled_at);`,
 
   `CREATE TABLE IF NOT EXISTS tax_lots (
      id                     TEXT PRIMARY KEY,

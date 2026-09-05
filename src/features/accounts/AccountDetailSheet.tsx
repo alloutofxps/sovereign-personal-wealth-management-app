@@ -35,6 +35,7 @@ export function AccountDetailSheet({
   onClose,
   onUpdateValue,
   onEditTerms,
+  onReconcile,
   terms,
 }: {
   account: LedgerAccount | null;
@@ -42,6 +43,7 @@ export function AccountDetailSheet({
   onClose: () => void;
   onUpdateValue: () => void;
   onEditTerms: () => void;
+  onReconcile: () => void;
   terms: DebtTermsRow | undefined;
 }) {
   const money = useMoney();
@@ -64,6 +66,12 @@ export function AccountDetailSheet({
   );
 
   const canRevalue = account ? isRevaluable(account) : false;
+
+  // Only accounts that have a statement to check against. A house does not
+  // send one, and its value is a judgement rather than a fact to be verified.
+  const canReconcile = Boolean(
+    account && (account.type === 'ASSET' || account.type === 'LIABILITY') && !canRevalue,
+  );
   const owed = account?.type === 'LIABILITY';
 
   async function archive() {
@@ -166,6 +174,20 @@ export function AccountDetailSheet({
                 </Card>
               )}
             </section>
+          )}
+
+          {/* --- checking it against the bank --------------------------- */}
+          {canReconcile && (
+            <div className="flex flex-col items-start gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+              <p className="text-caption text-ink-2">
+                Comparing this against your bank statement is the only way to know the figures
+                here are right. It takes a couple of minutes, and what matches gets locked so it
+                cannot be changed by accident.
+              </p>
+              <Button variant="secondary" size="sm" onClick={onReconcile}>
+                Check against a statement
+              </Button>
+            </div>
           )}
 
           {/* --- putting it away ---------------------------------------- */}

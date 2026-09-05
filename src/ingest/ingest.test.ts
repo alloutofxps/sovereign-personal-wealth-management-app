@@ -563,3 +563,24 @@ describe('a positive row on a card statement', () => {
     }
   });
 });
+
+/* ===========================================================================
+ * WHAT A STATEMENT ROW ARRIVES AS
+ * ---------------------------------------------------------------------------
+ * A row on a bank statement has, by definition, already gone through the bank.
+ * Filing one as pending would put it outside the next statement check and
+ * guarantee a difference nobody could explain — so it arrives cleared, and
+ * this test exists so it stays that way.
+ * ======================================================================== */
+
+describe('what an imported row arrives as', () => {
+  it('is already gone through, because a statement is what a bank has settled', () => {
+    const entry = fileOneRow(CARD_ACCOUNT);
+    expect(entry.postings.every((p) => p.clearance === 'cleared')).toBe(true);
+  });
+
+  it('is not locked, because nobody has checked it against anything yet', () => {
+    const entry = fileOneRow(CARD_ACCOUNT);
+    expect(entry.postings.every((p) => p.reconciledAt === null)).toBe(true);
+  });
+});

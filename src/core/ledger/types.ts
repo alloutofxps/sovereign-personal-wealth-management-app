@@ -362,14 +362,22 @@ export type EntryKind =
   | 'LOAN_PAYMENT';
 
 /**
- * Whether the bank has settled this line yet.
+ * How far through the banking system this line has got.
  *
  * Pending lines reduce what is safe to spend immediately — the money is gone
  * in every sense that matters to the person spending it — but they are left
  * out of statement reconciliation, because the bank has not finalised them
  * and the amount can still change.
+ *
+ * 'reconciled' means the person has personally ticked this line off against a
+ * bank statement that then came to exactly the right figure. It is stored as a
+ * timestamp rather than as this value — see migrations/v16.ts — and derived
+ * back into this shape on the way out of the database, in one place.
  */
-export type Clearance = 'pending' | 'cleared';
+export type Clearance = 'pending' | 'cleared' | 'reconciled';
+
+/** What a person can set a line to by hand. Locking is not one of them. */
+export type SettableClearance = 'pending' | 'cleared';
 
 export interface Posting {
   id: PostingId;
@@ -395,6 +403,13 @@ export interface Posting {
   /** Quote-per-base rate at 1e6 this line was converted at. 1_000_000 if base. */
   fxRateScaled: number;
   clearance: Clearance;
+  /**
+   * When this line was checked against a bank statement, or null.
+   *
+   * The one stored fact behind `clearance: 'reconciled'`, and the date the
+   * interface needs in order to say when something was locked.
+   */
+  reconciledAt: string | null;
   memo: string | null;
   /** Stable ordering for the audit view. */
   sequence: number;

@@ -240,6 +240,13 @@ export const postings = sqliteTable(
     baseAmount: integer('base_amount').notNull().default(0),
     /** v14. Quote-per-base rate at 1e6. Exactly 1_000_000 when already base. */
     fxRateScaled: integer('fx_rate_scaled').notNull().default(1_000_000),
+    /**
+     * v16. When this line was checked against a bank statement.
+     *
+     * Null until somebody has checked it. This is the whole of what "locked"
+     * means — see migrations/v16.ts for why there is no third clearance value.
+     */
+    reconciledAt: text('reconciled_at'),
   },
   (t) => [
     index('postings_account_idx').on(t.accountId),
@@ -309,6 +316,20 @@ export const meta = sqliteTable('meta', {
   value: text('value').notNull(),
 });
 
+export const reconciliations = sqliteTable('reconciliations', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  statementDate: text('statement_date').notNull(),
+  /** What the bank said the account came to. */
+  statementBalance: integer('statement_balance').notNull(),
+  /** What we had, counting only lines that had gone through. */
+  clearedBalance: integer('cleared_balance').notNull(),
+  /** The bank's figure less ours. Zero on a clean check. */
+  discrepancy: integer('discrepancy').notNull().default(0),
+  status: text('status').notNull().default('completed'),
+  createdAt: text('created_at').notNull(),
+});
+
 export const TABLES = [
   'accounts',
   'entries',
@@ -327,5 +348,6 @@ export const TABLES = [
   'fx_rates',
   'loan_payments',
   'net_worth_snapshots',
+  'reconciliations',
 ] as const;
 export type TableName = (typeof TABLES)[number];

@@ -8,7 +8,7 @@
  * ======================================================================== */
 
 import { minor, type Minor } from '@/core/money';
-import type { AccountId, EntryKind, LedgerAccount } from '@/core/ledger';
+import { clearanceOf, type AccountId, type Clearance, type EntryKind, type LedgerAccount } from '@/core/ledger';
 import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 
 /** Which way the money went, which decides how the figure is coloured. */
@@ -36,6 +36,16 @@ export interface PresentedEntry {
   note: string | null;
   isSplit: boolean;
   isCorrection: boolean;
+  /**
+   * How far through the bank this entry has got, taken as a whole.
+   *
+   * The least settled of its lines wins. An entry with one line still pending
+   * has not fully gone through, and calling it cleared would be the more
+   * flattering of the two answers rather than the true one.
+   */
+  clearance: Clearance;
+  /** When it was checked against a statement, or null. */
+  reconciledAt: string | null;
   /** Every financial line, for the "what moved" section. */
   financialLines: PresentedLine[];
 }
@@ -97,6 +107,8 @@ export function presentEntry(
     isSplit:
       entry.kind !== 'LOAN_PAYMENT' &&
       (entry.kind === 'SPEND_SPLIT' || categories.length > 1),
+    clearance: clearanceOf(entry.postings),
+    reconciledAt: entry.postings.find((p) => p.reconciledAt)?.reconciledAt ?? null,
     isCorrection: entry.kind === 'REVERSAL',
     financialLines: financial.map(line),
   };

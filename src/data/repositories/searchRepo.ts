@@ -16,20 +16,11 @@
  * ======================================================================== */
 
 import { and, desc, inArray, sql, type SQL } from 'drizzle-orm';
-import { minor, type Minor } from '@/core/money';
-import type {
-  AccountId,
-  Book,
-  Clearance,
-  EntryId,
-  EntryKind,
-  IsoDate,
-  Posting,
-  PostingId,
-} from '@/core/ledger';
+import type { Minor } from '@/core/money';
+import type { EntryId, EntryKind, IsoDate, Posting } from '@/core/ledger';
 import { db } from '../client';
 import { entries, postings } from '../schema/tables';
-import type { EntryWithPostings } from './ledgerRepo';
+import { toPosting, type EntryWithPostings } from './ledgerRepo';
 
 export interface EntrySearchParams {
   /** Matched against the description and any notes. */
@@ -199,18 +190,8 @@ export async function searchEntries(
   const byEntry = new Map<string, Posting[]>();
   for (const row of postingRows) {
     const list = byEntry.get(row.entryId) ?? [];
-    list.push({
-      id: row.id as PostingId,
-      entryId: row.entryId as EntryId,
-      book: row.book as Book,
-      accountId: row.accountId as AccountId,
-      amount: minor(row.amount),
-      baseAmount: minor(row.baseAmount),
-      fxRateScaled: row.fxRateScaled,
-      clearance: row.clearance as Clearance,
-      memo: row.memo,
-      sequence: row.sequence,
-    });
+    // The one mapper, so a locked line reads as locked here too.
+    list.push(toPosting(row));
     byEntry.set(row.entryId, list);
   }
 

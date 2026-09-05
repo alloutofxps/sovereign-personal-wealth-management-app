@@ -17,6 +17,7 @@ import {
   type AccountId,
   type Book,
   type Clearance,
+  type SettableClearance,
   type EntryId,
   type EntryKind,
   type IsoDate,
@@ -44,7 +45,7 @@ export interface PostingSpec {
   fxRateScaled?: number;
   memo?: string;
   /** Overrides the entry-level clearance for this line only. */
-  clearance?: Clearance;
+  clearance?: SettableClearance;
 }
 
 /** Fields every builder accepts. */
@@ -53,7 +54,7 @@ export interface EntryBase {
   id: EntryId;
   date: IsoDate;
   /** Defaults to 'cleared'. Set 'pending' for a card authorisation. */
-  clearance?: Clearance;
+  clearance?: SettableClearance;
   sourceTransactionId?: string | null;
   /**
    * A note in the person's own words: "Sam's half", "warranty until 2029".
@@ -110,7 +111,7 @@ export function buildEntry(
     throw new LedgerError('An entry must have at least one line.');
   }
 
-  const defaultClearance: Clearance = base.clearance ?? 'cleared';
+  const defaultClearance: SettableClearance = base.clearance ?? 'cleared';
 
   const postings: Posting[] = specs.map((spec, index) => ({
     id: `${base.id}:${index}` as PostingId,
@@ -124,6 +125,9 @@ export function buildEntry(
     baseAmount: spec.baseAmount ?? spec.amount,
     fxRateScaled: spec.fxRateScaled ?? IDENTITY_RATE,
     clearance: spec.clearance ?? defaultClearance,
+    // Nothing is born locked. A line becomes locked only by being ticked off
+    // against a statement that then balanced, which happens long after this.
+    reconciledAt: null,
     // A line's own memo wins; the entry's note falls to the first line.
     memo: spec.memo ?? (index === 0 ? (base.memo ?? null) : null),
     sequence: index,
@@ -225,6 +229,76 @@ export function fxResidualSpec(
   ];
 }
 
+/* ===========================================================================
+ * WHAT A LOCK PROTECTS
+ * ======================================================================== */
+
+/**
+ * Refuse to change an entry somebody has checked against their bank.
+ *
+ * The point is not that the record is sacred. It is that the person went
+ * through their statement line by line and confirmed this one, and the value
+ * of having done that survives only as long as the answer cannot quietly
+ * change afterwards. A ledger you have checked and can still edit by accident
+ * is a ledger you have not checked.
+ *
+ * Pure, so the rule is testable, and so it can be applied where somebody tries
+ * to edit rather than discovered somewhere deep in a write.
+ */
+export function assertNotReconciled(
+  entry: Pick<JournalEntry, 'postings'>,
+  /**
+   * How to write the date this was locked on.
+   *
+   * Optional, and the default leaves the date out rather than printing an ISO
+   * one. A caller that has the household's locale — a screen — passes a real
+   * formatter; a caller that does not gets a sentence that is still a complete
+   * sentence. Neither ever shows somebody a hyphenated timestamp.
+   */
+  describeDate?: (iso: string) => string,
+): void {
+  const locked = entry.postings.find(
+    (posting) => posting.clearance === 'reconciled' || posting.reconciledAt !== null,
+  );
+  if (!locked) return;
+
+  const when =
+    describeDate && locked.reconciledAt
+      ? ` on ${describeDate(locked.reconciledAt.slice(0, 10))}`
+      : '';
+
+  throw new LedgerError(
+    `This payment was locked during your statement check${when}. Locked records cannot ` +
+      `be edited or deleted. If it really is wrong, unlock that statement check first — ` +
+      `the unlock is recorded, so the history still explains itself.`,
+  );
+}
+
+/** Whether an entry carries a lock, without throwing about it. */
+export function isReconciled(entry: Pick<JournalEntry, 'postings'>): boolean {
+  return entry.postings.some(
+    (posting) => posting.clearance === 'reconciled' || posting.reconciledAt !== null,
+  );
+}
+
+/**
+ * One state for a whole entry, from its lines.
+ *
+ * One locked line locks the entry, and it has to be `some` rather than
+ * `every`. A payment touches two accounts and both books, and checking one
+ * account's statement locks only that account's lines — but the entry cannot
+ * be reversed without unwinding the locked one, so the guard in the ledger
+ * refuses the whole thing. If this said `every`, the interface would offer an
+ * Undo button on a payment the ledger will not undo, which is worse than not
+ * offering it: the person is told they can, and then told they cannot.
+ */
+export function clearanceOf(postings: readonly Posting[]): Clearance {
+  if (postings.length === 0) return 'cleared';
+  if (postings.some((p) => p.clearance === 'reconciled')) return 'reconciled';
+  if (postings.some((p) => p.clearance === 'pending')) return 'pending';
+  return 'cleared';
+}
+
 /**
  * Reverse a posted entry by appending its mirror image.
  *
@@ -248,7 +322,10 @@ export function reverseEntry(
     // for precisely that.
     baseAmount: minor(-p.baseAmount),
     fxRateScaled: p.fxRateScaled,
-    clearance: p.clearance,
+    // A correction is a new line, and a new line has not been checked against
+    // anything. The line it reverses keeps its own lock.
+    clearance: p.clearance === 'reconciled' ? 'cleared' : p.clearance,
+    reconciledAt: null,
     memo: p.memo,
     sequence: index,
   }));

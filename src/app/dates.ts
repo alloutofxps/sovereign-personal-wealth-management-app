@@ -45,6 +45,23 @@ export function describeDate(iso: string, locale: string, now: Date = new Date()
   }).format(date);
 }
 
+/**
+ * The same date, but fit to sit inside a sentence.
+ *
+ * `describeDate` returns a label — "Today", "Monday", "15 January" — which is
+ * right above an amount and wrong after a verb, because "locked on Today" is
+ * not a sentence anybody would say. This adds the preposition where one
+ * belongs and leaves it out where it does not, so the caller never has to
+ * guess which kind of answer it got.
+ */
+export function describeWhen(iso: string, locale: string, now: Date = new Date()): string {
+  const label = describeDate(iso, locale, now);
+  if (label === 'Today') return 'today';
+  if (label === 'Yesterday') return 'yesterday';
+  if (label === 'Tomorrow') return 'tomorrow';
+  return `on ${label}`;
+}
+
 /** A compact date for chart axes and dense lists: "1 Sep". */
 export function shortDate(iso: string, locale: string): string {
   const date = parseIsoDate(iso);

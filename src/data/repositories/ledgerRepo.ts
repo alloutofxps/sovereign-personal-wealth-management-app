@@ -128,6 +128,35 @@ export async function saveAccounts(list: readonly LedgerAccount[]): Promise<void
   await runBatch([...inserts, ...links].map((s) => ({ sql: s.sql, params: s.params })));
 }
 
+/* --- one posting, read back ---------------------------------------------- */
+
+type PostingRow = typeof postings.$inferSelect;
+
+/**
+ * A stored row as the domain sees it.
+ *
+ * The only place `clearance: 'reconciled'` is ever produced. The database
+ * stores whether a line has gone through and, separately, when it was checked
+ * against a statement; the domain wants one answer, and this is where the two
+ * become one. Keeping it to a single function is what stops the two ever
+ * disagreeing — see migrations/v16.ts.
+ */
+export function toPosting(row: PostingRow): Posting {
+  return {
+    id: row.id as PostingId,
+    entryId: row.entryId as EntryId,
+    book: row.book as Book,
+    accountId: row.accountId as AccountId,
+    amount: minor(row.amount),
+    baseAmount: minor(row.baseAmount),
+    fxRateScaled: row.fxRateScaled,
+    clearance: row.reconciledAt ? 'reconciled' : (row.clearance as Clearance),
+    reconciledAt: row.reconciledAt ?? null,
+    memo: row.memo,
+    sequence: row.sequence,
+  };
+}
+
 /* --- entries ------------------------------------------------------------- */
 
 /**
@@ -172,7 +201,11 @@ export async function saveEntry(
         book: posting.book,
         accountId: posting.accountId,
         amount: posting.amount,
-        clearance: posting.clearance,
+        // 'reconciled' is derived on the way out and never written in. If one
+        // arrives here it came from a round trip through the domain, and the
+        // fact it stands for lives in `reconciled_at` below.
+        clearance: posting.clearance === 'reconciled' ? 'cleared' : posting.clearance,
+        reconciledAt: posting.reconciledAt,
         memo: posting.memo,
         sequence: posting.sequence,
         baseAmount: posting.baseAmount,
@@ -215,18 +248,7 @@ export async function listRecentEntries(limit = 50): Promise<EntryWithPostings[]
   const byEntry = new Map<string, Posting[]>();
   for (const row of postingRows) {
     const list = byEntry.get(row.entryId) ?? [];
-    list.push({
-      id: row.id as PostingId,
-      entryId: row.entryId as EntryId,
-      book: row.book as Book,
-      accountId: row.accountId as AccountId,
-      amount: minor(row.amount),
-      baseAmount: minor(row.baseAmount),
-      fxRateScaled: row.fxRateScaled,
-      clearance: row.clearance as Clearance,
-      memo: row.memo,
-      sequence: row.sequence,
-    });
+    list.push(toPosting(row));
     byEntry.set(row.entryId, list);
   }
 
@@ -255,20 +277,7 @@ export async function entryById(id: EntryId): Promise<EntryWithPostings | null> 
     kind: row.kind as EntryKind,
     date: row.date as IsoDate,
     description: row.description,
-    postings: postingRows
-      .map((p) => ({
-        id: p.id as PostingId,
-        entryId: p.entryId as EntryId,
-        book: p.book as Book,
-        accountId: p.accountId as AccountId,
-        amount: minor(p.amount),
-        baseAmount: minor(p.baseAmount),
-        fxRateScaled: p.fxRateScaled,
-        clearance: p.clearance as Clearance,
-        memo: p.memo,
-        sequence: p.sequence,
-      }))
-      .sort((a, b) => a.sequence - b.sequence),
+    postings: postingRows.map(toPosting).sort((a, b) => a.sequence - b.sequence),
     sourceTransactionId: row.sourceTransactionId,
     reversesEntryId: (row.reversesEntryId as EntryId | null) ?? null,
     sealed: row.sealed === 1,

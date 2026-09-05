@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeDate } from './dates';
+import { describeDate, describeWhen } from './dates';
 
 const now = new Date(2026, 8, 2); // 2 September 2026, local time
 
@@ -35,5 +35,20 @@ describe('describeDate', () => {
 
   it('hands back anything it cannot read rather than showing a broken date', () => {
     expect(describeDate('not a date', 'en-GB', now)).toBe('not a date');
+  });
+});
+
+describe('putting a date inside a sentence', () => {
+  const now = new Date('2026-09-05T12:00:00');
+
+  it('drops the preposition where English drops it', () => {
+    expect(describeWhen('2026-09-05', 'en-IE', now)).toBe('today');
+    expect(describeWhen('2026-09-04', 'en-IE', now)).toBe('yesterday');
+    expect(describeWhen('2026-09-06', 'en-IE', now)).toBe('tomorrow');
+  });
+
+  it('keeps it where English keeps it', () => {
+    expect(describeWhen('2026-09-02', 'en-IE', now)).toBe('on Wednesday');
+    expect(describeWhen('2026-01-15', 'en-IE', now)).toBe('on 15 January');
   });
 });

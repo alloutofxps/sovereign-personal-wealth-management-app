@@ -15,7 +15,9 @@ import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 import { voidEntry } from '@/app/ledger/actions';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { presentEntry } from '@/app/ledger/present';
-import { describeDate } from '@/app/dates';
+import { describeDate, describeWhen } from '@/app/dates';
+// Deep import on purpose: this sheet is lazily loaded, the barrel is not.
+import { describeLocked } from '@/core/reconciliation/reconciliationMath';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
 import { BottomSheet, Button, Money } from '@/design/ui';
@@ -77,7 +79,23 @@ export function PaymentDetailsSheet({
         <div className="flex flex-col gap-5 pb-2">
           <div className="flex flex-col gap-1">
             <p className="text-body text-ink">{entry.description}</p>
-            <p className="text-caption text-ink-3">{describeDate(entry.date, locale)}</p>
+            <p className="flex flex-wrap items-center gap-x-2 text-caption text-ink-3">
+              <span>{describeDate(entry.date, locale)}</span>
+              {shown && shown.clearance !== 'cleared' && (
+                <span
+                  className={
+                    'rounded-pill px-2 py-0.5 text-micro font-medium ' +
+                    (shown.clearance === 'reconciled'
+                      ? 'bg-liquid-wash text-liquid'
+                      : 'bg-raised text-ink-2')
+                  }
+                >
+                  {shown.clearance === 'reconciled'
+                    ? 'Checked against your statement'
+                    : 'Has not gone through yet'}
+                </span>
+              )}
+            </p>
           </div>
 
           {amount !== null && (
@@ -155,6 +173,26 @@ export function PaymentDetailsSheet({
                   {busy ? 'Undoing…' : 'Yes, undo it'}
                 </Button>
               </div>
+            </div>
+          ) : shown && shown.clearance === 'reconciled' ? (
+            // Not a hidden button and not a silent failure: the action stays
+            // where somebody expects it, visibly unavailable, with the reason
+            // underneath. Being told why beats wondering where it went.
+            <div className="flex flex-col gap-2">
+              <div>
+                <Button variant="secondary" disabled>
+                  Undo this payment
+                </Button>
+              </div>
+              <p className="max-w-[46ch] text-caption text-ink-2">
+                {shown.reconciledAt
+                  ? describeLocked(shown.reconciledAt, (iso) => describeWhen(iso, locale))
+                  : 'This was locked during a statement check, so it cannot be edited or deleted.'}
+              </p>
+              <p className="max-w-[46ch] text-caption text-ink-3">
+                If it really is wrong, unlock that statement check from the account first. The
+                unlock is recorded, so your history still explains itself.
+              </p>
             </div>
           ) : (
             <div>

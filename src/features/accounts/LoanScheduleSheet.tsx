@@ -34,7 +34,7 @@ import {
 import { LOAN_TABLES, getLoan, paidToDate, termsOf } from '@/data/repositories/loansRepo';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { useMoney } from '@/app/money/useMoney';
-import { describeDate } from '@/app/dates';
+import { describeWhen } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { BottomSheet, Button, Card, StatPill } from '@/design/ui';
 import { LoanTermsSheet } from './LoanTermsSheet';
@@ -186,7 +186,7 @@ export function LoanScheduleSheet({
                 <p className="text-caption text-ink">
                   At this rate it is paid off in {describeMonths(view.totals.months)}
                   {view.totals.payoffDate
-                    ? `, on ${describeDate(view.totals.payoffDate, locale)}`
+                    ? `, ${describeWhen(view.totals.payoffDate, locale)}`
                     : ''}
                   .
                 </p>

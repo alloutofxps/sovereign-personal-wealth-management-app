@@ -324,6 +324,7 @@ function posting(
     baseAmount: minor(amount),
     fxRateScaled: 1_000_000,
     clearance: 'cleared' as const,
+    reconciledAt: null,
     memo: null,
     sequence: index,
   };

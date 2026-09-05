@@ -45,6 +45,7 @@ import { RecordValuationSheet } from './RecordValuationSheet';
 import { LoanScheduleSheet } from './LoanScheduleSheet';
 import { RecordLoanPaymentSheet } from './RecordLoanPaymentSheet';
 import { NetWorthHistoryCard } from './NetWorthHistoryCard';
+import { ReconcileAccountSheet } from '@/features/reconciliation/ReconcileAccountSheet';
 
 const ORDER: AccountGroup[] = ['cash', 'foreign', 'investments', 'property', 'debts'];
 
@@ -70,6 +71,7 @@ export function AccountsView() {
   const [revaluing, setRevaluing] = useState<LedgerAccount | null>(null);
   const [schedulingLoan, setSchedulingLoan] = useState<AccountId | null>(null);
   const [payingLoan, setPayingLoan] = useState<AccountId | null>(null);
+  const [reconciling, setReconciling] = useState<AccountId | null>(null);
   const [collapsed, setCollapsed] = useState<Set<AccountGroup>>(new Set());
 
   const data = dashboard.data;
@@ -400,7 +402,13 @@ export function AccountsView() {
           setEditingTerms(viewing ? (termsFor(viewing.id) ?? null) : null);
           setViewing(null);
         }}
+        onReconcile={() => {
+          setReconciling(viewing?.id ?? null);
+          setViewing(null);
+        }}
       />
+
+      <ReconcileAccountSheet accountId={reconciling} onClose={() => setReconciling(null)} />
 
       <RecordValuationSheet
         account={revaluing}

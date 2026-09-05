@@ -18,7 +18,7 @@ import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 import type { EntrySearchParams } from '@/data/repositories/searchRepo';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { useDebounced, useEntrySearch, useMonthGroups } from '@/app/ledger/useSearch';
-import { presentEntry } from '@/app/ledger/present';
+import { presentEntry, type PresentedEntry } from '@/app/ledger/present';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
@@ -216,6 +216,7 @@ function Row({
     <ListItem
       onClick={onOpen}
       muted={shown.isCorrection}
+      leading={<ClearanceMark clearance={shown.clearance} />}
       title={
         <span className="flex items-center gap-1.5">
           <span className="truncate">{shown.title}</span>
@@ -233,6 +234,51 @@ function Row({
         />
       }
     />
+  );
+}
+
+/**
+ * How far through the bank a row has got, in a shape rather than a colour.
+ *
+ * Deliberately small and grey. This is reference information somebody looks
+ * for when they are looking for it — a bright badge on every row would make
+ * the whole list about clearance, which is not what the list is for.
+ */
+function ClearanceMark({ clearance }: { clearance: PresentedEntry['clearance'] }) {
+  if (clearance === 'reconciled') {
+    return (
+      <span title="Checked against your statement and locked" className="flex text-ink-3">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-label="Locked" role="img">
+          <rect x="4" y="10" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="2" />
+          <path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (clearance === 'pending') {
+    return (
+      <span
+        aria-label="Has not gone through yet"
+        role="img"
+        title="Has not gone through your bank yet"
+        className="h-2.5 w-2.5 rounded-full border border-line-strong"
+      />
+    );
+  }
+
+  return (
+    <span title="Has gone through your bank" className="flex text-ink-4">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-label="Gone through" role="img">
+        <path
+          d="m5 13 4 4L19 7"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
   );
 }
 

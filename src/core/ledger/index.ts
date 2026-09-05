@@ -38,9 +38,12 @@ export {
 export type { EntryBase, PostingSpec } from './entries/common';
 export {
   assertBalanced,
+  assertNotReconciled,
   buildEntry,
+  clearanceOf,
   credit,
   debit,
+  isReconciled,
   requirePositiveAmount,
   reverseEntry,
 } from './entries/common';

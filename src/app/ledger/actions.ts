@@ -8,6 +8,7 @@
 
 import { minor, type Minor } from '@/core/money';
 import {
+  assertNotReconciled,
   assign,
   buildEntry,
   cardPayment,
@@ -272,6 +273,17 @@ export async function voidEntry(id: EntryId, reason?: string): Promise<void> {
         'the claim itself, so the two cannot end up disagreeing.',
     );
   }
+
+  // Last, and deliberately so: the other refusals above are about the shape of
+  // the ledger, and this one is about something the person themselves did.
+  // Hearing "you checked this against your bank" is only useful once the
+  // simpler reasons have been ruled out.
+  // No date in this one, and no formatter threaded down to produce it. This
+  // is a backstop: the screen where somebody actually meets a locked payment
+  // already refuses the action there, with the date, in their own locale.
+  // Reaching into the interface's config from here to say the same thing twice
+  // would put the whole settings store on the first paint.
+  assertNotReconciled(original);
 
   const reversal = reverseEntry(
     original,

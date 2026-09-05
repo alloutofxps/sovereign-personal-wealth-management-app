@@ -12,14 +12,22 @@
  * payment moves all four at once.
  * ======================================================================== */
 
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useDashboard } from '@/app/dashboard/useDashboard';
 import { useRecentEntries } from '@/app/ledger/useLedger';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
-import { PaymentDetailsSheet } from '@/features/entry/PaymentDetailsSheet';
+// Loaded when somebody taps a payment, not before. It is a sheet that only
+// appears on demand, and it brings the whole audit view and the statement-check
+// wording with it — none of which belongs in front of a person who has opened
+// the app to see one number.
+const PaymentDetailsSheet = lazy(() =>
+  import('@/features/entry/PaymentDetailsSheet').then((m) => ({
+    default: m.PaymentDetailsSheet,
+  })),
+);
 import { AddBillSheet } from './AddBillSheet';
 import { BalanceCard } from './BalanceCard';
 import { GettingStarted } from './GettingStarted';
@@ -155,7 +163,11 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
 
       <SafeToSpendSheet open={explaining} onClose={() => setExplaining(false)} data={data} />
       <AddBillSheet open={addingBill} onClose={() => setAddingBill(false)} />
-      <PaymentDetailsSheet entry={looking} onClose={() => setLooking(null)} />
+      {looking && (
+        <Suspense fallback={null}>
+          <PaymentDetailsSheet entry={looking} onClose={() => setLooking(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }
