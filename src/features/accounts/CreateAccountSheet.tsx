@@ -13,15 +13,19 @@
  * be tempted by — and which is safe in the direction it errs.
  * ======================================================================== */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { minor, type Minor } from '@/core/money';
+import { minor, type Minor, type Rate1e6 } from '@/core/money';
 import type { AccountClass } from '@/core/ledger';
 // Deep import on purpose: see the note in the ledger barrel.
 import { CLASS_PROFILES } from '@/core/ledger/accountClasses';
 import { COMMON_CURRENCIES } from '@/core/money';
 import { useAppConfig } from '@/app/config/store';
 import { createAccount } from '@/data/repositories/accountsRepo';
+import { FX_TABLES, latestRates } from '@/data/repositories/fxRepo';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+// Deep import on purpose: see the note in the money barrel.
+import { formatRate1e6, rateFromDecimal } from '@/core/money/fxReturns';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
 import { AmountInput, BottomSheet, Button, Input, Select } from '@/design/ui';
@@ -93,7 +97,11 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [offBudget, setOffBudget] = useState(false);
   const [currency, setCurrency] = useState('');
+  const [rateText, setRateText] = useState('');
   const [busy, setBusy] = useState(false);
+
+  /** The chosen currency when it is not the household's own, else null. */
+  const foreignCurrency = currency !== '' && currency !== baseCurrency ? currency : null;
 
   function reset() {
     setChosen(null);
@@ -102,6 +110,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
     setAmount(minor(0));
     setOffBudget(false);
     setCurrency('');
+    setRateText('');
   }
 
   function close() {
@@ -109,11 +118,34 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
     onClose();
   }
 
+  // Whatever was last recorded for this currency, offered as a starting point
+  // rather than imposed. It is almost certainly close and almost certainly not
+  // exact, and the person confirming it is the whole point.
+  const known = useLiveQuery(
+    useCallback(() => latestRates(baseCurrency), [baseCurrency]),
+    FX_TABLES,
+  );
+
+  useEffect(() => {
+    if (!foreignCurrency) {
+      setRateText('');
+      return;
+    }
+    const row = (known.data ?? []).find((r) => r.quoteCurrency === foreignCurrency);
+    setRateText(row ? formatRate1e6(row.rateScaled) : '');
+  }, [foreignCurrency, known.data]);
+
   const profile = chosen ? CLASS_PROFILES[chosen] : null;
   const owed = profile?.type === 'LIABILITY';
   // An account in another currency is never part of the budget, so the
   // override below stops being offered the moment one is chosen.
-  const foreign = currency !== '' && currency !== baseCurrency;
+  const foreign = foreignCurrency !== null;
+  const parsedRate = parseRate(rateText);
+
+  // A foreign balance of nothing needs no rate: there is no figure to convert,
+  // so asking for one would be a hurdle in front of an empty account.
+  const rateRequired = foreign && amount > 0;
+  const rateReady = !rateRequired || parsedRate !== null;
 
   async function save() {
     if (!chosen || !name.trim()) return;
@@ -125,6 +157,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
         startingBalance: amount,
         ...(institution.trim() ? { institution } : {}),
         ...(foreign ? { currency, baseCurrency } : {}),
+        ...(foreign && parsedRate !== null ? { rateScaled: parsedRate } : {}),
         ...(profile?.onBudget && offBudget && !foreign ? { onBudget: false } : {}),
       });
 
@@ -164,7 +197,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             <Button
               variant="primary"
               block
-              disabled={busy || !name.trim()}
+              disabled={busy || !name.trim() || !rateReady}
               onClick={() => void save()}
             >
               {busy ? 'Adding…' : 'Add it'}
@@ -227,11 +260,32 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             {...(foreign
               ? {
                   hint:
-                    `Shown in ${currency} first, with an estimate in ${baseCurrency} ` +
-                    `underneath. Add a rate in Settings and the estimate appears.`,
+                    `Shown in ${currency} first, with what it is worth in ${baseCurrency} ` +
+                    `underneath.`,
                 }
               : {})}
           />
+
+          {foreign && (
+            <Input
+              label={`How many ${currency} one ${baseCurrency} buys`}
+              value={rateText}
+              onChange={(e) => setRateText(e.target.value)}
+              inputMode="decimal"
+              placeholder="1.085215"
+              hint={
+                rateRequired
+                  ? `Needed before this can be added: a balance in ${currency} has to be worth ` +
+                    `something in ${baseCurrency}, and recording it without a rate would put ` +
+                    `the wrong figure into what you are worth.`
+                  : `Not needed while the balance is nothing. Add it when there is money in ` +
+                    `the account.`
+              }
+              {...(rateText.trim() !== '' && parsedRate === null
+                ? { error: 'A rate looks like 1.085215 — a number with up to six decimal places.' }
+                : {})}
+            />
+          )}
 
           <Input
             label="Who holds it (optional)"
@@ -303,4 +357,19 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
       )}
     </BottomSheet>
   );
+}
+
+/**
+ * A typed rate, or null when it is not one yet.
+ *
+ * Six decimal places because that is what the ledger stores; anything finer is
+ * a typo rather than precision. Empty is null rather than zero, so an untouched
+ * field reads as "not answered" and not as "a rate of nothing".
+ */
+function parseRate(input: string): Rate1e6 | null {
+  const cleaned = input.trim().replace(',', '.');
+  if (cleaned === '' || cleaned === '.' || !/^\d*\.?\d{0,6}$/.test(cleaned)) return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return rateFromDecimal(value);
 }

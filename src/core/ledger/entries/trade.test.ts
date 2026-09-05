@@ -618,3 +618,96 @@ describe('what a year of investing does to the rest of the books', () => {
     );
   });
 });
+
+/* ===========================================================================
+ * SELLING WITHOUT TAKING THE MONEY OUT
+ * ---------------------------------------------------------------------------
+ * The ordinary brokerage action: sell, leave the cash there, buy something
+ * else later. This used to be unrecordable — the builder demanded two
+ * different accounts — while the rebalancer assumed you could do it.
+ * ======================================================================== */
+
+describe('a sale that leaves the money at the broker', () => {
+  const inPlace = () =>
+    investmentSell({
+      ...base(),
+      cashAccount: BROKERAGE,
+      brokerageAccount: BROKERAGE,
+      proceeds: minor(250_000),
+      costBasisRelieved: minor(220_000),
+      realizedGain: minor(30_000),
+      system: SYSTEM,
+    });
+
+  it('puts both legs on the one account', () => {
+    const legs = inPlace().postings.filter(
+      (p) => p.book === 'FINANCIAL' && p.accountId === A.brokerage,
+    );
+
+    // What they fetched, and what they had cost.
+    expect(legs.map((p) => p.amount).sort((a, b) => a - b)).toEqual([-220_000, 250_000]);
+  });
+
+  it('moves the account by exactly the gain, and nothing else', () => {
+    const entry = inPlace();
+    const net = entry.postings
+      .filter((p) => p.book === 'FINANCIAL' && p.accountId === A.brokerage)
+      .reduce((total, p) => total + p.amount, 0);
+
+    // The holdings were carried at cost, so realising the gain is the only
+    // thing that changes. The register sync trues it up to market afterwards.
+    expect(net).toBe(30_000);
+    expect(entry.postings.find((p) => p.accountId === A.realizedGain)!.amount).toBe(-30_000);
+  });
+
+  it('writes no budget postings at all', () => {
+    // Nothing left the account, so nothing about what is safe to spend moved.
+    expect(inPlace().postings.filter((p) => p.book === 'BUDGET')).toEqual([]);
+  });
+
+  it('touches no income and no spending account', () => {
+    const touched = new Set(inPlace().postings.map((p) => p.accountId));
+    expect(touched.has(A.dividends)).toBe(false);
+    expect(touched.has(A.groceries)).toBe(false);
+    expect(touched.has(A.cash)).toBe(false);
+    expect(touched.has(A.rta)).toBe(false);
+  });
+
+  it('says in its own description that the money stayed put', () => {
+    expect(inPlace().description).toBe(
+      'Sold part of Degiro Portfolio, and the money stayed there.',
+    );
+  });
+
+  it('still books a loss to equity when one is taken in place', () => {
+    const entry = investmentSell({
+      ...base(),
+      cashAccount: BROKERAGE,
+      brokerageAccount: BROKERAGE,
+      proceeds: minor(180_000),
+      costBasisRelieved: minor(220_000),
+      realizedGain: minor(-40_000),
+      system: SYSTEM,
+    });
+
+    expect(entry.postings.find((p) => p.accountId === A.realizedLoss)!.amount).toBe(40_000);
+    expect(entry.postings.filter((p) => p.book === 'BUDGET')).toEqual([]);
+  });
+
+  it('refuses to sell in place inside an on-budget account', () => {
+    // Money moving between two columns of an account somebody spends from
+    // would change safe-to-spend without any money having moved.
+    const onBudgetBroker = { ...BROKERAGE, onBudget: true };
+    expect(() =>
+      investmentSell({
+        ...base(),
+        cashAccount: onBudgetBroker,
+        brokerageAccount: onBudgetBroker,
+        proceeds: minor(250_000),
+        costBasisRelieved: minor(220_000),
+        realizedGain: minor(30_000),
+        system: SYSTEM,
+      }),
+    ).toThrow(/safe to spend/);
+  });
+});

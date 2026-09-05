@@ -12,7 +12,6 @@ import { openDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
 import type { StorageStatus } from '@/data/worker/protocol';
 import { useRoute, type Route } from '@/app/router';
-import { AddPaymentSheet } from '@/features/entry/AddPaymentSheet';
 import { Dashboard } from '@/features/dashboard/Dashboard';
 import { useAppUpdate } from '@/app/pwa/useAppUpdate';
 import { requestPersistence } from '@/data/persistence';
@@ -36,6 +35,13 @@ import { Toasts } from './Toasts';
  * there and the fallback below is never seen. It matters on the very first
  * visit, which is exactly the visit worth protecting.
  * ------------------------------------------------------------------------ */
+
+// Loaded when the + button is pressed, not before. It is the biggest sheet in
+// the app — three entry kinds, a split editor and a category picker — and none
+// of it is needed to show somebody what is safe to spend.
+const AddPaymentSheet = lazy(() =>
+  import('@/features/entry/AddPaymentSheet').then((m) => ({ default: m.AddPaymentSheet })),
+);
 
 const TriageView = lazy(() =>
   import('@/features/triage/TriageView').then((m) => ({ default: m.TriageView })),
@@ -169,7 +175,11 @@ function Shell({ storage }: { storage: StorageStatus }) {
       </main>
 
       <BottomNav route={route} onNavigate={navigate} onAdd={() => setAdding(true)} />
-      <AddPaymentSheet open={adding} onClose={() => setAdding(false)} />
+      {adding && (
+        <Suspense fallback={null}>
+          <AddPaymentSheet open={adding} onClose={() => setAdding(false)} />
+        </Suspense>
+      )}
       <UpdateBanner update={update} />
       <Toasts />
     </div>

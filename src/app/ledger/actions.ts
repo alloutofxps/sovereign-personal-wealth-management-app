@@ -17,11 +17,13 @@ import {
   debit,
   entryId,
   fundingFor,
+  income,
   isoDate,
   reimbursable,
   reimbursement,
   reverseEntry,
   spend,
+  transfer,
   writeOff,
   type AccountId,
   type CardCredit,
@@ -239,6 +241,110 @@ export async function noteScheduledCharge(description: string, amount: Minor): P
   if (!match) return;
 
   await recordActualCharge(match.id, amount, today());
+}
+
+/* --- money arriving ------------------------------------------------------ */
+
+export interface RecordIncomeInput {
+  amount: Minor;
+  /** The INCOME account it came from — pay, freelance, something else. */
+  sourceId: AccountId;
+  /** Where it landed. */
+  intoAccountId: AccountId;
+  /** Who paid it, as the person would say it: "work", "the tax office". */
+  payer: string;
+  date?: IsoDate;
+  memo?: string;
+}
+
+/**
+ * Money coming in.
+ *
+ * There was no way to record this at all until now. Money could only enter the
+ * ledger through an opening balance or an imported statement row, which meant
+ * anybody not importing from a bank had no way to tell Sovereign they had been
+ * paid — while the home screen asked them where their income was.
+ *
+ * Landing in an everyday account makes it budgetable, and it arrives as money
+ * without a job rather than being spread automatically. Deciding what it is
+ * for is the person's, and doing it for them is the thing this app does not do.
+ */
+export async function recordIncome(input: RecordIncomeInput): Promise<EntryId> {
+  const into = (await accountsById()).get(input.intoAccountId);
+  if (!into) {
+    throw new Error('That account could not be found, so nothing has been recorded.');
+  }
+
+  const entry = income({
+    ...newEntry(input.date),
+    amount: input.amount,
+    sourceId: input.sourceId,
+    depositAccountId: input.intoAccountId,
+    // Off-budget deposits — a pension contribution, a brokerage top-up — raise
+    // what you are worth without raising what you can spend.
+    countsAsBudgetableCash: into.onBudget && into.liquid,
+    payer: input.payer,
+    ...(input.memo ? { memo: input.memo } : {}),
+    system: SYSTEM_ACCOUNTS,
+  });
+
+  await saveEntry(entry);
+  return entry.id;
+}
+
+/* --- moving money between your own accounts ------------------------------ */
+
+export interface RecordTransferInput {
+  amount: Minor;
+  fromAccountId: AccountId;
+  toAccountId: AccountId;
+  /**
+   * Which pot the money comes out of, when it is leaving the budget.
+   *
+   * Moving cash into somewhere you do not spend from — a brokerage, a pension —
+   * takes it out of what is safe to spend, so it has to come from somewhere
+   * that was set aside for it.
+   */
+  envelopeId?: AccountId;
+  date?: IsoDate;
+  memo?: string;
+}
+
+/** Money moved between two accounts the person already owns. */
+export async function recordTransfer(input: RecordTransferInput): Promise<EntryId> {
+  if (input.fromAccountId === input.toAccountId) {
+    throw new Error('Money has to move between two different accounts.');
+  }
+
+  const byId = await accountsById();
+  const from = byId.get(input.fromAccountId);
+  const to = byId.get(input.toAccountId);
+  if (!from || !to) {
+    throw new Error('One of those accounts could not be found, so nothing has been recorded.');
+  }
+  if (from.currency !== to.currency && (from.currency ?? to.currency) !== null) {
+    throw new Error(
+      `${from.name} and ${to.name} are in different currencies. Use Convert instead, ` +
+        `so what actually arrived can be recorded rather than guessed at.`,
+    );
+  }
+
+  const entry = transfer({
+    ...newEntry(input.date),
+    amount: input.amount,
+    from: {
+      accountId: from.id,
+      name: from.name,
+      countsAsBudgetableCash: from.onBudget && from.liquid,
+    },
+    to: { accountId: to.id, name: to.name, countsAsBudgetableCash: to.onBudget && to.liquid },
+    ...(input.envelopeId ? { envelopeId: input.envelopeId } : {}),
+    ...(input.memo ? { memo: input.memo } : {}),
+    system: SYSTEM_ACCOUNTS,
+  });
+
+  await saveEntry(entry);
+  return entry.id;
 }
 
 /* --- undoing something --------------------------------------------------- */

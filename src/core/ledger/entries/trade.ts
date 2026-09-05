@@ -138,9 +138,6 @@ export interface InvestmentSellParams extends EntryBase {
 export function investmentSell(p: InvestmentSellParams): JournalEntry {
   const proceeds = requirePositiveAmount(p.proceeds, 'The money from a sale');
 
-  if (p.cashAccount.id === p.brokerageAccount.id) {
-    throw new LedgerError('Money has to move between two different accounts.');
-  }
   if (p.costBasisRelieved < 0) {
     throw new LedgerError('What shares cost cannot be a negative amount.');
   }
@@ -151,13 +148,47 @@ export function investmentSell(p: InvestmentSellParams): JournalEntry {
     );
   }
 
-  const entersBudget = p.cashAccount.onBudget && p.cashAccount.liquid;
+  // Selling without taking the money out: the proceeds stay at the broker as
+  // uninvested cash. This is the ordinary case — you sell, the cash sits there,
+  // you buy something else next week — and refusing it used to make the most
+  // common brokerage action unrecordable, while the rebalancer assumed it.
+  //
+  // Both legs land on the one account: relieved at what the shares cost,
+  // credited with what they fetched. It nets to the gain, which is right,
+  // because the account carries its holdings at cost until the register is
+  // synced against it. Nothing leaves, so nothing about the budget moves.
+  const inPlace = p.cashAccount.id === p.brokerageAccount.id;
+
+  if (inPlace && p.brokerageAccount.onBudget) {
+    throw new LedgerError(
+      `${p.brokerageAccount.name} is part of your everyday money, so a sale inside it ` +
+        `would change what is safe to spend without any money having moved.`,
+    );
+  }
+
+  const entersBudget = !inPlace && p.cashAccount.onBudget && p.cashAccount.liquid;
   const gain = p.realizedGain;
 
-  return buildEntry(p, 'INVESTMENT_SELL', `Sold part of ${p.brokerageAccount.name}.`, [
-    debit(FIN, p.cashAccount.id, proceeds),
+  const description = inPlace
+    ? `Sold part of ${p.brokerageAccount.name}, and the money stayed there.`
+    : `Sold part of ${p.brokerageAccount.name}.`;
+
+  return buildEntry(p, 'INVESTMENT_SELL', description, [
+    debit(
+      FIN,
+      p.cashAccount.id,
+      proceeds,
+      inPlace ? 'What the shares fetched, left as cash in the account' : undefined,
+    ),
     ...(p.costBasisRelieved > 0
-      ? [credit(FIN, p.brokerageAccount.id, p.costBasisRelieved)]
+      ? [
+          credit(
+            FIN,
+            p.brokerageAccount.id,
+            p.costBasisRelieved,
+            inPlace ? 'What those shares had cost' : undefined,
+          ),
+        ]
       : []),
     ...(gain > 0 ? [credit(FIN, p.system.realizedGain, gain)] : []),
     ...(gain < 0 ? [debit(FIN, p.system.realizedLoss, minor(-gain))] : []),

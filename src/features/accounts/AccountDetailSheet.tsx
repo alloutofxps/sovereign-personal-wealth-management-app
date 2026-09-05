@@ -18,16 +18,22 @@ import {
   archiveAccount,
   calculateDepreciation,
   listValuations,
+  renameAccount,
   type DepreciationEstimate,
   type ValuationMark,
 } from '@/data/repositories/accountsRepo';
+import {
+  RECONCILIATION_TABLES,
+  reconciliationHistory,
+  unlockReconciliation,
+} from '@/data/repositories/reconciliationRepo';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import type { DebtTermsRow } from '@/data/repositories/ledgerRepo';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Card, Money } from '@/design/ui';
+import { BottomSheet, Button, Card, Input, Money } from '@/design/ui';
 
 export function AccountDetailSheet({
   account,
@@ -48,6 +54,50 @@ export function AccountDetailSheet({
 }) {
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
+
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [unlocking, setUnlocking] = useState<string | null>(null);
+
+  // Every statement check ever done on this account. Until now the repository
+  // could answer this and nothing asked, so the sentence the whole feature
+  // earns — "it has agreed with the bank every month since June" — was
+  // computed and thrown away.
+  const checks = useLiveQuery(
+    useCallback(
+      () => (account ? reconciliationHistory(account.id) : Promise.resolve([])),
+      [account],
+    ),
+    RECONCILIATION_TABLES,
+  );
+
+  async function saveName() {
+    if (!account) return;
+    try {
+      await renameAccount(account.id, draftName);
+      toast(`Now called ${draftName.trim()}.`);
+      setRenaming(false);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'That name could not be saved.', {
+        tone: 'attention',
+      });
+    }
+  }
+
+  async function unlock(id: string) {
+    try {
+      const { unlocked } = await unlockReconciliation(id);
+      toast(
+        `Unlocked. ${unlocked} ${unlocked === 1 ? 'payment is' : 'payments are'} editable ` +
+          `again, and the check stays in your history marked as reopened.`,
+      );
+      setUnlocking(null);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'That could not be unlocked.', {
+        tone: 'attention',
+      });
+    }
+  }
   const [busy, setBusy] = useState(false);
 
   const id = account?.id ?? null;
@@ -113,8 +163,98 @@ export function AccountDetailSheet({
               {account.institution && (
                 <p className="text-caption text-ink-3">Held with {account.institution}.</p>
               )}
+
+              {/* A name is the one thing about an account that is purely how
+                  somebody refers to it, so it is the one thing safe to change
+                  after the fact. Everything else would rewrite what past
+                  entries meant. */}
+              {renaming ? (
+                <div className="flex flex-col gap-2 pt-1">
+                  <Input
+                    label="What to call it"
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="primary" size="sm" onClick={() => void saveName()}>
+                      Save the name
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setRenaming(false)}>
+                      Leave it
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftName(account.name);
+                    setRenaming(true);
+                  }}
+                  className="self-start text-caption text-liquid"
+                >
+                  Change what this is called
+                </button>
+              )}
             </div>
           </Card>
+
+          {/* --- statement checks --------------------------------------- */}
+          {(checks.data ?? []).length > 0 && (
+            <Card label="Checked against your bank">
+              <div className="flex flex-col gap-3">
+                {(checks.data ?? []).map((check) => (
+                  <div key={check.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-caption text-ink">
+                        {describeDate(check.statementDate, locale)}
+                      </span>
+                      <span className="tnum text-caption text-ink-2">
+                        {money.format(check.statementBalance)}
+                      </span>
+                    </div>
+                    <p className="text-micro text-ink-3">
+                      {check.status === 'completed'
+                        ? 'Matched to the exact penny, and locked.'
+                        : 'Matched at the time, then reopened so it could be edited.'}
+                    </p>
+
+                    {check.status === 'completed' &&
+                      (unlocking === check.id ? (
+                        <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3 py-2.5">
+                          <p className="text-caption text-ink-2">
+                            This will let those payments be edited and undone again. The check
+                            stays in your history, marked as reopened, so the months that once
+                            agreed with your bank still explain themselves.
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => void unlock(check.id)}
+                            >
+                              Yes, unlock it
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setUnlocking(null)}>
+                              Leave it locked
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setUnlocking(check.id)}
+                          className="self-start text-micro text-ink-3 underline underline-offset-2"
+                        >
+                          Unlock this statement check
+                        </button>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* --- borrowing terms ---------------------------------------- */}
           {owed && (

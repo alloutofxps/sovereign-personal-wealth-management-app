@@ -13,8 +13,8 @@
  * somebody spends on it.
  * ======================================================================== */
 
-import { sql } from 'drizzle-orm';
-import { minor, type Minor } from '@/core/money';
+import { eq, sql } from 'drizzle-orm';
+import { minor, type Minor, type Rate1e6 } from '@/core/money';
 import {
   LedgerError,
   accountId as toAccountId,
@@ -48,6 +48,14 @@ export const ACCOUNT_TABLES = ['accounts', 'entries', 'postings', 'valuations'] 
 export interface CreateAccountParams extends AccountDraft {
   /** Defaults to today. The day the balance or the value applies to. */
   asOf?: IsoDate;
+  /**
+   * The rate to open a foreign balance at, quote-per-base at 1e6.
+   *
+   * Supplied by the sheet once somebody has seen and confirmed it. Without it
+   * the rate is looked up, and a lookup that finds nothing refuses the whole
+   * creation rather than quietly recording the balance one-for-one.
+   */
+  rateScaled?: Rate1e6;
 }
 
 export interface CreatedAccount {
@@ -94,34 +102,50 @@ function insertAccount(account: LedgerAccount, extra: Record<string, unknown> = 
 /**
  * What a foreign opening figure is worth, at the rate on that day.
  *
- * Returns null when there is no rate on record — the account is still created,
- * and its balance simply has no estimate in the reporting currency until
- * somebody adds one. Refusing to create it would be worse: the account exists
- * whether or not this app knows the rate.
+ * Refuses rather than guesses. This used to swallow a missing rate and return
+ * null, which meant the opening balance posted with its base amount equal to
+ * its native one — $4,334 recorded as EUR 4,334, permanently, with nothing on
+ * screen to say so. Every figure built on top of it was then wrong: net worth,
+ * the timeline, every milestone. A wrong number nobody can see is worse than a
+ * refusal somebody can act on, so this throws and the caller asks for the rate.
+ *
+ * `rateScaled` may be supplied by the caller, which is what the account sheet
+ * does once somebody has confirmed the rate on screen. Then no lookup happens
+ * and there is nothing to fail.
  */
 async function rateFor(
   currency: string,
   date: IsoDate,
   baseCurrency: string,
   amount: Minor,
+  supplied?: Rate1e6,
 ): Promise<{ rateScaled: number; inBase: Minor } | null> {
   if (currency === baseCurrency) return null;
 
-  try {
-    const { getRateAsOf } = await import('./fxRepo');
-    const { toBaseCurrency } = await import('@/core/money/fx');
-    const { rate } = await getRateAsOf(currency, date, baseCurrency);
-    return {
+  const { toBaseCurrency } = await import('@/core/money/fx');
+
+  const convert = (rate: Rate1e6) => ({
+    rateScaled: rate,
+    inBase: toBaseCurrency({
+      amount,
       rateScaled: rate,
-      inBase: toBaseCurrency({
-        amount,
-        rateScaled: rate,
-        quoteCurrency: currency as never,
-        baseCurrency: baseCurrency as never,
-      }),
-    };
+      quoteCurrency: currency as never,
+      baseCurrency: baseCurrency as never,
+    }),
+  });
+
+  if (supplied !== undefined) return convert(supplied);
+
+  const { getRateAsOf } = await import('./fxRepo');
+  try {
+    const { rate } = await getRateAsOf(currency, date, baseCurrency);
+    return convert(rate);
   } catch {
-    return null;
+    throw new LedgerError(
+      `There is no exchange rate on record for ${currency} on ${date}, so what this ` +
+        `account holds cannot be worked out in ${baseCurrency}. Add the rate first, or ` +
+        `type it alongside the balance, and nothing will be recorded until it is right.`,
+    );
   }
 }
 
@@ -138,6 +162,21 @@ export async function createAccount(params: CreateAccountParams): Promise<Create
     account: toAccountId(newId('acc')),
     paymentEnvelope: toAccountId(newId('pot')),
   });
+
+  // Before any row is written. The rate can refuse, and a refusal must leave
+  // no half-made account behind — the rows below are committed in one batch,
+  // but the opening entry comes after them in a second.
+  const openingDate = params.asOf ?? today();
+  const foreign =
+    plan.needsOpeningEntry && plan.account.currency && params.baseCurrency
+      ? await rateFor(
+          plan.account.currency,
+          openingDate,
+          params.baseCurrency,
+          params.startingBalance,
+          params.rateScaled,
+        )
+      : null;
 
   const rows = [insertAccount(plan.account, { aprBp: params.aprBp ?? null })];
 
@@ -156,15 +195,7 @@ export async function createAccount(params: CreateAccountParams): Promise<Create
   await runBatch(rows.map((s) => ({ sql: s.sql, params: s.params })));
 
   if (plan.needsOpeningEntry) {
-    const date = params.asOf ?? today();
-
-    // A foreign opening figure is what the statement says; what it is worth
-    // comes from the rate on that day. Without this a $5,000 account would
-    // open on the balance sheet as €5,000.
-    const foreign =
-      plan.account.currency && params.baseCurrency
-        ? await rateFor(plan.account.currency, date, params.baseCurrency, params.startingBalance)
-        : null;
+    const date = openingDate;
 
     await saveEntry(
       openingBalance({
@@ -443,6 +474,33 @@ export async function calculateDepreciation(
  * what somebody is worth would drop by an amount they still have. Moving it or
  * writing it off first are both honest; hiding it is not.
  */
+/**
+ * Change what an account is called.
+ *
+ * Only the name. Not the currency, not the class, not whether it is on budget
+ * — those change what past entries mean, and an account with history cannot
+ * have its meaning rewritten underneath it. A name is the one thing that is
+ * purely how somebody refers to it, so it is the one thing that is safe.
+ *
+ * Renaming was impossible until now, which meant a typo at creation was
+ * permanent and the only remedy was to archive the account and start again,
+ * abandoning its history.
+ */
+export async function renameAccount(id: AccountId, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new LedgerError('An account needs a name, so it can be told apart from the others.');
+  }
+
+  const existing = (await listAccounts()).find((a) => a.id === id);
+  if (!existing) {
+    throw new LedgerError('That account could not be found, so nothing has been changed.');
+  }
+  if (existing.name === trimmed) return;
+
+  await db.update(accounts).set({ name: trimmed }).where(eq(accounts.id, id));
+}
+
 export async function archiveAccount(id: AccountId): Promise<void> {
   const account = (await listAccounts()).find((a) => a.id === id);
   if (!account) {

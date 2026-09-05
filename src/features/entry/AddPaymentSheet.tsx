@@ -13,13 +13,21 @@ import { isoDate, type AccountId } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
 import { ACCOUNT_IDS } from '@/data/seed';
 import { CLAIM_KIND_LABELS, type ClaimKind } from '@/data/repositories/claimsRepo';
-import { recordFronted, recordSpend, recordSplitSpend, voidEntry } from '@/app/ledger/actions';
+import {
+  recordFronted,
+  recordIncome,
+  recordSpend,
+  recordSplitSpend,
+  recordTransfer,
+  voidEntry,
+} from '@/app/ledger/actions';
+import { useAccounts } from '@/app/ledger/useLedger';
 import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
 import { saveRule } from '@/data/repositories/rulesRepo';
 import { AlwaysFileToggle, CategoryPicker } from '@/features/categories/CategoryPicker';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Input, Money, Select } from '@/design/ui';
 import {
   SplitEditor,
   allocated,
@@ -41,8 +49,18 @@ export interface AddPaymentSheetProps {
   onClose: () => void;
 }
 
+/** The three things somebody can record here. */
+type EntryFlow = 'payment' | 'income' | 'transfer';
+
+const FLOW_LABELS: Record<EntryFlow, string> = {
+  payment: 'Payment',
+  income: 'Money in',
+  transfer: 'Transfer',
+};
+
 export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const money = useMoney();
+  const [kind, setKind] = useState<EntryFlow>('payment');
   const [step, setStep] = useState<'amount' | 'details'>('amount');
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [categoryId, setCategoryId] = useState<AccountId | null>(null);
@@ -59,6 +77,13 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [owedBy, setOwedBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+
+  // Income and transfers
+  const [sourceId, setSourceId] = useState<AccountId>(ACCOUNT_IDS.salary);
+  const [intoId, setIntoId] = useState<AccountId>(ACCOUNT_IDS.everyday);
+  const [payer, setPayer] = useState('');
+  const [fromId, setFromId] = useState<AccountId>(ACCOUNT_IDS.everyday);
+  const [toId, setToId] = useState<AccountId>(ACCOUNT_IDS.savings);
 
   // Start clean every time the sheet opens.
   useEffect(() => {
@@ -78,7 +103,18 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     setOwedBy('');
     setProblem(null);
     setSaving(false);
+    setKind('payment');
+    setPayer('');
+    setSourceId(ACCOUNT_IDS.salary);
+    setIntoId(ACCOUNT_IDS.everyday);
+    setFromId(ACCOUNT_IDS.everyday);
+    setToId(ACCOUNT_IDS.savings);
   }, [open]);
+
+  const accounts = useAccounts();
+  const live = (accounts.data ?? []).filter((a) => !a.archivedAt);
+  const cashAccounts = live.filter((a) => a.type === 'ASSET');
+  const incomeSources = live.filter((a) => a.type === 'INCOME');
 
   const picker = useCategoryPicker();
   const category = categoryId ? (picker.byId.get(categoryId) ?? null) : null;
@@ -95,6 +131,61 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
       : splitting
         ? splitExact && splitReady
         : category !== null);
+
+  const intoAccount = live.find((a) => a.id === intoId) ?? null;
+
+  /**
+   * Whether the button is live, for whichever of the three this is.
+   *
+   * Each kind answers a different question, so one flag cannot cover all
+   * three: a payment needs a category, income needs somewhere to land, and a
+   * transfer needs two accounts that are not the same one.
+   */
+  const canSaveNow =
+    kind === 'payment'
+      ? canSave
+      : kind === 'income'
+        ? canContinue && !saving && intoAccount !== null
+        : canContinue && !saving && fromId !== toId;
+
+  async function saveIncome() {
+    setSaving(true);
+    setProblem(null);
+    try {
+      await recordIncome({
+        amount,
+        sourceId,
+        intoAccountId: intoId,
+        payer: payer.trim() || 'somewhere',
+        date: isoDate(when),
+        ...(note.trim() ? { memo: note.trim() } : {}),
+      });
+      toast(`${money.format(amount)} in from ${payer.trim() || 'somewhere'}.`);
+      onClose();
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'That could not be recorded.');
+    }
+    setSaving(false);
+  }
+
+  async function saveTransfer() {
+    setSaving(true);
+    setProblem(null);
+    try {
+      await recordTransfer({
+        amount,
+        fromAccountId: fromId,
+        toAccountId: toId,
+        date: isoDate(when),
+        ...(note.trim() ? { memo: note.trim() } : {}),
+      });
+      toast(`${money.format(amount)} moved.`);
+      onClose();
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'That could not be recorded.');
+    }
+    setSaving(false);
+  }
 
   async function save() {
     if (amount <= 0) return;
@@ -194,7 +285,19 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
     <BottomSheet
       open={open}
       onClose={onClose}
-      title={step === 'amount' ? 'How much did you spend?' : 'What was it for?'}
+      title={
+        step === 'amount'
+          ? kind === 'payment'
+            ? 'How much did you spend?'
+            : kind === 'income'
+              ? 'How much came in?'
+              : 'How much are you moving?'
+          : kind === 'payment'
+            ? 'What was it for?'
+            : kind === 'income'
+              ? 'Where did it come from?'
+              : 'Between which accounts?'
+      }
       {...(step === 'details' ? { description: 'You can change any of this later.' } : {})}
       footer={
         step === 'amount' ? (
@@ -212,7 +315,18 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               <Button variant="secondary" block onClick={() => setStep('amount')}>
                 Back
               </Button>
-              <Button variant="primary" block disabled={!canSave} onClick={() => void save()}>
+              <Button
+                variant="primary"
+                block
+                disabled={!canSaveNow}
+                onClick={() =>
+                  void (kind === 'income'
+                    ? saveIncome()
+                    : kind === 'transfer'
+                      ? saveTransfer()
+                      : save())
+                }
+              >
                 {saving ? 'Saving…' : 'Save it'}
               </Button>
             </div>
@@ -221,13 +335,125 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
       }
     >
       {step === 'amount' ? (
-        <AmountInput
-          value={amount}
-          onChange={setAmount}
-          onSubmit={() => canContinue && setStep('details')}
-          label="Amount"
-          hint="Tap the numbers — they fill in from the right."
-        />
+        <div className="flex flex-col gap-4">
+          {/* Three things happen to money and only one of them was recordable
+              here. Money coming in had no path at all, which left the home
+              screen asking about income the app could not be told about. */}
+          <div
+            role="tablist"
+            aria-label="What kind of thing is this"
+            className="flex gap-1 rounded-md border border-line bg-sunken p-1"
+          >
+            {(['payment', 'income', 'transfer'] as EntryFlow[]).map((flow) => (
+              <button
+                key={flow}
+                role="tab"
+                type="button"
+                aria-selected={kind === flow}
+                onClick={() => setKind(flow)}
+                className={clsx(
+                  'flex-1 rounded-sm px-3 py-2 text-caption font-medium transition-colors',
+                  kind === flow
+                    ? 'bg-raised text-ink'
+                    : 'text-ink-3 hover:text-ink-2',
+                )}
+              >
+                {FLOW_LABELS[flow]}
+              </button>
+            ))}
+          </div>
+
+          <AmountInput
+            value={amount}
+            onChange={setAmount}
+            onSubmit={() => canContinue && setStep('details')}
+            label="Amount"
+            hint="Tap the numbers — they fill in from the right."
+          />
+        </div>
+      ) : kind === 'income' ? (
+        <div className="flex flex-col gap-4 pb-2">
+          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+            <span className="text-caption text-ink-2">Money in</span>
+            <Money value={amount} size="lead" tone="liquid" />
+          </div>
+
+          <Input
+            label="Who paid you"
+            value={payer}
+            onChange={(e) => setPayer(e.target.value)}
+            placeholder="Work, a client, the tax office"
+          />
+
+          <Select
+            label="What kind of money"
+            value={sourceId}
+            onChange={(e) => setSourceId(e.target.value as AccountId)}
+            options={incomeSources.map((a) => ({ value: a.id, label: a.name }))}
+            emptyLabel="No income kinds set up"
+          />
+
+          <Select
+            label="Where it landed"
+            value={intoId}
+            onChange={(e) => setIntoId(e.target.value as AccountId)}
+            options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+            emptyLabel="No accounts yet"
+          />
+
+          <Input
+            type="date"
+            label="When"
+            value={when}
+            onChange={(e) => e.target.value && setWhen(e.target.value)}
+          />
+
+          <p className="text-caption text-ink-3">
+            {intoAccount && intoAccount.onBudget && intoAccount.liquid
+              ? 'This arrives without a job. It will sit in what is waiting to be given one, ' +
+                'until you decide what it is for.'
+              : 'This lands somewhere you do not spend from, so it raises what you are worth ' +
+                'without changing what is safe to spend.'}
+          </p>
+        </div>
+      ) : kind === 'transfer' ? (
+        <div className="flex flex-col gap-4 pb-2">
+          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+            <span className="text-caption text-ink-2">Moving</span>
+            <Money value={amount} size="lead" />
+          </div>
+
+          <Select
+            label="Out of"
+            value={fromId}
+            onChange={(e) => setFromId(e.target.value as AccountId)}
+            options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+            emptyLabel="No accounts yet"
+          />
+
+          <Select
+            label="Into"
+            value={toId}
+            onChange={(e) => setToId(e.target.value as AccountId)}
+            options={cashAccounts.map((a) => ({ value: a.id, label: a.name }))}
+            emptyLabel="No accounts yet"
+            {...(fromId === toId
+              ? { error: 'Money has to move between two different accounts.' }
+              : {})}
+          />
+
+          <Input
+            type="date"
+            label="When"
+            value={when}
+            onChange={(e) => e.target.value && setWhen(e.target.value)}
+          />
+
+          <p className="text-caption text-ink-3">
+            Nothing is earned and nothing is spent, so your spending and how fast you are going
+            do not move. What you are worth stays exactly the same.
+          </p>
+        </div>
       ) : (
         <div className="flex flex-col gap-6 pb-2">
           <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
