@@ -134,7 +134,11 @@ function PotCard({
               <h3 className="truncate text-body font-medium text-ink">{pot.name}</h3>
             </button>
             <p className="pt-0.5 text-caption text-ink-3">
-              {pot.targetDate ? `Needed by ${describeDate(pot.targetDate, locale)}` : 'No deadline'}
+              {pot.kind === 'monthly'
+                ? 'Topped up every month'
+                : pot.targetDate
+                  ? `Needed by ${describeDate(pot.targetDate, locale)}`
+                  : 'No deadline'}
               {pot.recurring ? ' · comes round every year' : ''}
             </p>
           </div>

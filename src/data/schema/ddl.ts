@@ -53,6 +53,10 @@ export const DDL: readonly string[] = [
      target_amount       INTEGER,
      target_date         TEXT,
      target_recurring    INTEGER NOT NULL DEFAULT 0,
+     -- v17. How this month's share is worked out: towards a date, a fixed
+     -- amount every month, or nothing required at all.
+     target_kind         TEXT NOT NULL DEFAULT 'by_date'
+                           CHECK (target_kind IN ('by_date','monthly','open')),
      -- Borrowing terms, so what you owe can be planned rather than guessed.
      apr_bp              INTEGER,
      min_payment         INTEGER,
@@ -347,6 +351,7 @@ export const DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_rules_active_priority ON rules(active, priority ASC);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_book_type ON accounts(book, type, archived_at);`,
+  `CREATE INDEX IF NOT EXISTS idx_accounts_target_kind ON accounts(envelope_role, target_kind);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS idx_scheduled_active_due ON scheduled_items(active, next_due ASC);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,

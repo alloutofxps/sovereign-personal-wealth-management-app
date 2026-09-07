@@ -12,6 +12,10 @@
  * rollover it is worked out again from wherever the pot has actually reached:
  * fall behind and next month asks for more, get ahead and it asks for less.
  *
+ * That is one of three shapes, and since v17 the pot says which it is rather
+ * than having it guessed from whether a date happens to be set. See
+ * `PotTargetKind` below.
+ *
  * What this produces feeds straight into G_savings in the Safe-to-Spend
  * calculation: money that has to be put by is not money that is safe to spend,
  * whether or not it has physically moved yet.
@@ -21,6 +25,21 @@ import { ZERO, minor, mulDivRound, type Minor } from '@/core/money';
 
 export type PotStatus = 'funded' | 'on_track' | 'behind' | 'open_ended' | 'overdue';
 
+/**
+ * The three shapes a saving pot can have.
+ *
+ * These are genuinely different sums, not three labels on one:
+ *
+ *   by_date  MonthlyAllocation = (Target - BalanceAtCycleStart) / MonthsLeft
+ *   monthly  MonthlyAllocation = Target, every month, for ever
+ *   open     MonthlyAllocation = nothing. Put in what you can.
+ *
+ * A `monthly` pot is never "funded" — a fifty-a-month pot has not finished
+ * when it reaches fifty, it has finished *this month*. Saying otherwise would
+ * quietly stop holding the money back from the second month onwards.
+ */
+export type PotTargetKind = 'by_date' | 'monthly' | 'open';
+
 export interface PotTarget {
   envelopeId: string;
   /** As the person named it: "Car insurance", "Holiday". */
@@ -29,7 +48,15 @@ export interface PotTarget {
   targetAmount: Minor;
   /** What is in the pot right now. */
   currentBalance: Minor;
-  /** 'YYYY-MM-DD', or null for an open-ended pot with no deadline. */
+  /**
+   * What kind of saving this is, and so which sum applies.
+   *
+   * Stored on the account since v17. Before that it was inferred from whether
+   * `targetDate` happened to be null, which could not express the middle case
+   * at all.
+   */
+  kind: PotTargetKind;
+  /** 'YYYY-MM-DD'. Read only when `kind` is 'by_date'. */
   targetDate: string | null;
   /** True when it starts again once reached — an annual bill. */
   recurring: boolean;
@@ -82,8 +109,29 @@ export function planFor(target: PotTarget, today: string): PotPlan {
     Math.max(0, target.targetAmount - target.balanceAtCycleStart),
   );
 
-  // An open-ended pot has no deadline, so nothing is *required* of any month.
-  if (!target.targetDate) {
+  // A fixed amount every month. The target is the monthly share rather than a
+  // finishing line, so nothing here looks at the balance: what matters is what
+  // has gone in *this* month, and next month asks for the same again.
+  if (target.kind === 'monthly') {
+    const putIn = minor(Math.max(0, target.assignedThisCycle));
+    const stillNeededThisCycle = minor(Math.max(0, target.targetAmount - putIn));
+    return {
+      ...target,
+      monthsRemaining: 0,
+      monthlyAllocation: target.targetAmount,
+      stillNeededThisCycle,
+      // What is left to find is this month's share, not a lifetime total —
+      // there is no lifetime total on a pot that never ends.
+      outstanding: stillNeededThisCycle,
+      status: stillNeededThisCycle === 0 ? 'on_track' : 'behind',
+      percentFunded: percent(putIn, target.targetAmount),
+    };
+  }
+
+  // No deadline, so nothing is *required* of any month. A pot whose kind says
+  // 'by_date' but which has lost its date is treated the same way rather than
+  // dividing by a month count it cannot work out.
+  if (target.kind === 'open' || !target.targetDate) {
     return {
       ...target,
       monthsRemaining: 0,
@@ -158,6 +206,17 @@ export function monthlyPotTotal(plans: readonly PotPlan[]): Minor {
  * Takes the formatter so core stays free of locale and currency concerns.
  */
 export function describePot(plan: PotPlan, format: (amount: Minor) => string): string {
+  // A monthly pot has no finishing line, so none of the sentences below fit:
+  // they all talk about what is left to find "in total", and on a pot that
+  // starts again every month that phrase has no meaning.
+  if (plan.kind === 'monthly') {
+    return plan.stillNeededThisCycle === 0
+      ? `${format(plan.monthlyAllocation)} goes into ${plan.name.toLowerCase()} every month, and this month's is in.`
+      : plan.assignedThisCycle > 0
+        ? `${format(plan.assignedThisCycle)} of this month's ${format(plan.monthlyAllocation)} has gone in. ${format(plan.stillNeededThisCycle)} to go.`
+        : `${format(plan.monthlyAllocation)} goes into ${plan.name.toLowerCase()} every month. Tap to put this month's in.`;
+  }
+
   switch (plan.status) {
     case 'funded':
       return plan.recurring

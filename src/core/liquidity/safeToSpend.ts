@@ -56,6 +56,18 @@ export interface SafeToSpendResult {
    * allowance quietly recalculates.
    */
   dailyPace: Minor;
+  /**
+   * How many days `dailyPace` was actually spread over.
+   *
+   * Usually the rest of the cycle, but shorter when money arrives before the
+   * cycle ends — pacing a shortfall past payday would flatter it. It is
+   * returned rather than left to be worked out again, because it was worked
+   * out here and every surface that says "x a day for y days" has to use the
+   * same y. Saying the pace of eighteen days over twenty-four days overstates
+   * what is safe to spend by a third, in the one sentence people act on.
+   */
+  paceDays: number;
+  /** Days left in the cycle. Not always the same as `paceDays`; see above. */
   daysRemaining: number;
   daysUntilIncome: number | null;
 }
@@ -104,6 +116,7 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
     // Never suggests a negative daily allowance: below zero the honest message
     // is "there is nothing left", not "you may spend minus four pounds a day".
     dailyPace: safeToSpend > 0 ? mulDivRound(safeToSpend, 1, days) : ZERO,
+    paceDays: days,
     daysRemaining: input.cycle.remainingDays,
     daysUntilIncome: input.daysUntilIncome ?? null,
   };

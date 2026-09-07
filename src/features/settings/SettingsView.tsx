@@ -1,7 +1,7 @@
 /* Settings: currency, where your data lives, and a way back to the design
  * system gallery so the primitives stay reviewable. */
 
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { COMMON_CURRENCIES, currencyDisplayName } from '@/core/money';
 import { getStorageStatus, resetDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
@@ -13,6 +13,14 @@ import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { DataAndSecurity } from './DataAndSecurity';
 import { FxRatesSheet } from './FxRatesSheet';
 
+// The same wizard the first launch shows. Lazy here as well as in the shell,
+// so the two share one chunk instead of the settings screen carrying a copy.
+const FirstFlightWizard = lazy(() =>
+  import('@/features/onboarding/FirstFlightWizard').then((m) => ({
+    default: m.FirstFlightWizard,
+  })),
+);
+
 export function SettingsView() {
   const [, navigate] = useRoute();
   const currencyCode = useAppConfig((s) => s.currencyCode);
@@ -22,6 +30,7 @@ export function SettingsView() {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [editingRates, setEditingRates] = useState(false);
   const [working, setWorking] = useState(false);
+  const [walkthrough, setWalkthrough] = useState(false);
 
   async function startAgain() {
     setWorking(true);
@@ -29,7 +38,10 @@ export function SettingsView() {
       await resetDatabase();
       await ensureStarterChart();
       setConfirmingReset(false);
-      toast('Everything has been cleared. You are starting fresh.');
+      toast(
+        'Everything has been cleared. You are starting fresh — there is a walkthrough further ' +
+          'down this page if you would like one.',
+      );
     } catch (error) {
       toast(
         error instanceof Error
@@ -116,6 +128,25 @@ export function SettingsView() {
           </Button>
         </div>
       </Card>
+
+      <Card label="Setting up">
+        <p className="text-caption text-ink-2">
+          The questions Sovereign asked on your first launch: where your money is, what you owe,
+          what arrives every month and what you are putting by. Nothing is replaced — anything
+          you add here is added alongside what you already have.
+        </p>
+        <div className="pt-3">
+          <Button variant="secondary" onClick={() => setWalkthrough(true)}>
+            Walk me through it again
+          </Button>
+        </div>
+      </Card>
+
+      {walkthrough && (
+        <Suspense fallback={null}>
+          <FirstFlightWizard onFinished={() => setWalkthrough(false)} />
+        </Suspense>
+      )}
 
       <Card label="Design system">
         <p className="text-caption text-ink-2">

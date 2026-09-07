@@ -7,7 +7,7 @@ import { accountId, type AccountId } from '@/core/ledger';
 import { toIsoDate } from '@/core/liquidity';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
-import type { PotPlan } from '@/core/goals';
+import type { PotPlan, PotTargetKind } from '@/core/goals';
 import { savePot } from '@/data/repositories/potsRepo';
 import { putIntoPot } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
@@ -30,7 +30,7 @@ export function PotSheet({
   const [step, setStep] = useState<'amount' | 'details'>('amount');
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [name, setName] = useState('');
-  const [hasDate, setHasDate] = useState(true);
+  const [kind, setKind] = useState<PotTargetKind>('by_date');
   const [date, setDate] = useState('');
   const [recurring, setRecurring] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -44,7 +44,7 @@ export function PotSheet({
     setStep(editing ? 'details' : 'amount');
     setAmount(editing?.targetAmount ?? minor(0));
     setName(editing?.name ?? '');
-    setHasDate(editing ? editing.targetDate !== null : true);
+    setKind(editing?.kind ?? 'by_date');
     setDate(editing?.targetDate ?? toIsoDate(inAYear));
     setRecurring(editing?.recurring ?? false);
     setProblem(null);
@@ -65,8 +65,11 @@ export function PotSheet({
         name: name.trim(),
         role: recurring ? 'sinking_fund' : 'goal',
         targetAmount: amount,
-        targetDate: hasDate ? date : null,
-        recurring,
+        kind,
+        targetDate: kind === 'by_date' ? date : null,
+        // A pot that refills every month already comes round again by
+        // definition; asking as well would be asking the same question twice.
+        recurring: kind === 'by_date' && recurring,
       });
       toast(
         editing
@@ -131,7 +134,7 @@ export function PotSheet({
           onChange={setAmount}
           onSubmit={() => amount > 0 && setStep('details')}
           label="Amount you need"
-          hint="The full amount you want to have saved."
+          hint="The full amount you want saved — or, if you top it up every month, the monthly amount."
         />
       ) : (
         <div className="flex flex-col gap-5 pb-2">
@@ -145,17 +148,18 @@ export function PotSheet({
             />
           </Field>
 
-          <Field label="When do you need it by?">
+          <Field label="How does this one work?">
             <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <Choice selected={hasDate} onClick={() => setHasDate(true)}>
-                  By a certain date
-                </Choice>
-                <Choice selected={!hasDate} onClick={() => setHasDate(false)}>
-                  No rush
-                </Choice>
-              </div>
-              {hasDate && (
+              <Choice selected={kind === 'by_date'} onClick={() => setKind('by_date')}>
+                I need it all by a certain date
+              </Choice>
+              <Choice selected={kind === 'monthly'} onClick={() => setKind('monthly')}>
+                I put the same in every month
+              </Choice>
+              <Choice selected={kind === 'open'} onClick={() => setKind('open')}>
+                No rush — I put in what I can
+              </Choice>
+              {kind === 'by_date' && (
                 <input
                   type="date"
                   value={date}
@@ -166,22 +170,26 @@ export function PotSheet({
             </div>
           </Field>
 
-          <Field label="Does it come round again?">
-            <div className="grid grid-cols-2 gap-2">
-              <Choice selected={recurring} onClick={() => setRecurring(true)}>
-                Yes, every year
-              </Choice>
-              <Choice selected={!recurring} onClick={() => setRecurring(false)}>
-                No, just once
-              </Choice>
-            </div>
-          </Field>
+          {kind === 'by_date' && (
+            <Field label="Does it come round again?">
+              <div className="grid grid-cols-2 gap-2">
+                <Choice selected={recurring} onClick={() => setRecurring(true)}>
+                  Yes, every year
+                </Choice>
+                <Choice selected={!recurring} onClick={() => setRecurring(false)}>
+                  No, just once
+                </Choice>
+              </div>
+            </Field>
+          )}
 
           <p className="text-caption text-ink-3">
             {amount > 0 && name.trim()
-              ? hasDate
+              ? kind === 'by_date'
                 ? `${money.format(amount)} for ${name.trim()} by ${describeDate(date, locale)}. Sovereign will hold back a share of it every month.`
-                : `${money.format(amount)} for ${name.trim()}, with no deadline. Nothing will be held back automatically — put in what you can.`
+                : kind === 'monthly'
+                  ? `${money.format(amount)} into ${name.trim()} every month, for as long as you like. It is held back from what is safe to spend each month.`
+                  : `${money.format(amount)} for ${name.trim()}, with no deadline. Nothing will be held back automatically — put in what you can.`
               : 'Give it a name and we can work out the monthly share.'}
           </p>
         </div>

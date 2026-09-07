@@ -24,6 +24,7 @@ function target(over: Partial<PotTarget> = {}): PotTarget {
     name: 'Car insurance',
     targetAmount: m(1020),
     currentBalance: m(100),
+    kind: 'by_date',
     targetDate: '2027-09-01',
     recurring: true,
     assignedThisCycle: m(0),
@@ -273,5 +274,110 @@ describe('what the card says', () => {
     const message = describePot(planFor(target({ assignedThisCycle: m(20) }), TODAY), fmt);
     expect(message).toMatch(/keep you on track|Tap to/);
     expect(message).not.toMatch(/failed|behind schedule|over budget|warning/i);
+  });
+});
+
+/* ===========================================================================
+ * A POT THAT REFILLS EVERY MONTH
+ * ---------------------------------------------------------------------------
+ * The kind that could not be expressed before v17. Fifty a month towards the
+ * car, indefinitely: the target is the monthly share, not a finishing line,
+ * and the balance is beside the point — what matters is whether this month's
+ * has gone in.
+ * ======================================================================== */
+
+const monthly = (over: Partial<PotTarget> = {}): PotTarget =>
+  target({
+    name: 'Car running costs',
+    kind: 'monthly',
+    targetDate: null,
+    recurring: false,
+    targetAmount: m(50),
+    currentBalance: m(0),
+    balanceAtCycleStart: m(0),
+    assignedThisCycle: m(0),
+    ...over,
+  });
+
+describe('a monthly pot', () => {
+  it('asks for the same amount every month', () => {
+    expect(planFor(monthly(), TODAY).monthlyAllocation).toBe(m(50));
+  });
+
+  it('is satisfied once this month has gone in', () => {
+    const plan = planFor(monthly({ assignedThisCycle: m(50) }), TODAY);
+    expect(plan.stillNeededThisCycle).toBe(m(0));
+    expect(plan.status).toBe('on_track');
+  });
+
+  it('counts a part payment towards the month', () => {
+    const plan = planFor(monthly({ assignedThisCycle: m(20) }), TODAY);
+    expect(plan.stillNeededThisCycle).toBe(m(30));
+    expect(plan.status).toBe('behind');
+  });
+
+  it('never calls itself finished, however much has built up', () => {
+    // Six months of paying in leaves 300 in the pot. That is not "done" —
+    // next month still wants its fifty, and treating a full pot as finished
+    // would quietly stop holding the money back.
+    const plan = planFor(monthly({ currentBalance: m(300), balanceAtCycleStart: m(300) }), TODAY);
+    expect(plan.status).not.toBe('funded');
+    expect(plan.monthlyAllocation).toBe(m(50));
+    expect(plan.stillNeededThisCycle).toBe(m(50));
+  });
+
+  it('has no date, and does not go overdue', () => {
+    const plan = planFor(monthly({ targetDate: '2020-01-01' }), TODAY);
+    expect(plan.status).toBe('behind');
+    expect(plan.monthsRemaining).toBe(0);
+  });
+
+  it('reads what is outstanding as this month, not a lifetime total', () => {
+    const plan = planFor(monthly({ assignedThisCycle: m(20) }), TODAY);
+    expect(plan.outstanding).toBe(m(30));
+  });
+
+  it('holds back this month, and whatever has built up so far', () => {
+    // Both halves belong in safe-to-spend: the balance is sitting in the bank
+    // account, and this month's share is promised even though it has not moved.
+    const plan = planFor(monthly({ currentBalance: m(120), balanceAtCycleStart: m(120) }), TODAY);
+    expect(reservedForPots([plan])).toBe(m(170));
+  });
+
+  it('takes an overpayment as done rather than as a negative', () => {
+    const plan = planFor(monthly({ assignedThisCycle: m(80) }), TODAY);
+    expect(plan.stillNeededThisCycle).toBe(m(0));
+    expect(plan.percentFunded).toBe(100);
+  });
+
+  it('says what it means without promising an ending', () => {
+    const waiting = describePot(planFor(monthly(), TODAY), fmt);
+    const done = describePot(planFor(monthly({ assignedThisCycle: m(50) }), TODAY), fmt);
+
+    expect(waiting).toContain('every month');
+    expect(done).toContain("this month's is in");
+    // Nothing here may talk about a total left to find. There is no total.
+    for (const sentence of [waiting, done]) {
+      expect(sentence).not.toMatch(/in total|by [A-Z]/);
+    }
+  });
+});
+
+describe('a pot with no deadline', () => {
+  it('is open-ended whether it says so or has simply lost its date', () => {
+    const said = planFor(target({ kind: 'open', targetDate: null }), TODAY);
+    const lost = planFor(target({ kind: 'by_date', targetDate: null }), TODAY);
+    expect(said.status).toBe('open_ended');
+    expect(lost.status).toBe('open_ended');
+    expect(lost.monthlyAllocation).toBe(m(0));
+  });
+
+  it('ignores a date it is not meant to be reading', () => {
+    // A pot switched from "by March" to "no rush" keeps nothing of the old
+    // deadline: the repository nulls the column, and the engine would not
+    // read it anyway.
+    const plan = planFor(target({ kind: 'open', targetDate: '2027-03-01' }), TODAY);
+    expect(plan.monthlyAllocation).toBe(m(0));
+    expect(plan.status).toBe('open_ended');
   });
 });

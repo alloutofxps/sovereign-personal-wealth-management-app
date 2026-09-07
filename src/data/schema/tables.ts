@@ -28,6 +28,8 @@ export const accounts = sqliteTable('accounts', {
   targetAmount: integer('target_amount'),
   targetDate: text('target_date'),
   targetRecurring: integer('target_recurring').notNull().default(0),
+  /** v17. 'by_date' | 'monthly' | 'open'. How the monthly share is worked out. */
+  targetKind: text('target_kind').notNull().default('by_date'),
   /** Annual rate in basis points, and the least the lender accepts. */
   aprBp: integer('apr_bp'),
   minPayment: integer('min_payment'),

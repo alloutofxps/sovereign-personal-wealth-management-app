@@ -67,7 +67,9 @@ export function SafeToSpendCard({
             }
             detail={
               liquidity.dailyPace > 0
-                ? `for the next ${liquidity.daysRemaining} days`
+                ? // The days the pace was actually struck over, which is not
+                  // the rest of the cycle when payday comes first.
+                  `for the next ${liquidity.paceDays} days`
                 : 'until more comes in'
             }
           />

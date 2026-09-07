@@ -10,7 +10,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { minor, type Minor } from '@/core/money';
 import type { AccountId, EnvelopeRole, IsoDate } from '@/core/ledger';
-import type { PotTarget } from '@/core/goals';
+import type { PotTarget, PotTargetKind } from '@/core/goals';
 import { db, runBatch } from '../client';
 import { accounts, entries, postings } from '../schema/tables';
 
@@ -20,8 +20,14 @@ export interface PotRecord {
   role: EnvelopeRole;
   balance: Minor;
   targetAmount: Minor | null;
+  kind: PotTargetKind;
   targetDate: string | null;
   recurring: boolean;
+}
+
+/** Anything the column does not recognise reads as a pot with no deadline. */
+function toKind(stored: string): PotTargetKind {
+  return stored === 'monthly' || stored === 'open' || stored === 'by_date' ? stored : 'open';
 }
 
 const SAVING_ROLES = ['goal', 'sinking_fund'] as const;
@@ -35,6 +41,7 @@ export async function listSavingPots(): Promise<PotRecord[]> {
       role: accounts.envelopeRole,
       targetAmount: accounts.targetAmount,
       targetDate: accounts.targetDate,
+      kind: accounts.targetKind,
       recurring: accounts.targetRecurring,
       total: sql<number>`coalesce(sum(${postings.amount}), 0)`,
     })
@@ -53,6 +60,7 @@ export async function listSavingPots(): Promise<PotRecord[]> {
       accounts.envelopeRole,
       accounts.targetAmount,
       accounts.targetDate,
+      accounts.targetKind,
       accounts.targetRecurring,
     );
 
@@ -64,6 +72,7 @@ export async function listSavingPots(): Promise<PotRecord[]> {
     // the way a person expects: a pot with money in it shows a positive.
     balance: minor(-Number(row.total)),
     targetAmount: row.targetAmount === null ? null : minor(row.targetAmount),
+    kind: toKind(String(row.kind)),
     targetDate: row.targetDate,
     recurring: row.recurring === 1,
   }));
@@ -110,6 +119,7 @@ export async function potTargets(from: IsoDate, to: IsoDate): Promise<PotTarget[
       name: pot.name,
       targetAmount: pot.targetAmount ?? minor(0),
       currentBalance: pot.balance,
+      kind: pot.kind,
       targetDate: pot.targetDate,
       recurring: pot.recurring,
       assignedThisCycle: putInThisCycle,
@@ -125,6 +135,8 @@ export interface NewPot {
   name: string;
   role: Extract<EnvelopeRole, 'goal' | 'sinking_fund'>;
   targetAmount: Minor;
+  kind: PotTargetKind;
+  /** Only read when `kind` is 'by_date'; stored as null otherwise. */
   targetDate: string | null;
   recurring: boolean;
 }
@@ -142,7 +154,11 @@ export async function savePot(pot: NewPot): Promise<void> {
       status: 'active',
       envelopeRole: pot.role,
       targetAmount: pot.targetAmount,
-      targetDate: pot.targetDate,
+      // A date is only meaningful on a by-date pot. Storing one on the other
+      // two would leave a stale deadline to be read back if the kind ever
+      // changed, so the kind decides and the column follows it.
+      targetDate: pot.kind === 'by_date' ? pot.targetDate : null,
+      targetKind: pot.kind,
       targetRecurring: pot.recurring ? 1 : 0,
       sortOrder: 500,
     })
@@ -152,7 +168,8 @@ export async function savePot(pot: NewPot): Promise<void> {
         name: pot.name,
         envelopeRole: pot.role,
         targetAmount: pot.targetAmount,
-        targetDate: pot.targetDate,
+        targetDate: pot.kind === 'by_date' ? pot.targetDate : null,
+        targetKind: pot.kind,
         targetRecurring: pot.recurring ? 1 : 0,
       },
     })

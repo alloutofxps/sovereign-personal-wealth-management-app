@@ -136,6 +136,64 @@ describe('what is safe to spend', () => {
     expect(result.dailyPace).toBe(m(20));
   });
 
+  it('reports the days it actually paced over, not the days in the cycle', () => {
+    // The defect this exists for: the home screen said "€20 a day for the
+    // next 21 days" while the €20 had been struck over 5. Multiplied out,
+    // that is £420 offered against £100 of actual money.
+    const result = calculateSafeToSpend({
+      liquidCash: m(100),
+      bills: [],
+      cardBalances: [],
+      buffer: minor(0),
+      goalFunding: minor(0),
+      cycle, // 21 days remaining
+      daysUntilIncome: 5,
+    });
+
+    expect(result.paceDays).toBe(5);
+    expect(result.daysRemaining).toBe(21);
+    // The two figures a sentence puts together have to multiply back.
+    expect(result.dailyPace * result.paceDays).toBe(result.safeToSpend);
+  });
+
+  it('paces over the whole cycle when nothing arrives before it ends', () => {
+    const result = calculateSafeToSpend({
+      liquidCash: m(210),
+      bills: [],
+      cardBalances: [],
+      buffer: minor(0),
+      goalFunding: minor(0),
+      cycle,
+    });
+    expect(result.paceDays).toBe(result.daysRemaining);
+  });
+
+  it('paces over the cycle when payday falls after it anyway', () => {
+    const result = calculateSafeToSpend({
+      liquidCash: m(210),
+      bills: [],
+      cardBalances: [],
+      buffer: minor(0),
+      goalFunding: minor(0),
+      cycle, // 21 days remaining
+      daysUntilIncome: 40,
+    });
+    expect(result.paceDays).toBe(21);
+  });
+
+  it('never paces over nothing, even on the last day', () => {
+    const result = calculateSafeToSpend({
+      liquidCash: m(210),
+      bills: [],
+      cardBalances: [],
+      buffer: minor(0),
+      goalFunding: minor(0),
+      cycle,
+      daysUntilIncome: 0,
+    });
+    expect(result.paceDays).toBeGreaterThanOrEqual(1);
+  });
+
   it('says nothing is left rather than offering a negative daily amount', () => {
     const result = calculateSafeToSpend({
       liquidCash: m(100),

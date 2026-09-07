@@ -16,6 +16,8 @@ import { Dashboard } from '@/features/dashboard/Dashboard';
 import { useAppUpdate } from '@/app/pwa/useAppUpdate';
 import { requestPersistence } from '@/data/persistence';
 import { countUnreviewed, STAGING_TABLES } from '@/data/repositories/stagingRepo';
+import { onboardingCompletedAt } from '@/data/repositories/onboardingRepo';
+import { countEntries } from '@/data/repositories/ledgerRepo';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { LockGate } from './LockGate';
 import { UpdateBanner } from './UpdateBanner';
@@ -41,6 +43,15 @@ import { Toasts } from './Toasts';
 // of it is needed to show somebody what is safe to spend.
 const AddPaymentSheet = lazy(() =>
   import('@/features/entry/AddPaymentSheet').then((m) => ({ default: m.AddPaymentSheet })),
+);
+
+// Shown to a database that has never finished it, which is once per household
+// and never again. It carries the account, bill and pot forms, so it stays out
+// of the first paint of every launch after that one.
+const FirstFlightWizard = lazy(() =>
+  import('@/features/onboarding/FirstFlightWizard').then((m) => ({
+    default: m.FirstFlightWizard,
+  })),
 );
 
 const TriageView = lazy(() =>
@@ -110,7 +121,7 @@ const Gallery = lazy(() =>
 
 type Startup =
   | { state: 'opening' }
-  | { state: 'ready'; storage: StorageStatus }
+  | { state: 'ready'; storage: StorageStatus; firstFlight: boolean }
   | { state: 'failed'; message: string };
 
 export function AppShell() {
@@ -126,7 +137,26 @@ export function AppShell() {
         // asking then is the request browsers are most likely to refuse. After
         // a real write it is a different conversation.
         if (!created) void requestPersistence();
-        if (!cancelled) setStartup({ state: 'ready', storage });
+        // Two cheap reads, on the launch path only, and both have to agree
+        // before anybody is walked through setting up their money.
+        //
+        // The stored flag is the direct answer, and it travels in `meta` with
+        // an export, so a restore does not ask again. The entry count is the
+        // backstop for the databases that predate the flag: a ledger with
+        // records in it has plainly been set up, whatever `meta` says, and
+        // being offered "where is your money?" on top of four months of
+        // history would read as though the restore had failed.
+        const [finishedBefore, entries] = await Promise.all([
+          onboardingCompletedAt(),
+          countEntries().catch(() => 1),
+        ]);
+        if (!cancelled) {
+          setStartup({
+            state: 'ready',
+            storage,
+            firstFlight: finishedBefore === null && entries === 0,
+          });
+        }
       } catch (error) {
         if (cancelled) return;
         setStartup({
@@ -148,13 +178,16 @@ export function AppShell() {
 
   return (
     <LockGate>
-      <Shell storage={startup.storage} />
+      <Shell storage={startup.storage} firstFlight={startup.firstFlight} />
     </LockGate>
   );
 }
 
-function Shell({ storage }: { storage: StorageStatus }) {
+function Shell({ storage, firstFlight }: { storage: StorageStatus; firstFlight: boolean }) {
   const [route, navigate] = useRoute();
+  // Behind the lock, not in front of it: the wizard writes to the ledger, and
+  // nothing writes to the ledger before somebody has proved they own it.
+  const [onboarding, setOnboarding] = useState(firstFlight);
   const [adding, setAdding] = useState(false);
   const update = useAppUpdate();
   const unreviewed = useLiveQuery(useCallback(() => countUnreviewed(), []), STAGING_TABLES);
@@ -182,6 +215,11 @@ function Shell({ storage }: { storage: StorageStatus }) {
       )}
       <UpdateBanner update={update} />
       <Toasts />
+      {onboarding && (
+        <Suspense fallback={null}>
+          <FirstFlightWizard onFinished={() => setOnboarding(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-export type { PotPlan, PotStatus, PotTarget } from './sinkingFund';
+export type { PotPlan, PotStatus, PotTarget, PotTargetKind } from './sinkingFund';
 export {
   describePot,
   fundedBasisPoints,
