@@ -126,8 +126,6 @@ export function InvestmentsView() {
         <DeferredTaxCard
           investments={data.totals.marketValue}
           costBasis={data.totals.costBasis}
-          savings={minor(0)}
-          debts={minor(0)}
         />
       )}
 

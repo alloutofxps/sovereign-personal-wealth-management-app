@@ -11,7 +11,7 @@
  * how any particular fund is treated where they live.
  * ======================================================================== */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { minor, type Minor } from '@/core/money';
 import {
   DUTCH_BOX3_2025,
@@ -22,24 +22,62 @@ import {
 } from '@/core/tax/deferred';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { LEDGER_TABLES, balancesByType, spendableCash } from '@/data/repositories/ledgerRepo';
 import { Card, Money } from '@/design/ui';
 import { ManualLink } from '@/features/manual/ManualLink';
 
 export function DeferredTaxCard({
   investments,
   costBasis,
-  savings,
-  debts,
 }: {
   investments: Minor;
   costBasis: Minor;
-  savings: Minor;
-  debts: Minor;
 }) {
   const money = useMoney();
   const regimeKind = useAppConfig((s) => s.taxRegime);
   const cgtRateBp = useAppConfig((s) => s.cgtRateBp);
   const cgtExemptionMinor = useAppConfig((s) => s.cgtExemptionMinor);
+
+  /**
+   * The rest of the household, not just this screen.
+   *
+   * A deemed-return regime is charged on everything you hold — bank balances
+   * included — so working it out from the brokerage alone said "nothing to
+   * pay" to a household with twenty-eight thousand in the bank. A gains regime
+   * ignores both of these, so the same query serves both and the engine
+   * decides what to read.
+   *
+   * ---------------------------------------------------------------------
+   * WHY THE MORTGAGE IS LEFT OUT
+   *
+   * A home and the mortgage on it are not part of a deemed-return estate —
+   * they are taxed under a different heading entirely. Counting a quarter of a
+   * million of mortgage against forty thousand of assets made the estate
+   * deeply negative and produced a confident nought, which is the most
+   * dangerous wrong answer available here: it looks like good news.
+   *
+   * Cards and ordinary loans do belong, and stay. The card says what it left
+   * out rather than quietly leaving it out.
+   */
+  const estate = useLiveQuery(
+    useCallback(async () => {
+      const [cash, liabilities] = await Promise.all([
+        spendableCash(),
+        balancesByType('LIABILITY'),
+      ]);
+      const counted = liabilities.filter((row) => row.accountClass !== 'mortgage');
+      return {
+        savings: cash,
+        debts: minor(counted.reduce((total, row) => total + Math.max(0, row.baseAmount), 0)),
+        excludedMortgage: counted.length !== liabilities.length,
+      };
+    }, []),
+    LEDGER_TABLES,
+  );
+
+  const savings = estate.data?.savings ?? minor(0);
+  const debts = estate.data?.debts ?? minor(0);
 
   const result = useMemo(() => {
     if (regimeKind === 'none') return null;
@@ -55,7 +93,9 @@ export function DeferredTaxCard({
     return deferredTax({ savings, investments, investmentCostBasis: costBasis, debts }, regime);
   }, [regimeKind, cgtRateBp, cgtExemptionMinor, savings, investments, costBasis, debts]);
 
-  if (result === null) return null;
+  // Nothing until the rest of the household has been read. A deemed-return
+  // figure worked out from half the estate is worse than no figure at all.
+  if (result === null || estate.data === undefined) return null;
 
   const after = netWorthAfterTax(minor(savings + investments - debts), result);
 
@@ -78,6 +118,15 @@ export function DeferredTaxCard({
             <span className="text-caption text-ink-2">What that leaves</span>
             <Money value={after} size="lead" tone="liquid" />
           </div>
+        )}
+
+        {result.timing === 'every_year' && (
+          <p className="text-caption text-ink-3">
+            Worked out on your cash, what you hold here, and what you owe on cards and loans.
+            {estate.data.excludedMortgage
+              ? ' Your home and its mortgage are left out — they are taxed under a different heading.'
+              : ''}
+          </p>
         )}
 
         <div className="flex">

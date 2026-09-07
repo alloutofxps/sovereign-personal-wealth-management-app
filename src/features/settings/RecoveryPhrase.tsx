@@ -30,6 +30,8 @@ export function RecoveryPhrase({
   onChange: (phrase: string) => void;
 }) {
   const [made, setMade] = useState<{ number: number; word: string }[] | null>(null);
+  /** The generated phrase, held back until it has been acknowledged. */
+  const [pending, setPending] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [written, setWritten] = useState(false);
@@ -45,7 +47,11 @@ export function RecoveryPhrase({
       const phrase = await generateMnemonic(12);
       setMade(numberedWords(phrase));
       setWritten(false);
-      onChange(phrase);
+      setPending(phrase);
+      // Deliberately not handed up yet. The sheet above uses whatever this
+      // reports as the key to lock the file with, and a phrase that has not
+      // been written down is a file nobody can open.
+      onChange('');
     } catch {
       setProblem('A phrase could not be made just now. Nothing has changed.');
     } finally {
@@ -87,7 +93,12 @@ export function RecoveryPhrase({
           <input
             type="checkbox"
             checked={written}
-            onChange={(event) => setWritten(event.target.checked)}
+            onChange={(event) => {
+              setWritten(event.target.checked);
+              // The tick is the whole gate. Untick it and the key goes away
+              // again, so the copy below is a promise rather than a caption.
+              onChange(event.target.checked ? pending : '');
+            }}
             className="mt-0.5 size-4 accent-[var(--color-liquid)]"
           />
           <span className="text-caption text-ink-2">
@@ -106,6 +117,8 @@ export function RecoveryPhrase({
           size="sm"
           onClick={() => {
             setMade(null);
+            setPending('');
+            setWritten(false);
             onChange('');
           }}
         >
