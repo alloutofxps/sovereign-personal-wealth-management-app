@@ -9,6 +9,7 @@ import type { DashboardData } from '@/app/dashboard/useDashboard';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { BottomSheet, Money } from '@/design/ui';
+import { ManualLink } from '@/features/manual/ManualLink';
 
 export function SafeToSpendSheet({
   open,
@@ -82,6 +83,10 @@ export function SafeToSpendSheet({
               : `There is nothing spare right now. Nothing has gone wrong: it just means every ` +
                 `penny in your accounts is already spoken for by something on this list.`}
           </p>
+
+          <div className="flex pt-3">
+            <ManualLink chapter="safe-to-spend">Read how this figure is worked out</ManualLink>
+          </div>
         </div>
       )}
     </BottomSheet>

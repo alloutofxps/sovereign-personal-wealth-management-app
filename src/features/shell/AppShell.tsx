@@ -119,6 +119,14 @@ const Gallery = lazy(() =>
   import('@/features/gallery/Gallery').then((m) => ({ default: m.Gallery })),
 );
 
+// The field manual carries six working models of the app's own engines — the
+// ledger builders, the disposal relief, the reconciliation maths — and is
+// reached on purpose, from a question. Nothing above this line may import from
+// `@/features/manual/*`.
+const ManualView = lazy(() =>
+  import('@/features/manual/ManualView').then((m) => ({ default: m.ManualView })),
+);
+
 type Startup =
   | { state: 'opening' }
   | { state: 'ready'; storage: StorageStatus; firstFlight: boolean }
@@ -262,6 +270,8 @@ function View({
       return <SettingsView />;
     case 'gallery':
       return <Gallery />;
+    case 'manual':
+      return <ManualView />;
   }
 }
 

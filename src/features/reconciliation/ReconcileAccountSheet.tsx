@@ -44,6 +44,7 @@ import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
 import { AmountInput, BottomSheet, Button, Card, Input } from '@/design/ui';
+import { ManualLink } from '@/features/manual/ManualLink';
 
 export function ReconcileAccountSheet({
   accountId,
@@ -239,6 +240,9 @@ export function ReconcileAccountSheet({
                 {describeDifference(state, money.format)}
               </p>
             )}
+            <div className="flex pt-1">
+              <ManualLink chapter="checking">What a check does, and what locking means</ManualLink>
+            </div>
           </div>
 
           {/* --- the list ---------------------------------------------- */}

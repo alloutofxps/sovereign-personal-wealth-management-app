@@ -10,6 +10,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { Button, Card, Money } from '@/design/ui';
 import { PotSheet, TopUpSheet } from './PotSheet';
+import { ManualLink } from '@/features/manual/ManualLink';
 
 const CHIP: Record<PotStatus, string> = {
   funded: 'bg-liquid-wash text-liquid',
@@ -44,6 +45,7 @@ export function PotsView() {
         <p className="text-caption text-ink-2">
           Things that only come round now and then, saved for a bit at a time.
         </p>
+        <ManualLink chapter="pots">How a pot decides what this month owes it</ManualLink>
       </header>
 
       {pots.length > 0 && (

@@ -129,6 +129,18 @@ export function SettingsView() {
         </div>
       </Card>
 
+      <Card label="The field manual">
+        <p className="text-caption text-ink-2">
+          How Sovereign works out what it tells you, in six chapters. Each one comes with a
+          working model of the thing it describes, running on made-up figures.
+        </p>
+        <div className="pt-3">
+          <Button variant="secondary" onClick={() => navigate('manual')}>
+            Open the manual
+          </Button>
+        </div>
+      </Card>
+
       <Card label="Setting up">
         <p className="text-caption text-ink-2">
           The questions Sovereign asked on your first launch: where your money is, what you owe,
