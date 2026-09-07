@@ -323,6 +323,104 @@ export async function noteScheduledCharge(description: string, amount: Minor): P
   await recordActualCharge(match.id, amount, today());
 }
 
+/* ===========================================================================
+ * SKETCHING A WHAT-IF
+ * ---------------------------------------------------------------------------
+ * A hypothetical event, built by the same builders a real one uses and then
+ * written to the branch tables instead of the ledger.
+ *
+ * Going through `spend` and `income` rather than assembling postings by hand
+ * is the point. A sketch that posted differently from the real thing would
+ * answer a question about a household that does not exist — the envelope would
+ * not move, a card would not reserve for its own bill, and the projection
+ * would quietly be of something else.
+ * ======================================================================== */
+
+export interface SketchInput {
+  branchId: string;
+  date: IsoDate;
+  amount: Minor;
+  direction: 'in' | 'out';
+  /** Where it comes from or goes to. An account the household really has. */
+  accountId: AccountId;
+  /** Required for money going out. */
+  categoryId?: AccountId;
+  envelopeId?: AccountId;
+  /** How it reads: "The Rotterdam salary", "Rent on the new place". */
+  label: string;
+}
+
+export async function sketchBranchEntry(input: SketchInput): Promise<string> {
+  const account = (await accountsById()).get(input.accountId);
+  if (!account) {
+    throw new Error('That account could not be found, so nothing has been sketched.');
+  }
+
+  const id = entryId(crypto.randomUUID());
+  const entry =
+    input.direction === 'in'
+      ? income({
+          id,
+          date: input.date,
+          amount: input.amount,
+          sourceId: ACCOUNT_IDS.otherIncome,
+          depositAccountId: input.accountId,
+          countsAsBudgetableCash: account.onBudget && account.liquid,
+          payer: input.label,
+          system: SYSTEM_ACCOUNTS,
+        })
+      : spend({
+          id,
+          date: input.date,
+          amount: input.amount,
+          categoryId: input.categoryId ?? ACCOUNT_IDS.otherIncome,
+          envelopeId: input.envelopeId ?? ACCOUNT_IDS.readyToAssign,
+          funding: await fundedFrom(input.accountId),
+          payee: input.label,
+          system: SYSTEM_ACCOUNTS,
+        });
+
+  // Lazily loaded: the branch tables are reached from one screen, and the
+  // forecast is not in the first paint either way.
+  const { addBranchEntry } = await import('@/data/repositories/branchesRepo');
+
+  return addBranchEntry({
+    branchId: input.branchId,
+    kind: entry.kind,
+    date: entry.date,
+    description: entry.description,
+    postings: entry.postings,
+  });
+}
+
+/**
+ * The same event, repeated monthly to the horizon.
+ *
+ * "Two hundred more a month" is how people actually ask the question, and
+ * making them add it twelve times would be making them do arithmetic the
+ * machine is for.
+ */
+export async function sketchMonthly(
+  input: SketchInput,
+  months: number,
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (let month = 0; month < months; month += 1) {
+    ids.push(await sketchBranchEntry({ ...input, date: addMonthsIso(input.date, month) }));
+  }
+  return ids;
+}
+
+/** 'YYYY-MM-DD' plus whole months, without a Date and its timezone. */
+function addMonthsIso(iso: IsoDate, months: number): IsoDate {
+  const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
+  const zeroBased = month - 1 + months;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return isoDate(
+    `${year + Math.floor(zeroBased / 12)}-${pad((zeroBased % 12) + 1)}-${pad(day)}`,
+  );
+}
+
 /* --- money arriving ------------------------------------------------------ */
 
 export interface RecordIncomeInput {

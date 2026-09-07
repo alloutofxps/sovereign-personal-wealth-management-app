@@ -255,6 +255,7 @@ function View({
     case 'forecast':
     case 'calendar':
     case 'debt':
+    case 'whatif':
       return <AheadView />;
     case 'independence':
       return <IndependenceView />;

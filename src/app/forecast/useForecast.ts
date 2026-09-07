@@ -38,6 +38,15 @@ const TRAILING_MONTHS = 3;
 /** The furthest the forecast reaches. */
 const MAX_DAYS = 90;
 
+/**
+ * Debts paid down over a term rather than settled from this month's cash.
+ *
+ * Their balance is not a claim on the next ninety days; their monthly payment
+ * is, and that arrives as a scheduled item. The same set the dashboard uses,
+ * for the same reason — see the note beside the card-bill events below.
+ */
+const AMORTIZING_CLASSES = new Set(['mortgage', 'loan']);
+
 export interface ForecastData {
   today: string;
   /** The full ninety days; the view slices it to whatever horizon is chosen. */
@@ -101,10 +110,25 @@ export function useForecast(): LiveQueryResult<ForecastData> {
       }
     }
 
-    // Card bills land on the day they are actually due, where that is known.
-    // Falling back to the month end was a guess that could be three weeks out.
+    /* --- what has to be settled out of cash ------------------------------
+     *
+     * Card balances, and *only* card balances.
+     *
+     * A mortgage was landing here too, at its full balance, as a single event
+     * inside the ninety-day window — so the seeded household's line dived to
+     * minus two hundred thousand and the screen warned it would go overdrawn
+     * next month. Nobody has to find a quarter of a million this month; they
+     * have to find one payment, and that payment already arrives as a
+     * scheduled item like any other bill.
+     *
+     * The home screen has excluded these since Safe-to-Spend was written. The
+     * forecast did not, and the two disagreed about the same debt.
+     * ------------------------------------------------------------------- */
     const dueDayById = new Map(terms.map((row) => [row.id, row.dueDay]));
-    for (const debt of liabilities.filter((row) => row.amount > 0)) {
+    const settledFromCash = liabilities.filter(
+      (row) => row.amount > 0 && !AMORTIZING_CLASSES.has(row.accountClass ?? ''),
+    );
+    for (const debt of settledFromCash) {
       const dueDay = dueDayById.get(debt.id);
       const due = dueDay ? nextOccurrenceOfDay(today, dueDay) : endOfMonth(today);
       if (due <= horizon) {

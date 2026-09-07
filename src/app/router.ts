@@ -19,6 +19,7 @@ export const ROUTES = [
   'calendar',
   'analytics',
   'debt',
+  'whatif',
   'independence',
   'categories',
   'settings',

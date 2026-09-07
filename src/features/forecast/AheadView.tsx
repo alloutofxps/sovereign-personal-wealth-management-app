@@ -29,13 +29,20 @@ const AnalyticsView = lazy(() =>
   import('@/features/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView })),
 );
 
-type Pane = 'forecast' | 'calendar' | 'analytics' | 'debt';
+// Lazy for the same reason: the what-if pane carries the branch tables, the
+// branching engine and a second projection, and nobody reaches it by accident.
+const WhatIfView = lazy(() =>
+  import('./WhatIfView').then((m) => ({ default: m.WhatIfView })),
+);
+
+type Pane = 'forecast' | 'calendar' | 'analytics' | 'debt' | 'whatif';
 
 const ROUTE_FOR: Record<Pane, Route> = {
   forecast: 'forecast',
   calendar: 'calendar',
   analytics: 'analytics',
   debt: 'debt',
+  whatif: 'whatif',
 };
 
 /**
@@ -48,6 +55,7 @@ function paneFor(route: Route): Pane {
   if (route === 'calendar') return 'calendar';
   if (route === 'analytics') return 'analytics';
   if (route === 'debt') return 'debt';
+  if (route === 'whatif') return 'whatif';
   return 'forecast';
 }
 
@@ -61,7 +69,8 @@ export function AheadView() {
       route !== 'forecast' &&
       route !== 'calendar' &&
       route !== 'analytics' &&
-      route !== 'debt'
+      route !== 'debt' &&
+      route !== 'whatif'
     ) {
       navigate('forecast');
     }
@@ -78,6 +87,7 @@ export function AheadView() {
           { value: 'calendar', label: 'Calendar' },
           { value: 'analytics', label: 'Where it went' },
           { value: 'debt', label: 'Payoff' },
+          { value: 'whatif', label: 'What if' },
         ]}
       />
 
@@ -91,8 +101,12 @@ export function AheadView() {
         <Suspense fallback={<div className="min-h-[50dvh]" aria-hidden="true" />}>
           <AnalyticsView />
         </Suspense>
-      ) : (
+      ) : pane === 'debt' ? (
         <DebtPayoffView />
+      ) : (
+        <Suspense fallback={<div className="min-h-[50dvh]" aria-hidden="true" />}>
+          <WhatIfView />
+        </Suspense>
       )}
     </div>
   );
