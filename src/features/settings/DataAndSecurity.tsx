@@ -29,6 +29,7 @@ import {
 import { toast } from '@/app/toast';
 import { lockNow } from '@/features/shell/LockGate';
 import { BottomSheet, Button, Card } from '@/design/ui';
+import { RecoveryPhrase, phraseIsUsable } from './RecoveryPhrase';
 
 export function DataAndSecurity() {
   return (
@@ -46,6 +47,9 @@ function YourDataCard() {
   const [state, setState] = useState<PersistenceState | null>(null);
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [lockWith, setLockWith] = useState<'passphrase' | 'phrase'>('passphrase');
+  const [phrase, setPhrase] = useState('');
+  const [phraseGood, setPhraseGood] = useState(false);
   const [restoring, setRestoring] = useState<File | null>(null);
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -171,24 +175,49 @@ function YourDataCard() {
         description="One file with all of it in. Choose whether to lock it first."
       >
         <div className="flex flex-col gap-4 pb-2">
-          <label className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
-              Passphrase (optional)
-            </span>
-            <input
-              type="password"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Leave blank for a plain file"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
+          <div className="grid grid-cols-2 gap-2">
+            <LockChoice
+              selected={lockWith === 'passphrase'}
+              onClick={() => setLockWith('passphrase')}
+              title="A passphrase"
+              detail="Something you will remember."
             />
-          </label>
+            <LockChoice
+              selected={lockWith === 'phrase'}
+              onClick={() => setLockWith('phrase')}
+              title="A recovery phrase"
+              detail="Twelve words, written down."
+            />
+          </div>
+
+          {lockWith === 'passphrase' ? (
+            <label className="flex flex-col gap-2">
+              <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+                Passphrase (optional)
+              </span>
+              <input
+                type="password"
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                placeholder="Leave blank for a plain file"
+                className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
+              />
+            </label>
+          ) : (
+            <RecoveryPhrase
+              value={phrase}
+              onChange={(next) => {
+                setPhrase(next);
+                void phraseIsUsable(next).then(setPhraseGood);
+              }}
+            />
+          )}
 
           <p className="text-caption text-ink-2">
-            With a passphrase the file is scrambled so only you can open it. There is no way to
-            recover it if you forget — not by us, not by anyone. Without one you get a plain
-            SQLite file that anything can read, which is the right choice if you are moving it
-            into a spreadsheet.
+            Either way the file is scrambled so only you can open it. There is no way to recover
+            it if you lose what opens it — not by us, not by anyone. Without either you get a
+            plain SQLite file that anything can read, which is the right choice if you are moving
+            it into a spreadsheet.
           </p>
 
           {problem && (
@@ -204,17 +233,24 @@ function YourDataCard() {
             <Button
               variant="primary"
               block
-              disabled={busy || passphrase.trim().length < 8}
-              onClick={() => void doExport(passphrase.trim())}
+              disabled={
+                busy ||
+                (lockWith === 'passphrase' ? passphrase.trim().length < 8 : !phraseGood)
+              }
+              onClick={() =>
+                void doExport(lockWith === 'passphrase' ? passphrase.trim() : phrase.trim())
+              }
             >
               {busy ? 'Saving…' : 'Lock it and save'}
             </Button>
           </div>
-          {passphrase.trim().length > 0 && passphrase.trim().length < 8 && (
-            <p className="text-caption text-ink-3">
-              A passphrase needs at least eight characters to be worth having.
-            </p>
-          )}
+          {lockWith === 'passphrase' &&
+            passphrase.trim().length > 0 &&
+            passphrase.trim().length < 8 && (
+              <p className="text-caption text-ink-3">
+                A passphrase needs at least eight characters to be worth having.
+              </p>
+            )}
         </div>
       </BottomSheet>
 
@@ -424,4 +460,34 @@ function PasscodeField({
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** One of the two ways to lock an export. */
+function LockChoice({
+  selected,
+  onClick,
+  title,
+  detail,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={
+        'flex flex-col gap-0.5 rounded-md border px-3 py-2.5 text-left transition-colors ' +
+        (selected
+          ? 'border-liquid-dim bg-liquid-wash'
+          : 'border-line bg-raised hover:border-line-strong')
+      }
+    >
+      <span className={selected ? 'text-body text-liquid' : 'text-body text-ink'}>{title}</span>
+      <span className="text-caption text-ink-3">{detail}</span>
+    </button>
+  );
 }

@@ -29,6 +29,7 @@ import { RebalanceModal } from './RebalanceModal';
 import { RecordDividendSheet } from './RecordDividendSheet';
 import { SellHoldingSheet } from './SellHoldingSheet';
 import { UpdatePricesSheet } from './UpdatePricesSheet';
+import { DeferredTaxCard } from './DeferredTaxCard';
 
 export function InvestmentsView() {
   const [, navigate] = useRoute();
@@ -118,6 +119,16 @@ export function InvestmentsView() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* --- what of it is not yours ---------------------------------------- */}
+      {data && data.holdings.length > 0 && (
+        <DeferredTaxCard
+          investments={data.totals.marketValue}
+          costBasis={data.totals.costBasis}
+          savings={minor(0)}
+          debts={minor(0)}
+        />
       )}
 
       {/* --- nothing yet ---------------------------------------------------- */}

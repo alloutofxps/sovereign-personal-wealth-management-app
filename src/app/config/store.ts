@@ -40,6 +40,18 @@ export interface AppConfig {
    * It exists so a forgotten direct debit cannot tip an account overdrawn.
    */
   bufferMinor: number;
+  /**
+   * Which tax regime the deferred-tax figure is worked out under.
+   *
+   * 'none' is the default and means the figure is not shown at all. An app
+   * that guesses somebody's tax regime from their currency would be wrong for
+   * every household that has moved, and wrong quietly.
+   */
+  taxRegime: 'none' | 'dutch_box3' | 'flat_gains';
+  /** The rate for a flat-gains regime, in basis points. Ignored otherwise. */
+  cgtRateBp: number;
+  /** The yearly exemption for a flat-gains regime, in minor units. */
+  cgtExemptionMinor: number;
 }
 
 interface AppConfigStore extends AppConfig {
@@ -47,6 +59,8 @@ interface AppConfigStore extends AppConfig {
   setLocale: (locale: string) => void;
   setWeeklyReviewDay: (day: AppConfig['weeklyReviewDay']) => void;
   setBuffer: (minorAmount: number) => void;
+  setTaxRegime: (regime: AppConfig['taxRegime']) => void;
+  setCgt: (rateBp: number, exemptionMinor: number) => void;
 }
 
 function detectLocale(): string {
@@ -62,6 +76,9 @@ export const useAppConfig = create<AppConfigStore>()(
       weekStartsOn: 1,
       weeklyReviewDay: 0,
       bufferMinor: DEFAULT_BUFFER_MINOR,
+      taxRegime: 'none',
+      cgtRateBp: 3_300,
+      cgtExemptionMinor: 127_000,
 
       setCurrency: (code) => {
         const normalised = code.toUpperCase();
@@ -81,6 +98,17 @@ export const useAppConfig = create<AppConfigStore>()(
 
       setBuffer: (minorAmount) =>
         set({ bufferMinor: Math.max(0, Math.round(minorAmount)) }),
+
+      setTaxRegime: (taxRegime) => set({ taxRegime }),
+
+      setCgt: (rateBp, exemptionMinor) =>
+        set({
+          // Clamped rather than validated: a rate outside nought to a hundred
+          // per cent is a typo, and refusing the whole change would lose the
+          // rest of what was typed.
+          cgtRateBp: Math.min(10_000, Math.max(0, Math.round(rateBp))),
+          cgtExemptionMinor: Math.max(0, Math.round(exemptionMinor)),
+        }),
     }),
     {
       name: 'sovereign.config',
@@ -163,9 +191,18 @@ export const useIndependenceAssumptions = create<IndependenceAssumptions>()(
 
 /** Read config outside React — workers, the ledger core, event handlers. */
 export const getAppConfig = (): AppConfig => {
-  const { currencyCode, locale, weekStartsOn, weeklyReviewDay, bufferMinor } =
+  const { currencyCode, locale, weekStartsOn, weeklyReviewDay, bufferMinor, taxRegime, cgtRateBp, cgtExemptionMinor } =
     useAppConfig.getState();
-  return { currencyCode, locale, weekStartsOn, weeklyReviewDay, bufferMinor };
+  return {
+    currencyCode,
+    locale,
+    weekStartsOn,
+    weeklyReviewDay,
+    bufferMinor,
+    taxRegime,
+    cgtRateBp,
+    cgtExemptionMinor,
+  };
 };
 
 /**

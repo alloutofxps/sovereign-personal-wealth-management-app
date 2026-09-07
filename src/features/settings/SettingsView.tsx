@@ -26,6 +26,11 @@ export function SettingsView() {
   const currencyCode = useAppConfig((s) => s.currencyCode);
   const locale = useAppConfig((s) => s.locale);
   const setCurrency = useAppConfig((s) => s.setCurrency);
+  const taxRegime = useAppConfig((s) => s.taxRegime);
+  const setTaxRegime = useAppConfig((s) => s.setTaxRegime);
+  const cgtRateBp = useAppConfig((s) => s.cgtRateBp);
+  const cgtExemptionMinor = useAppConfig((s) => s.cgtExemptionMinor);
+  const setCgt = useAppConfig((s) => s.setCgt);
   const storage = getStorageStatus();
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [editingRates, setEditingRates] = useState(false);
@@ -126,6 +131,70 @@ export function SettingsView() {
           <Button variant="secondary" onClick={() => navigate('categories')}>
             Manage categories
           </Button>
+        </div>
+      </Card>
+
+      <Card label="Tax">
+        <div className="flex flex-col gap-3">
+          <p className="text-caption text-ink-2">
+            Sovereign can show what part of your investments would go in tax, next to the figure
+            that ignores it. It does not guess where you live, it is an estimate of one thing, and
+            it knows nothing about your circumstances.
+          </p>
+          <label className="flex flex-col gap-2">
+            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+              Where you are taxed
+            </span>
+            <select
+              value={taxRegime}
+              onChange={(e) => setTaxRegime(e.target.value as 'none' | 'dutch_box3' | 'flat_gains')}
+              className="w-full rounded-md border border-line-strong bg-raised px-3 py-2.5 text-body text-ink"
+            >
+              <option value="none">Do not show it</option>
+              <option value="dutch_box3">Netherlands — Box 3, charged every year</option>
+              <option value="flat_gains">One flat rate on gains, when you sell</option>
+            </select>
+          </label>
+
+          {taxRegime === 'flat_gains' && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">Rate</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  defaultValue={(cgtRateBp / 100).toString()}
+                  onBlur={(e) => {
+                    const rate = Number(e.target.value.replace(',', '.'));
+                    if (Number.isFinite(rate)) setCgt(Math.round(rate * 100), cgtExemptionMinor);
+                  }}
+                  className="tnum w-full rounded-md border border-line bg-raised px-3 py-2.5 text-body text-ink"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+                  Yearly allowance
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  defaultValue={(cgtExemptionMinor / 100).toString()}
+                  onBlur={(e) => {
+                    const amount = Number(e.target.value.replace(',', '.'));
+                    if (Number.isFinite(amount)) setCgt(cgtRateBp, Math.round(amount * 100));
+                  }}
+                  className="tnum w-full rounded-md border border-line bg-raised px-3 py-2.5 text-body text-ink"
+                />
+              </label>
+            </div>
+          )}
+
+          {taxRegime !== 'none' && (
+            <p className="text-caption text-ink-3">
+              Rates change every year and Sovereign never goes online to check. The figure names
+              the year it was worked out on — keep it up to date yourself.
+            </p>
+          )}
         </div>
       </Card>
 

@@ -83,31 +83,71 @@ export function normalizePayee(raw: string): string {
   const original = raw.trim();
   if (original === '') return '';
 
+  // Run to a fixed point rather than once through.
+  //
+  // Every rule below is anchored — on a word boundary, on the start of the
+  // string, or on its end — and an earlier rule can expose something a later
+  // one had already looked past. An underscore is a *word* character to a
+  // regular expression, so "6-5_shop" hid a date; collapsing a separator can
+  // reveal a country code; taking a store number off the end can reveal the
+  // country code behind it. Each of those came off on a second call, which
+  // made this function non-idempotent.
+  //
+  // That is not cosmetic. `payeeKey` runs this on names that have already been
+  // through it once, so two answers for the same shop means a rule matches it
+  // the first time and never again.
+  //
+  // Repeating the prefix strip does not undo the one-prefix rule that
+  // "PAYPAL *SQ FLOWERS" depends on: the acquirer patterns are anchored on the
+  // separator, and the separator is gone after the first pass.
   let text = original;
-
-  for (const prefix of PREFIXES) {
+  for (let pass = 0; pass < MAX_PASSES; pass += 1) {
     const before = text;
-    text = text.replace(prefix, '');
-    // Only one prefix ever applies; stopping keeps "PAYPAL *SQ FLOWERS" from
-    // losing both, which would be right for the first and wrong for the second.
-    if (text !== before) break;
+    text = onePass(text);
+    if (text === before) break;
   }
-
-  text = text.replace(DATES, ' ').replace(TIMES, ' ').replace(LONG_NUMBER, ' ');
-
-  for (const suffix of SUFFIXES) text = text.replace(suffix, '');
-  text = text.replace(TRAILING_CITIES, '');
-
-  // Separators the terminal used as spacing, and any run of whitespace.
-  text = text.replace(/[*_|]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-
-  // A trailing store number of one to four digits, once everything else is
-  // gone: "ALBERT HEIJN 1234" is a branch, and the branch is not the shop.
-  text = text.replace(/\s+\d{1,4}$/, '').trim();
 
   if (text === '') return original;
 
   return toDisplayCase(text);
+}
+
+/**
+ * A bound, so a rule added later that undoes another cannot spin.
+ *
+ * Five is far more than any real descriptor needs — the deepest of them settle
+ * in two — and a descriptor that has not settled by then is one this should
+ * hand back rather than keep chewing.
+ */
+const MAX_PASSES = 5;
+
+/** Separators the terminal used as spacing, and any run of whitespace. */
+function collapse(value: string): string {
+  return value.replace(/[*_|]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+function onePass(input: string): string {
+  let text = input;
+
+  for (const prefix of PREFIXES) {
+    const after = text.replace(prefix, '');
+    // Only one prefix per pass; see the note above about why that still holds
+    // across passes for the acquirer patterns.
+    if (after !== text) {
+      text = after;
+      break;
+    }
+  }
+
+  text = collapse(text);
+  text = collapse(text.replace(DATES, ' ').replace(TIMES, ' ').replace(LONG_NUMBER, ' '));
+
+  for (const suffix of SUFFIXES) text = text.replace(suffix, '');
+  text = text.replace(TRAILING_CITIES, '').trim();
+
+  // A trailing store number, once everything else is gone: "ALBERT HEIJN 1234"
+  // is a branch, and the branch is not the shop.
+  return text.replace(/\s+\d{1,4}$/, '').trim();
 }
 
 /**
