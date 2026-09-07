@@ -32,7 +32,7 @@ export function GettingStarted({
           <Step
             number={1}
             title="Tell us about a regular bill"
-            body="Rent, your phone, energy — anything that goes out on its own. These are held back so you never spend money that is already promised."
+            body="Rent, your phone, energy. Anything that goes out on its own. These are held back so you never spend money that is already promised."
             done={hasSchedule}
             action={
               <Button variant={hasSchedule ? 'secondary' : 'primary'} size="sm" onClick={onAddBill}>

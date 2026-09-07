@@ -81,7 +81,7 @@ export function PotsView() {
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <p className="text-lead text-ink">Nothing set up yet</p>
             <p className="max-w-[36ch] text-caption text-ink-2">
-              Car insurance, a holiday, Christmas — the costs that only come round now and then
+              Car insurance, a holiday, Christmas. The costs that only come round now and then
               are the ones that catch people out. Tell Sovereign about one and it will put a bit
               by each month so it is there when you need it.
             </p>

@@ -121,7 +121,7 @@ export function v11Statements(): string[] {
 export const V11: MigrationStep = {
   to: 11,
   reason:
-    'What is actually held in an investment account — the securities, the share counts, ' +
+    'What is actually held in an investment account: the securities, the share counts, ' +
     'what they cost, and what the funds charge for them.',
   statements: v11Statements(),
 };

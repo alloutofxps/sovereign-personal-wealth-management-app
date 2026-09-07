@@ -139,7 +139,7 @@ export function InvestmentsView() {
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <p className="text-lead text-ink">No investment accounts yet</p>
             <p className="max-w-[38ch] text-caption text-ink-2">
-              Add a brokerage account or a pension and you can record what is in it — what you
+              Add a brokerage account or a pension and you can record what is in it: what you
               hold, what it cost, and what the funds charge you each year for it.
             </p>
             <Button variant="secondary" onClick={() => navigate('accounts')}>

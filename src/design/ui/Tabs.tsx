@@ -6,14 +6,17 @@
  * the page's tab order, so a keyboard user tabs *past* the strip rather than
  * through every tab in it.
  *
- * The indicator is a single element that slides between tabs using a layout
- * animation, rather than a border toggling on and off. It respects reduced
- * motion, because a moving pill is decoration and decoration is the first
- * thing that should hold still when somebody has asked for less movement.
+ * The indicator is a single element that slides between tabs, rather than a
+ * border toggling on and off. Its position is measured from the selected
+ * button and applied as a transform, so the movement runs on the compositor
+ * and the strip reflows correctly when the labels or the width change.
+ *
+ * It respects reduced motion, because a moving pill is decoration and
+ * decoration is the first thing that should hold still when somebody has asked
+ * for less movement.
  * ======================================================================== */
 
-import { useId, useRef, type ReactNode } from 'react';
-import { LayoutGroup, motion, useReducedMotion } from 'motion/react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 
 export interface TabItem<T extends string = string> {
@@ -40,8 +43,35 @@ export function Tabs<T extends string = string>({
   className,
 }: TabsProps<T>) {
   const groupId = useId();
-  const reduceMotion = useReducedMotion();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null);
+
+  /**
+   * Where the pill should sit.
+   *
+   * Measured rather than derived from an index, because the tabs are flexed
+   * and a label of a different length moves every edge after it.
+   */
+  const measure = useCallback(() => {
+    const index = tabs.findIndex((tab) => tab.value === value);
+    const button = refs.current[index];
+    if (!button) return;
+    setIndicator({ x: button.offsetLeft, w: button.offsetWidth });
+  }, [tabs, value]);
+
+  // Layout effect so the pill is in place on the first paint rather than
+  // sliding in from the left the first time the strip renders.
+  useLayoutEffect(measure, [measure]);
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const strip = stripRef.current;
+    if (!strip) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [measure]);
 
   function onKeyDown(event: React.KeyboardEvent) {
     const current = tabs.findIndex((t) => t.value === value);
@@ -63,62 +93,61 @@ export function Tabs<T extends string = string>({
   }
 
   return (
-    <LayoutGroup id={groupId}>
-      <div
-        role="tablist"
-        aria-label={label}
-        onKeyDown={onKeyDown}
-        className={clsx(
-          'flex gap-1 rounded-pill border border-line bg-sunken p-1',
-          className,
-        )}
-      >
-        {tabs.map((tab, index) => {
-          const selected = tab.value === value;
-          return (
-            <button
-              key={tab.value}
-              ref={(el) => {
-                refs.current[index] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`${groupId}-tab-${tab.value}`}
-              aria-selected={selected}
-              aria-controls={`${groupId}-panel-${tab.value}`}
-              // Only the selected tab is reachable by Tab; arrows do the rest.
-              tabIndex={selected ? 0 : -1}
-              onClick={() => onChange(tab.value)}
-              className={clsx(
-                'relative flex-1 rounded-pill px-3 py-1.5 text-caption transition-colors outline-none',
-                'focus-visible:ring-1 focus-visible:ring-liquid',
-                selected ? 'text-base' : 'text-ink-2 hover:text-ink',
+    <div
+      ref={stripRef}
+      role="tablist"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+      className={clsx(
+        'relative flex gap-1 rounded-pill border-[0.5px] border-white/6 bg-sunken p-1',
+        className,
+      )}
+    >
+      {indicator && (
+        <span
+          aria-hidden="true"
+          className={clsx(
+            'absolute top-1 bottom-1 left-0 rounded-pill bg-liquid',
+            'motion-safe:[transition:transform_320ms_var(--ease-snap),width_320ms_var(--ease-snap)]',
+          )}
+          style={{ transform: `translate3d(${indicator.x}px,0,0)`, width: indicator.w }}
+        />
+      )}
+
+      {tabs.map((tab, index) => {
+        const selected = tab.value === value;
+        return (
+          <button
+            key={tab.value}
+            ref={(el) => {
+              refs.current[index] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`${groupId}-tab-${tab.value}`}
+            aria-selected={selected}
+            aria-controls={`${groupId}-panel-${tab.value}`}
+            // Only the selected tab is reachable by Tab; arrows do the rest.
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(tab.value)}
+            className={clsx(
+              'press relative z-10 flex-1 rounded-pill px-3 py-1.5 text-caption outline-none',
+              'transition-colors focus-visible:ring-1 focus-visible:ring-liquid',
+              selected ? 'text-base' : 'text-ink-2 hover:text-ink',
+            )}
+          >
+            <span className="relative flex items-center justify-center gap-1.5">
+              {tab.label}
+              {tab.count !== undefined && (
+                <span className={clsx('tnum', selected ? 'text-base/70' : 'text-ink-3')}>
+                  {tab.count}
+                </span>
               )}
-            >
-              {selected && (
-                <motion.span
-                  layoutId="tab-indicator"
-                  className="absolute inset-0 rounded-pill bg-liquid"
-                  transition={
-                    reduceMotion
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 520, damping: 42 }
-                  }
-                />
-              )}
-              <span className="relative flex items-center justify-center gap-1.5">
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span className={clsx('tnum', selected ? 'text-base/70' : 'text-ink-3')}>
-                    {tab.count}
-                  </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </LayoutGroup>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

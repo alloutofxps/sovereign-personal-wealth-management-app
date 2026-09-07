@@ -45,7 +45,7 @@ export async function createBranch(input: {
 }): Promise<string> {
   const name = input.name.trim();
   if (name === '') {
-    throw new Error('A what-if needs a name — something you would recognise later.');
+    throw new Error('A what-if needs a name, something you would recognise later.');
   }
 
   const id = `br-${crypto.randomUUID()}`;

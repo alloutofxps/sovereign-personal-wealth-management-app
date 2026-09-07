@@ -236,7 +236,7 @@ export function describeBudgetEffect(
 ): string {
   return (
     `The ${format(proceeds)} becomes money waiting to be given a job, so what is safe to ` +
-    `spend goes up by that much. None of it counts as income — it is your own money coming ` +
+    `spend goes up by that much. None of it counts as income. It is your own money coming ` +
     `back to you in a different form.`
   );
 }

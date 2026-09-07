@@ -230,7 +230,7 @@ function PlanTab({
           </ul>
           {plan.depositRemainder > 0 && (
             <p className="pt-2 text-caption text-ink-3">
-              {format(plan.depositRemainder)} is left over — everything else is already at or
+              {format(plan.depositRemainder)} is left over. Everything else is already at or
               above its target, so there is nowhere it needs to go.
             </p>
           )}

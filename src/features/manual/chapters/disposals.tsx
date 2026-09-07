@@ -35,7 +35,7 @@ export function DisposalsChapter() {
       </Passage>
 
       <Passage>
-        It is not a trick question and it is not merely academic. The answer decides what the sale
+        The answer is not academic. It decides what the sale
         made or lost, and in most countries it decides what you owe on it. Sell the oldest shares
         and you realise three years of growth; sell the newest and you might realise almost
         nothing. The shares are identical. The tax is not.
@@ -80,7 +80,7 @@ from the oldest open parcel first.`}
             Both books move, as always.
           </>,
           <>
-            The gain is recorded as a gain — not as income. It is not money you earned this month
+            The gain is recorded as a gain, not as income. It is not money you earned this month
             and it should not swell your spending figures or your monthly income averages.
           </>,
           <>

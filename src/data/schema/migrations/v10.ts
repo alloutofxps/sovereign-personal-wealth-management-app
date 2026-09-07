@@ -100,7 +100,7 @@ export function v10Statements(): string[] {
 export const V10: MigrationStep = {
   to: 10,
   reason:
-    'Accounts people actually hold — mortgages, pensions, a house, a car — and a way to ' +
+    'Accounts people actually hold: mortgages, pensions, a house, a car, and a way to ' +
     'mark what they are worth without inventing income.',
   addColumns: [
     // Nullable, because every account that already exists predates the idea.

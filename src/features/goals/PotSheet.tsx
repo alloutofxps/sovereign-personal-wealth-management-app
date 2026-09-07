@@ -134,7 +134,7 @@ export function PotSheet({
           onChange={setAmount}
           onSubmit={() => amount > 0 && setStep('details')}
           label="Amount you need"
-          hint="The full amount you want saved — or, if you top it up every month, the monthly amount."
+          hint="The full amount you want saved, or the monthly amount if you top it up each month."
         />
       ) : (
         <div className="flex flex-col gap-5 pb-2">
@@ -157,7 +157,7 @@ export function PotSheet({
                 I put the same in every month
               </Choice>
               <Choice selected={kind === 'open'} onClick={() => setKind('open')}>
-                No rush — I put in what I can
+                No rush. I put in what I can
               </Choice>
               {kind === 'by_date' && (
                 <input
@@ -189,7 +189,7 @@ export function PotSheet({
                 ? `${money.format(amount)} for ${name.trim()} by ${describeDate(date, locale)}. Sovereign will hold back a share of it every month.`
                 : kind === 'monthly'
                   ? `${money.format(amount)} into ${name.trim()} every month, for as long as you like. It is held back from what is safe to spend each month.`
-                  : `${money.format(amount)} for ${name.trim()}, with no deadline. Nothing will be held back automatically — put in what you can.`
+                  : `${money.format(amount)} for ${name.trim()}, with no deadline. Nothing will be held back automatically. Put in what you can.`
               : 'Give it a name and we can work out the monthly share.'}
           </p>
         </div>

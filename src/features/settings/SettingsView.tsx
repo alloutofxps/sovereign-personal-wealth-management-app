@@ -44,7 +44,7 @@ export function SettingsView() {
       await ensureStarterChart();
       setConfirmingReset(false);
       toast(
-        'Everything has been cleared. You are starting fresh — there is a walkthrough further ' +
+        'Everything has been cleared. You are starting fresh. There is a walkthrough further ' +
           'down this page if you would like one.',
       );
     } catch (error) {
@@ -69,7 +69,7 @@ export function SettingsView() {
         <label className="flex flex-col gap-2">
           <span className="text-caption text-ink-2">
             Sovereign works in one currency at a time. Everything you have already recorded stays
-            the same amount — only the way it is written changes.
+            the same amount. Only the way it is written changes.
           </span>
           <select
             value={currencyCode}
@@ -96,7 +96,7 @@ export function SettingsView() {
         <div className="flex flex-col gap-3">
           <p className="text-caption text-ink-2">
             Everything is reported in {currencyCode}. Anything you hold in another currency is
-            shown in its own currency first, with an estimate in {currencyCode} underneath —
+            shown in its own currency first, with an estimate in {currencyCode} underneath,
             worked out from rates you give it, because nothing here goes online.
           </p>
           <div>
@@ -151,7 +151,7 @@ export function SettingsView() {
               className="w-full rounded-md border border-line-strong bg-raised px-3 py-2.5 text-body text-ink"
             >
               <option value="none">Do not show it</option>
-              <option value="dutch_box3">Netherlands — Box 3, charged every year</option>
+              <option value="dutch_box3">Netherlands: Box 3, charged every year</option>
               <option value="flat_gains">One flat rate on gains, when you sell</option>
             </select>
           </label>
@@ -192,7 +192,7 @@ export function SettingsView() {
           {taxRegime !== 'none' && (
             <p className="text-caption text-ink-3">
               Rates change every year and Sovereign never goes online to check. The figure names
-              the year it was worked out on — keep it up to date yourself.
+              the year it was worked out on. Keep it up to date yourself.
             </p>
           )}
         </div>
@@ -213,7 +213,7 @@ export function SettingsView() {
       <Card label="Setting up">
         <p className="text-caption text-ink-2">
           The questions Sovereign asked on your first launch: where your money is, what you owe,
-          what arrives every month and what you are putting by. Nothing is replaced — anything
+          what arrives every month and what you are putting by. Nothing is replaced. Anything
           you add here is added alongside what you already have.
         </p>
         <div className="pt-3">

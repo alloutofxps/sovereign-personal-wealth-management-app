@@ -269,7 +269,7 @@ export function assertNotReconciled(
 
   throw new LedgerError(
     `This payment was locked during your statement check${when}. Locked records cannot ` +
-      `be edited or deleted. If it really is wrong, unlock that statement check first — ` +
+      `be edited or deleted. If it really is wrong, unlock that statement check first. ` +
       `the unlock is recorded, so the history still explains itself.`,
   );
 }

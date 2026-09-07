@@ -118,7 +118,7 @@ export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => 
       onClose={onClose}
       size="tall"
       title="Exchange rates"
-      description={`How much of each currency one ${baseCurrency} buys. Nothing is fetched — these are the figures you give it.`}
+      description={`How much of each currency one ${baseCurrency} buys. Nothing is fetched. These are the figures you give it.`}
       footer={
         currencies.length > 0 ? (
           <Button
@@ -165,7 +165,7 @@ export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => 
                       <span className="truncate text-micro text-ink-3">
                         {row
                           ? `Last set ${describeDate(row.date, locale)}${row.source === 'csv' ? ' · pasted' : ''}`
-                          : 'No rate yet — figures in this currency have no euro estimate.'}
+                          : 'No rate yet. Figures in this currency have no euro estimate.'}
                       </span>
                     </span>
                     <span className="w-32 shrink-0">
@@ -195,7 +195,7 @@ export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => 
               </summary>
               <div className="flex flex-col gap-2 pt-3">
                 <p className="text-caption text-ink-3">
-                  One line each, as <span className="font-mono">currency,rate</span> — or{' '}
+                  One line each, as <span className="font-mono">currency,rate</span>, or{' '}
                   <span className="font-mono">date,currency,rate</span> to backfill a day you
                   missed. It stays on this device.
                 </p>
@@ -224,7 +224,7 @@ export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => 
               <p className="text-caption text-ink-2">
                 Changing a rate changes what your foreign accounts are worth in {baseCurrency},
                 so it moves what you are worth. It does not move your spending, and it does not
-                move what is safe to spend — money you would have to convert first was never
+                move what is safe to spend. Money you would have to convert first was never
                 counted as spendable.
               </p>
             </Card>

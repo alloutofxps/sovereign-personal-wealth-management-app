@@ -84,7 +84,7 @@ function toMinorExactly(value: bigint, context: string): Minor {
   if (value > SAFE || value < -SAFE) {
     throw new MoneyError(
       `${context} comes to an amount too large to hold exactly. ` +
-        `Check the exchange rate — a rate entered the wrong way up is the usual cause.`,
+        `Check the exchange rate. A rate entered the wrong way up is the usual cause.`,
     );
   }
   return minor(Number(value));

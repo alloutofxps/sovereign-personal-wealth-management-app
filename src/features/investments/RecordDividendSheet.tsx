@@ -141,7 +141,7 @@ export function RecordDividendSheet({
           inputMode="decimal"
           hint="Withholding tax, if any was deducted at source."
           {...(tooMuchTax
-            ? { error: 'More tax than the dividend was worth — check the two figures.' }
+            ? { error: 'More tax than the dividend was worth. Check the two figures.' }
             : {})}
         />
 

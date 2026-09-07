@@ -79,7 +79,7 @@ export function SafeToSpendSheet({
             {data.liquidity.dailyPace > 0
               ? `Spread over the next ${data.liquidity.paceDays} days, that is about ` +
                 `the daily amount on your home screen. Spend more one day and it quietly ` +
-                `adjusts the next — nothing is failed or blown.`
+                `adjusts the next. Nothing is failed or blown.`
               : `There is nothing spare right now. Nothing has gone wrong: it just means every ` +
                 `penny in your accounts is already spoken for by something on this list.`}
           </p>

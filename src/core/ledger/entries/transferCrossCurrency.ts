@@ -195,7 +195,7 @@ export function fxRevaluation(
     throw new LedgerError(
       `${p.account.name} is part of your budget, and what you can spend has to match what ` +
         `is in your everyday accounts exactly. An account whose worth moves with an ` +
-        `exchange rate cannot do that — move it to tracking-only first.`,
+        `exchange rate cannot do that. Move it to tracking-only first.`,
     );
   }
 

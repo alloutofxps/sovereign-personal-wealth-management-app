@@ -98,7 +98,7 @@ export function WriteOffSheet({
             </div>
             <p className="text-caption text-ink-2">
               Up to now this has been kept out of your spending, because you expected it back.
-              Writing it off means it finally counts as money you spent — this month, not the
+              Writing it off means it finally counts as money you spent, this month, not the
               month you paid it, so a month you have already looked at is left alone.
             </p>
           </div>

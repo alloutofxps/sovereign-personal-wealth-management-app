@@ -175,7 +175,7 @@ export function UpdatePricesSheet({
                   ? 'One price has changed. '
                   : `${updates.length} prices have changed. `}
                 Saving will bring the account values into line with what they now hold, which
-                changes what you are worth — but not your spending or what is safe to spend.
+                changes what you are worth, but not your spending or what is safe to spend.
               </p>
             )}
           </>

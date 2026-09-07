@@ -47,7 +47,7 @@ export function SubscriptionAudit() {
               {money.format(change.expectedAmount)}.
             </p>
             <p className="text-caption text-ink-2">
-              That is {money.format(change.increase)} more each time —{' '}
+              That is {money.format(change.increase)} more each time,{' '}
               {money.format(change.annualisedIncrease)} over a year if it stays this way.
             </p>
             <div className="flex flex-wrap gap-2">

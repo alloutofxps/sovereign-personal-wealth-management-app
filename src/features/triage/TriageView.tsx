@@ -257,7 +257,7 @@ export function TriageView() {
           {rows.length === 0
             ? 'Anything brought in from your bank waits here for a quick look.'
             : ruled.matchedCount > 0
-              ? `${rows.length} to go. ${ruled.matchedCount} already matched one of your rules — tap to confirm.`
+              ? `${rows.length} to go. ${ruled.matchedCount} already matched one of your rules. Tap to confirm.`
               : `${rows.length} ${rows.length === 1 ? 'payment' : 'payments'} to go. Swipe right to file one, left to set it aside.`}
         </p>
         {rows.length > 1 && !selection.active && (
@@ -594,7 +594,7 @@ function CardCreditChoice({
       <Choice
         title="You paid the card bill"
         body="Money moved from your own account to bring the balance down. It is not spending
-              and it is not income — you already counted the spending when the card was used."
+              and it is not income. You counted the spending when the card was used."
         onClick={() =>
           void onChoose(row, anyCategoryId, {
             cardCredit: {

@@ -126,7 +126,7 @@ export function describeProjection(
   if (firstBelowBuffer) {
     return (
       `Your balance dips into your safety cushion around ${formatDate(firstBelowBuffer.date)}, ` +
-      `getting as low as ${format(lowest.balance)}. Nothing is wrong — it just means there is ` +
+      `getting as low as ${format(lowest.balance)}. Nothing is wrong. It just means there is ` +
       `less room than usual around then.`
     );
   }

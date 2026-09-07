@@ -460,7 +460,7 @@ describe('revaluing a foreign balance', () => {
         newRateScaled: rate1e6(1_050_000),
         system: SYSTEM,
       }),
-    ).toThrow(/move it to tracking-only first/);
+    ).toThrow(/Move it to tracking-only first/);
   });
 
   it('refuses to restate a balance that is already at today’s rate', () => {

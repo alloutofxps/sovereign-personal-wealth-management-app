@@ -70,7 +70,7 @@ export function WhatIfView() {
         <h2 className="text-lead font-medium text-ink">What if</h2>
         <p className="max-w-[48ch] text-caption text-ink-2">
           Sketch a change and see what the next ninety days look like with it. Nothing here is
-          recorded — it never touches what you are actually worth.
+          recorded. It never touches what you are actually worth.
         </p>
       </header>
 
@@ -298,7 +298,7 @@ function NameSheet({
         </Field>
         <p className="text-caption text-ink-3">
           Nothing before that date changes. A what-if is a different future, never a different
-          past — everything up to then is what actually happened.
+          past. Everything up to then is what actually happened.
         </p>
       </div>
     </BottomSheet>

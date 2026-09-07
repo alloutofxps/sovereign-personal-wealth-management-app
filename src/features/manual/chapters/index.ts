@@ -44,7 +44,7 @@ export const CHAPTERS: readonly Chapter[] = [
     slug: 'two-books',
     title: 'Two sets of books',
     standfirst:
-      'Every event is recorded twice — once for where the money is, once for what it is for — and both have to balance.',
+      'Every event is recorded twice: once for where the money is, once for what it is for. Both have to balance.',
     engine: 'The ledger',
     Body: TwoBooksChapter,
   },
@@ -60,7 +60,7 @@ export const CHAPTERS: readonly Chapter[] = [
     slug: 'cards',
     title: 'Cards and mortgages',
     standfirst:
-      'Why a card balance comes off what is safe to spend today, and a mortgage — rightly — does not.',
+      'Why a card balance comes off what is safe to spend today, and a mortgage, rightly, does not.',
     engine: 'Card reserves',
     Body: CardsChapter,
   },

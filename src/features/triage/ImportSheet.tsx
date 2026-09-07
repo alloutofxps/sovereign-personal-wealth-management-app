@@ -70,7 +70,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
       if (inspected.rows.length === 0) {
         setProblem(
           'There are no rows in that file that Sovereign can read. It may be a PDF or an ' +
-            'image rather than a spreadsheet — most banks offer a CSV download as well.',
+            'image rather than a spreadsheet. Most banks offer a CSV download as well.',
         );
         setBusy(false);
         return;
@@ -188,7 +188,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
             </Button>
             <p className="text-caption text-ink-3">
               Most banks offer a CSV download somewhere in their statements section. Sovereign
-              reads it here in this tab — nothing is uploaded, and no account details are needed.
+              reads it here in this tab. Nothing is uploaded and no account details are needed.
             </p>
             {problem && (
               <p className="text-caption text-caution" role="alert">

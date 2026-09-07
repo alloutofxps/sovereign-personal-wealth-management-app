@@ -65,7 +65,7 @@ export async function persistenceState(): Promise<PersistenceState> {
     explanation: persisted
       ? 'Your browser has agreed to keep your data even when space runs low.'
       : 'Your browser has not promised to keep this if it runs short of space. Adding ' +
-        'Sovereign to your home screen makes that far more likely — and an export is ' +
+        'Sovereign to your home screen makes that far more likely, and an export is ' +
         'always worth having either way.',
   };
 }

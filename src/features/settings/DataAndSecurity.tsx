@@ -71,7 +71,7 @@ function YourDataCard() {
       const { name } = await downloadExport(withPassphrase);
       toast(
         withPassphrase
-          ? `Saved as ${name}. Keep the passphrase somewhere safe — without it the file cannot be opened, by anyone, including us.`
+          ? `Saved as ${name}. Keep the passphrase somewhere safe. Without it the file cannot be opened by anyone, including us.`
           : `Saved as ${name}. It is a plain SQLite file, so any database tool can read it.`,
       );
       setExporting(false);
@@ -106,7 +106,7 @@ function YourDataCard() {
     <Card label="Your data">
       <div className="flex flex-col gap-3">
         <p className="text-caption text-ink-2">
-          Everything lives on this device. An export is the whole database in one file — a real
+          Everything lives on this device. An export is the whole database in one file: a real
           SQLite file, which any database tool on earth can open. Being able to leave is the
           point.
         </p>
@@ -215,7 +215,7 @@ function YourDataCard() {
 
           <p className="text-caption text-ink-2">
             Either way the file is scrambled so only you can open it. There is no way to recover
-            it if you lose what opens it — not by us, not by anyone. Without either you get a
+            it if you lose what opens it, not by us and not by anyone. Without either you get a
             plain SQLite file that anything can read, which is the right choice if you are moving
             it into a spreadsheet.
           </p>
@@ -401,7 +401,7 @@ function LockCard() {
 
           <p className="text-caption text-ink-3">
             There is no way to reset this. Sovereign has no server and no account, so nobody can
-            let you back in — keep an export somewhere safe.
+            let you back in. Keep an export somewhere safe.
           </p>
 
           <div className="flex flex-col gap-2">

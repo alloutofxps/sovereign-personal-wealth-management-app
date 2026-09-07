@@ -201,11 +201,23 @@ function Shell({ storage, firstFlight }: { storage: StorageStatus; firstFlight: 
   const unreviewed = useLiveQuery(useCallback(() => countUnreviewed(), []), STAGING_TABLES);
 
   return (
-    <div className="min-h-dvh bg-base">
+    /* -----------------------------------------------------------------------
+     * THE SHELL
+     * -----------------------------------------------------------------------
+     * The document does not scroll. `html` and `body` are fixed at exactly one
+     * viewport (see tokens.css), and this fills it. Scrolling belongs to the
+     * `<main>` below and to nothing else, which is what stops the whole page
+     * rubber-banding away from under the dock and showing the browser's own
+     * background behind it.
+     *
+     * The id is not decoration. `BottomSheet` finds this element to recede it
+     * when a sheet is presented, the way an iOS view controller does.
+     * -------------------------------------------------------------------- */
+    <div id="app-shell" className="relative flex h-dvh flex-col overflow-hidden bg-base">
       {!storage.durable && <StorageWarning explanation={storage.explanation} />}
 
       <main
-        className="mx-auto w-full max-w-[42rem] px-4 pb-[calc(5.5rem+var(--safe-bottom))] pt-[calc(1rem+var(--safe-top))]"
+        className="scroll-y mx-auto w-full max-w-[42rem] flex-1 px-4 pb-[calc(6rem+var(--safe-bottom))] pt-[var(--safe-top)]"
         // Re-mounting on route change resets scroll and any local view state,
         // which is what a person expects when they switch tabs.
         key={route}
@@ -305,7 +317,7 @@ function Failed({ message }: { message: string }) {
       <h1 className="text-lead font-medium text-ink">Sovereign could not open your data</h1>
       <p className="max-w-[38ch] text-body text-ink-2">{message}</p>
       <p className="max-w-[38ch] text-caption text-ink-3">
-        Nothing has been lost. Reloading the page usually sorts this out — and if you have
+        Nothing has been lost. Reloading the page usually sorts this out. If you have
         Sovereign open in another tab, close that one first.
       </p>
       <button

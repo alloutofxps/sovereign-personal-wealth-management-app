@@ -533,7 +533,7 @@ export async function seedScenario(): Promise<SeedSummary> {
   await recordFronted({
     amount: eur(450),
     paidFrom: AMEX,
-    counterparty: 'Work — client dinner',
+    counterparty: 'Work, client dinner',
     kind: 'work_expense',
     date: on('2026-07-09'),
     memo: 'Dinner with the Rotterdam client',

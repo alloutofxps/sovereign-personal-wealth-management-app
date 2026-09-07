@@ -271,7 +271,7 @@ export function describeRebalance(
   if (plan.depositPlan.length === 0) {
     return (
       `${drift} Putting new money into whatever is furthest behind is the way back that ` +
-      `costs nothing — selling to rebalance means paying tax on the gains.`
+      `costs nothing. Selling to rebalance means paying tax on the gains.`
     );
   }
 

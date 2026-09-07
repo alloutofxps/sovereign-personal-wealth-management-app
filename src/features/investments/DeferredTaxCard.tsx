@@ -124,7 +124,7 @@ export function DeferredTaxCard({
           <p className="text-caption text-ink-3">
             Worked out on your cash, what you hold here, and what you owe on cards and loans.
             {estate.data.excludedMortgage
-              ? ' Your home and its mortgage are left out — they are taxed under a different heading.'
+              ? ' Your home and its mortgage are left out. They are taxed under a different heading.'
               : ''}
           </p>
         )}

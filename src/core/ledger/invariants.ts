@@ -401,7 +401,7 @@ const i6: Check = (snapshot) => {
       code: 'I6',
       rule: 'Moving your own money is not income',
       message:
-        `Moving your own money — between accounts, or in and out of an investment — ` +
+        `Moving your own money, between accounts or in and out of an investment, ` +
         `has been counted as money coming in, which would make your income look ` +
         `${Math.abs(income)} higher than it is.`,
       observed: income,
@@ -611,7 +611,7 @@ export function assertInvariants(snapshot: LedgerSnapshot): void {
     const first = violations[0]!;
     throw new LedgerError(
       `${first.code} (${first.rule}): ${first.message}` +
-        (violations.length > 1 ? ` — and ${violations.length - 1} more.` : ''),
+        (violations.length > 1 ? ` And ${violations.length - 1} more.` : ''),
     );
   }
 }

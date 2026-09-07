@@ -38,13 +38,13 @@ export function Chip({
   return (
     <span
       className={clsx(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-pill border pl-3 text-caption',
+        'press inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[0.5px] pl-3 text-caption',
         'transition-colors',
         onDismiss ? 'pr-1.5' : 'pr-3',
         'h-8',
         active
           ? 'border-liquid-dim bg-liquid-wash text-liquid'
-          : 'border-line bg-raised text-ink-2',
+          : 'border-white/8 bg-raised text-ink-2',
         interactive && !active && 'hover:border-line-strong hover:text-ink',
         disabled && 'opacity-50',
         className,

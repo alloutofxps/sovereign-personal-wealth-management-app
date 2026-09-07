@@ -105,7 +105,7 @@ export function AnalyticsView() {
                       (data.flow.totalIn - (data.flow.retained < 0 ? -data.flow.retained : 0)) as never,
                     )}{' '}
                     coming in, so the difference came out of what you had already put by. That is
-                    what savings are for — it is only worth watching if it becomes the pattern.
+                    what savings are for. It is only worth watching if it becomes the pattern.
                   </p>
                 )}
 

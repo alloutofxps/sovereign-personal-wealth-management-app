@@ -166,7 +166,7 @@ export function AddHoldingSheet({
           onChange={(e) => setShares(e.target.value)}
           placeholder="15.5"
           inputMode="decimal"
-          hint="Fractions are fine — up to eight decimal places."
+          hint="Fractions are fine, up to eight decimal places."
         />
 
         <div className="grid grid-cols-2 gap-3">

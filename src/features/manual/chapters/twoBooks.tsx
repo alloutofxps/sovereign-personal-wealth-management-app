@@ -35,7 +35,7 @@ export function TwoBooksChapter() {
 
       <Passage>
         The second records what your money is <em>for</em>. Not where it sits, but which job you
-        have given it — groceries, rent, the car insurance fund, the not-yet-decided pile. It is
+        have given it: groceries, rent, the car insurance fund, the not-yet-decided pile. It is
         the book that answers "can I afford this?".
       </Passage>
 
@@ -50,7 +50,7 @@ export function TwoBooksChapter() {
 
       <Passage>
         Inside each book, every entry has to add up to nothing. Money is never created or
-        destroyed by recording it — it moves from one place to another, so one line goes up and
+        destroyed by recording it. It moves from one place to another, so one line goes up and
         another goes down by exactly the same amount. Debits are written positive here and credits
         negative, which is why every column below totals zero.
       </Passage>
@@ -81,8 +81,8 @@ export function TwoBooksChapter() {
           </>,
           <>
             <strong className="font-medium text-ink">Giving money a job</strong> touches only the
-            second book. Nothing has moved in the real world — the money is in the same account it
-            was in a second ago — so the first book has nothing to record.
+            second book. Nothing has moved in the real world. The money is in the same account it
+            was in a second ago, so the first book has nothing to record.
           </>,
           <>
             <strong className="font-medium text-ink">Spending by card</strong> is the interesting
@@ -179,7 +179,7 @@ const EXPLAINS: Record<Scene, string> = {
   assign:
     'Nothing moved in the real world, so the first book has nothing to say. Only the second one changes.',
   cash: 'Cash left the account, so both books move: what you own goes down, and so does the envelope.',
-  card: 'No cash moved. What you owe went up — and the envelope emptied into the card’s own pot, so the bill is already covered.',
+  card: 'No cash moved. What you owe went up, and the envelope emptied into the card’s own pot, so the bill is already covered.',
   bill: 'Cash leaves and the debt shrinks. No expense is recorded, because the spending was counted when it happened.',
   move: 'Two accounts you own, both on budget. What the money is for has not changed, so the second book is silent.',
 };

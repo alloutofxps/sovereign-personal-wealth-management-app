@@ -229,7 +229,7 @@ export function describeDepreciation(
   }
 
   return (
-    `Reckoned at ${format(now)} today — about ${format(lost)} below what it cost, ` +
+    `Reckoned at ${format(now)} today, about ${format(lost)} below what it cost, ` +
     `which is what things like this do.`
   );
 }

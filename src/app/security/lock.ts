@@ -211,6 +211,6 @@ export async function verifyBiometrics(): Promise<boolean> {
  */
 export const LOCK_EXPLANATION =
   'A lock keeps anyone who picks up your unlocked phone out of your finances, and hides ' +
-  'your figures when you switch apps. It does not scramble the data on your device — ' +
+  'your figures when you switch apps. It does not scramble the data on your device. ' +
   'nothing here ever leaves it, and your exports are properly encrypted, but the lock ' +
   'itself is a door rather than a safe.';

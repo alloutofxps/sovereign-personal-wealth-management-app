@@ -30,7 +30,7 @@ export function PotsChapter() {
     <>
       <Passage>
         Irregular costs are what wreck an otherwise sensible month. The car insurance, the boiler
-        service, the flights in August — none of them is a surprise. Every one of them arrives as
+        service, the flights in August. None of them is a surprise. Every one of them arrives as
         one, because nothing was put by.
       </Passage>
 
@@ -57,14 +57,14 @@ No deadline   this month  =  nothing. Put in what you can.`}
       <Passage>
         The by-date sum uses the balance as it stood when the month began, not the live one. If it
         used the live balance, paying in would immediately lower the very figure you were paying
-        towards — you would put in the eighty-five you were asked for and be told the month now
+        towards. You would put in the eighty-five you were asked for and be told the month now
         wanted seventy-eight, which reads exactly like the goalposts moving the moment you reach
         them.
       </Passage>
 
       <Aside>
         A monthly pot is never reported as finished. Fifty a month has not completed when it
-        reaches fifty — it has completed <em>this month</em>, and next month wants another fifty.
+        reaches fifty. It has completed <em>this month</em>, and next month wants another fifty.
         Calling it done would quietly stop holding the money back from the second month onwards.
       </Aside>
 
@@ -230,7 +230,7 @@ function PotsLab() {
       <EngineSays>{describePot(plan, (amount) => money.format(amount))}</EngineSays>
 
       <p className="text-caption text-ink-3">
-        Held back from what is safe to spend today: {money.format(reservedForPots([plan]))} — the{' '}
+        Held back from what is safe to spend today: {money.format(reservedForPots([plan]))}: the{' '}
         {money.format(minor(Math.max(0, plan.currentBalance)))} already in the pot plus the{' '}
         {money.format(plan.stillNeededThisCycle)} still promised.
       </p>

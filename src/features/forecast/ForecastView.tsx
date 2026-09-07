@@ -150,7 +150,7 @@ export function ForecastView() {
 
       <p className="max-w-[46ch] text-caption text-ink-3">
         Everything on this page is worked out fresh each time from what you have recorded.
-        Nothing here is saved, and none of it is a promise — it is arithmetic on what is
+        Nothing here is saved, and none of it is a promise. It is arithmetic on what is
         already known.
       </p>
     </div>

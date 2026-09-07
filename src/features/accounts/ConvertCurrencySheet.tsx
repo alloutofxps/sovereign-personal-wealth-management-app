@@ -155,7 +155,7 @@ export function ConvertCurrencySheet({
             <p className="text-caption text-ink-2">
               {spread > 0
                 ? `About ${fx.formatIn(minor(spread), fx.baseCurrency)} less arrived than the ` +
-                  `rates on record would suggest — the bank's spread. It is recorded as a cost, ` +
+                  `rates on record would suggest: the bank's spread. It is recorded as a cost, ` +
                   `not as spending.`
                 : `About ${fx.formatIn(minor(-spread), fx.baseCurrency)} more arrived than the ` +
                   `rates on record would suggest, which usually means a rate here is out of date.`}

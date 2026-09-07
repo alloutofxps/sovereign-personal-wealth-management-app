@@ -251,7 +251,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             value={currency || baseCurrency}
             onChange={(e) => setCurrency(e.target.value === baseCurrency ? '' : e.target.value)}
             options={[
-              { value: baseCurrency, label: `${baseCurrency} — what you report in` },
+              { value: baseCurrency, label: `${baseCurrency} · what you report in` },
               ...COMMON_CURRENCIES.filter((c) => c !== baseCurrency).map((c) => ({
                 value: c,
                 label: c,
@@ -282,7 +282,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
                     `the account.`
               }
               {...(rateText.trim() !== '' && parsedRate === null
-                ? { error: 'A rate looks like 1.085215 — a number with up to six decimal places.' }
+                ? { error: 'A rate looks like 1.085215, a number with up to six decimal places.' }
                 : {})}
             />
           )}
@@ -318,7 +318,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
               {foreign
                 ? `Money in ${currency} is yours and counts towards what you are worth, but it ` +
                   `is not money you can spend on a ${baseCurrency} shop without converting it ` +
-                  `first — so it stays out of your budget.`
+                  `first, so it stays out of your budget.`
                 : offBudget
                 ? 'This will be kept out of your budget. It still counts towards what you ' +
                   'are worth, but nothing here will be treated as money you can spend.'

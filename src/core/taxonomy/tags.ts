@@ -66,7 +66,7 @@ export function assertUsableTagName(raw: string): string {
   const name = normaliseTagName(raw);
 
   if (name === '') {
-    throw new TagError('A tag needs a name — something you would search for later.');
+    throw new TagError('A tag needs a name, something you would search for later.');
   }
   if (name.length > MAX_TAG_LENGTH) {
     throw new TagError(
@@ -126,6 +126,6 @@ export function describeTagRemoval(name: string, usedOn: number): string {
   }
   return (
     `${name} will be taken off ${usedOn} ${usedOn === 1 ? 'payment' : 'payments'}. ` +
-    `The payments themselves are not touched — only the label.`
+    `The payments themselves are not touched, only the label.`
   );
 }

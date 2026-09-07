@@ -34,7 +34,7 @@ export function SafeToSpendChapter() {
 
       <Passage>
         <strong className="font-medium text-ink">What you can reach today</strong> is cash in
-        current accounts and savings. Not your pension, not your house — a house is worth a great
+        current accounts and savings. Not your pension, not your house. A house is worth a great
         deal and buys no groceries. The test is whether the money could be spent this afternoon.
       </Passage>
 
@@ -48,7 +48,7 @@ export function SafeToSpendChapter() {
       <Passage>
         <strong className="font-medium text-ink">Cards</strong> are taken off in full. What is
         owed on a card has to be paid from the same cash you are looking at, so counting it twice
-        — once as money you have and once as money you owe — is how a card balance quietly grows
+        (once as money you have, once as money you owe) is how a card balance quietly grows
         for two years.
       </Passage>
 
@@ -71,7 +71,7 @@ export function SafeToSpendChapter() {
 
       <Passage>
         Underneath the headline there is an amount per day. It is not the safe figure divided by
-        the days left in the month — it is divided by however long the money actually has to last,
+        the days left in the month. It is divided by however long the money actually has to last,
         which is the earlier of the month ending and your next pay arriving.
       </Passage>
 
@@ -224,8 +224,8 @@ function SafeToSpendLab() {
               {money.format(result.dailyPace)} a day for {result.paceDays}{' '}
               {result.paceDays === 1 ? 'day' : 'days'}
               {result.paceDays < result.daysRemaining
-                ? ' — paced to payday, not to the end of the period.'
-                : ' — paced to the end of the period.'}
+                ? '. Paced to payday, not to the end of the period.'
+                : '. Paced to the end of the period.'}
             </>
           ) : (
             <>

@@ -1,14 +1,57 @@
-import { AnimatePresence, motion } from 'motion/react';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useToasts } from '@/app/toast';
 
 const VISIBLE_FOR_MS = 5000;
+/** Long enough for the fade out, short enough not to hold the stack open. */
+const EXIT_MS = 200;
 
 /** Confirmations, stacked above the navigation bar. */
 export function Toasts() {
   const toasts = useToasts((s) => s.toasts);
   const dismiss = useToasts((s) => s.dismiss);
+
+  /**
+   * Toasts that have gone from the store but are still fading.
+   *
+   * The store is the truth about what is *current*; this holds the last
+   * frame of anything on its way out, so a dismissal fades rather than
+   * vanishing mid-sentence. Entrance needs no such trick, because a node
+   * mounting with the leaving classes off already animates from them.
+   */
+  const [leaving, setLeaving] = useState<ReadonlySet<number>>(() => new Set());
+  const [held, setHeld] = useState(toasts);
+  const previous = useRef(toasts);
+
+  useEffect(() => {
+    const gone = previous.current.filter((old) => !toasts.some((t) => t.id === old.id));
+    previous.current = toasts;
+
+    if (gone.length === 0) {
+      setHeld(toasts);
+      return;
+    }
+
+    // Keep the departed on screen, marked, until the transition has run.
+    setHeld((current) => {
+      const byId = new Map(current.map((t) => [t.id, t]));
+      for (const t of toasts) byId.set(t.id, t);
+      return [...byId.values()];
+    });
+    setLeaving((current) => new Set([...current, ...gone.map((t) => t.id)]));
+
+    const timer = setTimeout(() => {
+      setHeld(toasts);
+      setLeaving((current) => {
+        const next = new Set(current);
+        for (const t of gone) next.delete(t.id);
+        return next;
+      });
+    }, EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [toasts]);
+
+  const shown = held;
 
   return (
     <div
@@ -16,57 +59,52 @@ export function Toasts() {
       aria-live="polite"
       aria-atomic="false"
     >
-      <AnimatePresence initial={false}>
-        {toasts.map((t) => (
-          <motion.div
-            key={t.id}
-            layout
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+      {shown.map((t) => (
+        <div
+          key={t.id}
+          className={clsx(
+            'pointer-events-auto flex w-full max-w-[34rem] items-start gap-3',
+            'rim rounded-md px-3.5 py-3',
+            '[transition:opacity_200ms_ease,transform_260ms_var(--ease-snap)]',
+            leaving.has(t.id)
+              ? 'translate-y-2 scale-[0.98] opacity-0'
+              : 'translate-y-0 scale-100 opacity-100',
+            t.tone === 'attention' ? 'bg-caution-wash' : 'bg-overlay',
+          )}
+        >
+          <p
             className={clsx(
-              'pointer-events-auto flex w-full max-w-[34rem] items-start gap-3',
-              'rounded-md border px-3.5 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)]',
-              t.tone === 'attention'
-                ? 'border-caution-dim/60 bg-caution-wash'
-                : 'border-line-strong bg-overlay',
+              'flex-1 text-caption',
+              t.tone === 'attention' ? 'text-caution' : 'text-ink',
             )}
           >
-            <p
-              className={clsx(
-                'flex-1 text-caption',
-                t.tone === 'attention' ? 'text-caution' : 'text-ink',
-              )}
-            >
-              {t.message}
-            </p>
-            {t.action && (
-              <button
-                type="button"
-                className="shrink-0 text-caption font-medium text-liquid"
-                onClick={() => {
-                  t.action?.run();
-                  dismiss(t.id);
-                }}
-              >
-                {t.action.label}
-              </button>
-            )}
+            {t.message}
+          </p>
+          {t.action && (
             <button
               type="button"
-              aria-label="Dismiss"
-              onClick={() => dismiss(t.id)}
-              className="shrink-0 text-ink-3 hover:text-ink-2"
+              className="press shrink-0 text-caption font-medium text-liquid"
+              onClick={() => {
+                t.action?.run();
+                dismiss(t.id);
+              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              {t.action.label}
             </button>
-            <Timer id={t.id} onDone={dismiss} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          )}
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => dismiss(t.id)}
+            className="press shrink-0 text-ink-3 hover:text-ink-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+          <Timer id={t.id} onDone={dismiss} />
+        </div>
+      ))}
     </div>
   );
 }

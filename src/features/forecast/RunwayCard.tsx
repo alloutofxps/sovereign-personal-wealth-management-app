@@ -77,7 +77,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
           </span>
           <p className="max-w-[44ch] text-caption text-ink-3">
             Switch things off to see how much further the same money would go. Nothing here
-            changes your records — it is only a what-if.
+            changes your records. It is only a what-if.
           </p>
 
           {data.categories.length === 0 ? (

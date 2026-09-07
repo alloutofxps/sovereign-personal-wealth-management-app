@@ -48,7 +48,7 @@ export function BalanceCard({ data }: { data: DashboardData }) {
               ? 'Every penny on your cards already has money waiting for it, so your next bill ' +
                 'will not come as a surprise.'
               : 'There is a little less put by than your cards currently owe. Nothing is due ' +
-                'yet — it just means part of the bill is not covered.'}
+                'yet. Part of the bill is not covered.'}
           </p>
         )}
       </div>

@@ -235,7 +235,7 @@ export function describeComparison(
   return (
     `Clearing the most expensive first gets you there in ${cheapest.months} ` +
     `${cheapest.months === 1 ? 'month' : 'months'}. Going smallest first would cost ` +
-    `${format(comparison.extraInterest)} more in interest ${monthsText} — but you would see ` +
+    `${format(comparison.extraInterest)} more in interest ${monthsText}, but you would see ` +
     `your first debt disappear sooner, which for a lot of people is what makes it stick.`
   );
 }

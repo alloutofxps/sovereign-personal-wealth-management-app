@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { Route } from '@/app/router';
 
@@ -8,9 +9,19 @@ interface Tab {
 }
 
 /**
- * Four places and one action. The add button sits in the middle because it is
- * the thing people do most often, and it is a circle rather than a tab so it
- * never reads as "somewhere you are".
+ * Four places and one action, on a floating frosted dock.
+ *
+ * The dock does not span the screen. It sits above the home indicator with air
+ * on both sides, so content scrolls visibly past and under it and the screen
+ * reads as one continuous surface rather than a page with a toolbar bolted to
+ * the bottom.
+ *
+ * The active pill is a single element that slides, measured from the live
+ * button rather than derived from an index: the labels differ in width, and an
+ * index would put the pill in approximately the right place.
+ *
+ * The add button is a circle rather than a tab because it is an action, not a
+ * destination. It never reads as "somewhere you are".
  */
 export function BottomNav({
   route,
@@ -28,57 +39,116 @@ export function BottomNav({
     { route: 'settings', label: 'Settings', icon: <GearIcon /> },
   ];
 
+  /** Which tab owns this route. Several routes live under one tab. */
+  const activeRoute = (tab: Route): boolean => {
+    if (route === tab) return true;
+    if (tab === 'home') return route === 'budget';
+    if (tab === 'forecast') {
+      return (
+        route === 'debt' ||
+        route === 'independence' ||
+        route === 'calendar' ||
+        route === 'analytics' ||
+        route === 'whatif'
+      );
+    }
+    if (tab === 'accounts') {
+      return route === 'pots' || route === 'triage' || route === 'transactions';
+    }
+    if (tab === 'settings') return route === 'categories' || route === 'manual';
+    return false;
+  };
+
+  const activeIndex = tabs.findIndex((tab) => activeRoute(tab.route));
+
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
+
+  const measure = useCallback(() => {
+    const button = refs.current[activeIndex];
+    if (!button) {
+      setPill(null);
+      return;
+    }
+    setPill({ x: button.offsetLeft, w: button.offsetWidth });
+  }, [activeIndex]);
+
+  // Layout effect so the pill is under the right tab on the very first paint
+  // rather than sliding in from the left when the app opens.
+  useLayoutEffect(measure, [measure]);
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const dock = dockRef.current;
+    if (!dock) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(dock);
+    return () => observer.disconnect();
+  }, [measure]);
+
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur-md"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[var(--safe-bottom)]"
     >
-      <div className="mx-auto grid max-w-[42rem] grid-cols-5 items-center px-2 pb-[var(--safe-bottom)]">
-        {tabs.slice(0, 2).map((tab) => (
+      <div
+        ref={dockRef}
+        className={clsx(
+          'glass pointer-events-auto relative flex w-full max-w-[26rem] items-center gap-1 rounded-[1.75rem] p-1.5',
+          // The rim reads as a chamfer catching the same light as everything
+          // else, which is what stops a floating object looking pasted on.
+          'border-[0.5px] border-white/10',
+          'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.10),0_12px_32px_-8px_rgb(0_0_0/0.6)]',
+        )}
+      >
+        {pill && (
+          <span
+            aria-hidden="true"
+            className={clsx(
+              'absolute top-1.5 bottom-1.5 left-0 rounded-[1.4rem] bg-white/8',
+              'motion-safe:[transition:transform_360ms_var(--ease-snap),width_360ms_var(--ease-snap)]',
+            )}
+            style={{ transform: `translate3d(${pill.x}px,0,0)`, width: pill.w }}
+          />
+        )}
+
+        {tabs.slice(0, 2).map((tab, index) => (
           <NavButton
             key={tab.route}
+            ref={(el) => {
+              refs.current[index] = el;
+            }}
             tab={tab}
-            active={
-              route === tab.route ||
-              (tab.route === 'home' && route === 'budget') ||
-              (tab.route === 'forecast' &&
-                (route === 'debt' ||
-                  route === 'independence' ||
-                  route === 'calendar' ||
-                  route === 'analytics'))
-            }
+            active={index === activeIndex}
             onNavigate={onNavigate}
           />
         ))}
 
-        <div className="flex items-center justify-center">
+        <div className="relative z-10 flex shrink-0 items-center justify-center px-1">
           <button
             type="button"
             onClick={onAdd}
             aria-label="Add a payment"
             className={clsx(
-              'flex size-12 items-center justify-center rounded-full bg-liquid text-base',
-              'transition-transform active:scale-95',
+              'press flex size-11 items-center justify-center rounded-full bg-liquid text-base',
               'shadow-[0_4px_16px_-4px_color-mix(in_srgb,var(--color-liquid)_60%,transparent)]',
             )}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        {tabs.slice(2).map((tab) => (
+        {tabs.slice(2).map((tab, index) => (
           <NavButton
             key={tab.route}
+            ref={(el) => {
+              refs.current[index + 2] = el;
+            }}
             tab={tab}
-            // Pots live under Accounts, so that tab stays lit while you are there.
-            active={
-              route === tab.route ||
-              (tab.route === 'accounts' &&
-                (route === 'pots' || route === 'triage' || route === 'transactions')) ||
-              (tab.route === 'settings' && route === 'categories')
-            }
+            active={index + 2 === activeIndex}
             onNavigate={onNavigate}
           />
         ))}
@@ -88,26 +158,30 @@ export function BottomNav({
 }
 
 function NavButton({
+  ref,
   tab,
   active,
   onNavigate,
 }: {
+  ref: React.Ref<HTMLButtonElement>;
   tab: Tab;
   active: boolean;
   onNavigate: (route: Route) => void;
 }) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={() => onNavigate(tab.route)}
       aria-current={active ? 'page' : undefined}
       className={clsx(
-        'flex h-14 flex-col items-center justify-center gap-1 transition-colors',
+        'press relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.4rem] py-2',
+        'transition-colors',
         active ? 'text-liquid' : 'text-ink-3 hover:text-ink-2',
       )}
     >
       {tab.icon}
-      <span className="text-micro tracking-[0.04em]">{tab.label}</span>
+      <span className="text-[0.625rem] font-medium tracking-[0.06em]">{tab.label}</span>
     </button>
   );
 }

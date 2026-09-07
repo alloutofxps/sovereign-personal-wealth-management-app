@@ -355,7 +355,7 @@ export function AccountsView() {
           <Card>
             <div className="flex flex-col items-start gap-3 py-1">
               <p className="text-caption text-ink-2">
-                Nothing set up yet. Car insurance, a holiday, Christmas — putting a bit by each
+                Nothing set up yet. Car insurance, a holiday, Christmas. Putting a bit by each
                 month means they never arrive as a shock.
               </p>
               <Button variant="secondary" size="sm" onClick={() => navigate('pots')}>

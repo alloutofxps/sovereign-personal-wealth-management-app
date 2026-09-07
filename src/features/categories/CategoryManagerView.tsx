@@ -150,7 +150,7 @@ function TagsTab() {
         <div className="flex flex-col items-center gap-2 py-8 text-center">
           <p className="text-lead text-ink">No tags yet</p>
           <p className="max-w-[38ch] text-caption text-ink-2">
-            A tag is a label you put across payments that have nothing else in common — a trip, a
+            A tag is a label you put across payments that have nothing else in common: a trip, a
             room, everything somebody owes you half of. Choose several payments on the
             transactions screen and tag them there.
           </p>
@@ -195,7 +195,7 @@ function TagsTab() {
 
       <p className="text-caption text-ink-3">
         Tags never change a figure. Nothing that is safe to spend, no envelope and no total reads
-        one — they are only how you find things again.
+        one. They are only how you find things again.
       </p>
 
       <BottomSheet

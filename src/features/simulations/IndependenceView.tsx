@@ -124,7 +124,7 @@ export function IndependenceView() {
           />
           <p className="max-w-[46ch] text-caption text-ink-2">
             The solid line is what steady returns would give you. The shaded band is the range a
-            good or a bad run of markets could put you in — real markets do not move in a
+            good or a bad run of markets could put you in. Real markets do not move in a
             straight line, and the width of that band is the honest part of this page.
           </p>
         </div>

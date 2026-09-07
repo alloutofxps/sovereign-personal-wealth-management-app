@@ -244,7 +244,7 @@ export function PaymentDetailsSheet({
 
           {isCorrection ? (
             <p className="text-caption text-ink-3">
-              This entry is itself a correction — it undid an earlier payment. To put that
+              This entry is itself a correction. It undid an earlier payment. To put that
               payment back, record it again.
             </p>
           ) : confirming ? (

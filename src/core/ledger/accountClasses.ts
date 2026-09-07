@@ -166,7 +166,7 @@ export const GROUP_TITLES: Record<AccountGroup, string> = {
 export const GROUP_HINTS: Record<AccountGroup, string> = {
   cash: 'Money you could spend today. This is what safe-to-spend is worked out from.',
   foreign:
-    'Yours, and counted in what you are worth — but not money you can spend here until ' +
+    'Yours, and counted in what you are worth, but not money you can spend here until ' +
     'you have converted it, so it is left out of safe-to-spend.',
   investments: 'Yours, but not money you would spend this week.',
   property: 'Things you own that are worth something. Tap one to say what it is worth now.',
@@ -268,7 +268,7 @@ export function planAccountCreation(
   }
   if (draft.startingBalance < 0) {
     throw new LedgerError(
-      'A starting figure is always a positive number — what the account holds, or what ' +
+      'A starting figure is always a positive number: what the account holds, or what ' +
         'is owed on it.',
     );
   }

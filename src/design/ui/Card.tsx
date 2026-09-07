@@ -34,7 +34,10 @@ export function Card({
   return (
     <section
       className={clsx(
-        'relative overflow-hidden rounded-lg border border-line',
+        // `rim` is the lit chamfer, not a border: an inset highlight along the
+        // top edge plus a soft drop. A flat 1px line reads as a div; this
+        // reads as an object sitting under the same light as everything else.
+        'rim relative overflow-hidden rounded-lg',
         elevation === 'surface' ? 'bg-surface' : 'bg-raised',
         accent !== 'none' &&
           'before:absolute before:inset-x-0 before:top-0 before:h-px before:content-[""]',
@@ -52,7 +55,7 @@ export function Card({
           )}
         >
           {label && (
-            <h2 className="text-micro font-medium uppercase tracking-[0.13em] text-ink-3">
+            <h2 className="eyebrow text-ink-3">
               {label}
             </h2>
           )}

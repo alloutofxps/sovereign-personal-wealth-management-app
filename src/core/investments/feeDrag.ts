@@ -201,7 +201,7 @@ export function describeFeeDrag(
   const horizon = drag.projections.find((p) => p.years === years) ?? drag.projections[0]!;
 
   return (
-    `At your current size, fund charges cost about ${format(drag.annualCost)} a year — ` +
+    `At your current size, fund charges cost about ${format(drag.annualCost)} a year, ` +
     `${formatExpenseRatio(drag.weightedBp)} of what you hold. Held for ${horizon.years} years ` +
     `at a steady ${(ASSUMED_GROSS_RETURN_BP / 100).toFixed(2)}% before charges, that ` +
     `difference adds up to roughly ${format(horizon.versusBaseline)} less than the same ` +

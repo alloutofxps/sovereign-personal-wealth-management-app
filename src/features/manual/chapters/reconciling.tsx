@@ -49,7 +49,7 @@ export function ReconcilingChapter() {
 
       <Passage>
         When it does not balance, the difference has a direction, and the direction narrows down
-        where to look. Sovereign says which way it runs and names both of the usual causes — and
+        where to look. Sovereign says which way it runs and names both of the usual causes, and
         deliberately does not pick one, because an account can be overdrawn, and a sentence that
         asserts the wrong cause sends somebody hunting through the one place the problem is not.
       </Passage>
@@ -79,7 +79,7 @@ export function ReconcilingChapter() {
 
       <Aside>
         This is not the app distrusting you. A record you have personally matched against a bank
-        statement is worth more than one you can still change without noticing — and you can
+        statement is worth more than one you can still change without noticing, and you can
         always unlock a stretch deliberately, which is a different act from changing it by
         mistake.
       </Aside>
@@ -112,7 +112,7 @@ const LINES: readonly (ReconcilableLine & { startsCleared: boolean })[] = [
   { postingId: 'p5', entryId: 'e5', date: '2026-08-25', amount: minor(315_000), description: 'Pay from work', clearance: 'pending', startsCleared: false },
   { postingId: 'p6', entryId: 'e6', date: '2026-08-28', amount: minor(-9_680), description: 'Lidl', clearance: 'pending', startsCleared: false },
   { postingId: 'p7', entryId: 'e7', date: '2026-08-30', amount: minor(-3_180), description: 'Thai Corner', clearance: 'pending', startsCleared: false },
-  { postingId: 'p8', entryId: 'e8', date: '2026-09-02', amount: minor(-4_500), description: 'Bakery — after the statement date', clearance: 'pending', startsCleared: false },
+  { postingId: 'p8', entryId: 'e8', date: '2026-09-02', amount: minor(-4_500), description: 'Bakery, after the statement date', clearance: 'pending', startsCleared: false },
 ];
 
 /** What the bank would say if every in-scope line were ticked. */

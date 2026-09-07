@@ -30,8 +30,13 @@ export function ManualView() {
 
   // Arriving at a chapter from another screen should start at its top, not
   // wherever the contents page happened to be scrolled to.
+  //
+  // The document does not scroll, so `window.scrollTo` would do nothing. The
+  // scrolling element is the shell's `<main>`, and this walks up to whatever
+  // is actually carrying the overflow rather than assuming a depth.
   useEffect(() => {
-    if (chapter) window.scrollTo({ top: 0 });
+    if (!chapter) return;
+    document.querySelector('main.scroll-y')?.scrollTo({ top: 0 });
   }, [chapter]);
 
   return chapter ? <Reader chapter={chapter} /> : <Contents />;
@@ -48,7 +53,7 @@ function Contents() {
         <h1 className="text-lead font-medium text-ink">The field manual</h1>
         <p className="max-w-[58ch] text-body leading-relaxed text-ink-2">
           How Sovereign works out what it tells you. Six chapters, each with a working model of
-          the thing it is describing — the same code that runs on your own money, running on
+          the thing it is describing. The same code that runs on your own money, running on
           figures that are openly made up.
         </p>
         <p className="max-w-[58ch] text-caption text-ink-3">
@@ -124,7 +129,7 @@ function Reader({ chapter }: { chapter: Chapter }) {
         )}
         {!next && (
           <p className="text-caption text-ink-3">
-            That is the last chapter. Nothing is unlocked by finishing it — you simply know how the
+            That is the last chapter. Nothing is unlocked by finishing it. You simply know how the
             app works now.
           </p>
         )}

@@ -413,7 +413,7 @@ function DepreciationNote({
         <p className="text-caption text-ink-2">
           {fallen
             ? `Going by how things like this usually hold their value, it is probably nearer ` +
-              `${format(estimate.projected)} by now — about ${format(minor(Math.abs(estimate.drift)))} ` +
+              `${format(estimate.projected)} by now, about ${format(minor(Math.abs(estimate.drift)))} ` +
               `below what is recorded.`
             : `The figure recorded is below what the usual rate would suggest, which is ` +
               `${format(estimate.projected)}.`}

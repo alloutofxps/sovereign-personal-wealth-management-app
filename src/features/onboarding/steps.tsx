@@ -56,7 +56,7 @@ export function StepPromise() {
   return (
     <StepFrame
       title="Your money, on your phone, and nowhere else."
-      lede="Sovereign keeps everything on this device. There is no account to make, nothing to sign in to, and nothing is ever sent anywhere — not to us, not to your bank, not to anyone."
+      lede="Your data stays on this device. No servers, no accounts, no tracking. Nothing is ever sent to us, to your bank, or to anyone else."
     >
       <Aside>
         That also means nobody can get it back for you. Before you have much in here, go to
@@ -72,7 +72,7 @@ export function StepPromise() {
         >
           {COMMON_CURRENCIES.map((code) => (
             <option key={code} value={code}>
-              {code} — {currencyDisplayName(code, locale)}
+              {code} · {currencyDisplayName(code, locale)}
             </option>
           ))}
         </select>
@@ -100,7 +100,7 @@ export function StepWhereItIs({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="Where is your money right now?"
-      lede="Add the accounts you actually spend from. What you type is the balance today — not what you started with, and not an average."
+      lede="Add the accounts you actually spend from. Type the balance as it stands today, not what you started with."
     >
       <AccountAdder
         kinds={CASH_KINDS}
@@ -131,7 +131,7 @@ export function StepWhatYouOwe({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="Anything you owe?"
-      lede="Type what is outstanding as a positive number — Sovereign knows which direction it goes."
+      lede="Type what is outstanding as a positive number. Sovereign knows which direction it goes."
     >
       <AccountAdder
         kinds={DEBT_KINDS}
@@ -142,7 +142,7 @@ export function StepWhatYouOwe({ added, onAdded }: StepProps) {
       <AddedList items={added} empty="Nothing owed, or nothing added yet. Both are fine." />
       <Aside>
         A card balance comes straight off what is safe to spend, because it has to be paid from
-        the same money. A mortgage does not — nobody has to find the whole thing this month, only
+        the same money. A mortgage does not. Nobody has to find the whole thing this month, only
         the payment, and that is budgeted like any other bill.
       </Aside>
     </StepFrame>
@@ -215,7 +215,7 @@ export function StepRegulars({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="What lands, and what leaves?"
-      lede="Your pay, your rent, the phone bill — the things that arrive whether you think about them or not."
+      lede="Your pay, your rent, the phone bill. The things that arrive whether you think about them or not."
     >
       <div className="grid grid-cols-2 gap-2">
         <Choice selected={kind === 'income'} onClick={() => setKind('income')} title="Money in" />
@@ -293,7 +293,7 @@ const POT_KINDS: { value: PotTargetKind; title: string; detail: string }[] = [
   },
   {
     value: 'open',
-    title: 'No rush — I put in what I can',
+    title: 'No rush. I put in what I can',
     detail: 'Nothing is held back automatically. The pot just keeps what you give it.',
   },
 ];
@@ -350,7 +350,7 @@ export function StepSaving({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="What are you putting money by for?"
-      lede="A pot is money that stays in your account but stops counting as spare. Car insurance, a holiday, a new boiler — whatever tends to arrive as a shock."
+      lede="A pot is money that stays in your account but stops counting as spare. Car insurance, a holiday, a new boiler. Anything that tends to arrive as a shock."
     >
       <Field label="What is it for?">
         <TextBox value={name} onChange={setName} placeholder="Car insurance" />
@@ -414,7 +414,7 @@ export function StepTheNumber() {
     return (
       <StepFrame
         title="One number, and where it comes from"
-        lede="Sovereign could not work your figure out just now. Nothing you have entered is lost — the home screen will show it as soon as it can."
+        lede="Sovereign could not work your figure out just now. Nothing you have entered is lost. The home screen will show it as soon as it can."
       >
         <Aside>You can finish here and go straight to it.</Aside>
       </StepFrame>
@@ -438,7 +438,7 @@ export function StepTheNumber() {
   return (
     <StepFrame
       title="One number, and where it comes from"
-      lede="Sovereign shows you one figure. It is not your balance — it is what is left once everything already spoken for is out of the way."
+      lede="Sovereign shows you one figure. Not your balance: what is left once everything already spoken for is out of the way."
     >
       <div className="rounded-lg border border-line bg-surface px-4 py-2">
         <Term label="What you have" value={money.format(liquidity.liquidCash)} tone="plain" />
@@ -481,7 +481,7 @@ export function StepTheNumber() {
 
       <p className="text-caption text-ink-3">
         Nothing here was stored. Sovereign works this out again every time you open it, from what
-        is actually in your ledger — so it can never drift from the truth.
+        is actually in your ledger, so it can never drift from the truth.
       </p>
     </StepFrame>
   );

@@ -35,8 +35,8 @@ export function CardsChapter() {
       </Passage>
 
       <Passage>
-        So a forty-two euro shop on the card takes forty-two euros out of your food budget — the
-        same as if you had paid cash — and puts forty-two euros aside for the bill. Nothing has
+        So a forty-two euro shop on the card takes forty-two euros out of your food budget, the
+        same as if you had paid cash, and puts forty-two euros aside for the bill. Nothing has
         physically moved. What has changed is that the cash to settle the statement is now spoken
         for, weeks before the statement exists.
       </Passage>
@@ -59,7 +59,7 @@ export function CardsChapter() {
         A mortgage is not treated that way, and it would be absurd to. Nobody has to find two
         hundred thousand this month; they have to find one payment, and that payment is a bill
         like any other. An app that subtracted the whole balance would tell somebody with a house
-        and a healthy current account that they have nothing at all to spend — which is both false
+        and a healthy current account that they have nothing at all to spend. That is both false
         and the most discouraging thing a money app can say.
       </Passage>
 
@@ -185,7 +185,7 @@ function CardsLab() {
 
       <p className="text-caption text-ink-3">
         Slide the mortgage payment up to a card-sized figure and the two agree. The difference is
-        never the size of the debt — it is whether the whole of it has to be found this month.
+        never the size of the debt. It is whether the whole of it has to be found this month.
       </p>
     </Lab>
   );

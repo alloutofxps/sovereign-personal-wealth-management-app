@@ -63,7 +63,7 @@ export function CategoryPicker({
         placeholder="Pick a category"
         emptyLabel={
           picker.ready
-            ? 'No categories yet — add one in Settings'
+            ? 'No categories yet. Add one in Settings'
             : 'Loading your categories…'
         }
       />

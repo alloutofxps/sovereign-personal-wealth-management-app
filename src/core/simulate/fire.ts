@@ -220,5 +220,5 @@ export function describeMilestone(
   if (milestone.months === null) {
     return `At what you are putting away now this one stays out of reach. Saving more, or spending less later, would bring it in.`;
   }
-  return `${format(milestone.target)} would do it — ${describeWhen(milestone.months)} at your current rate.`;
+  return `${format(milestone.target)} would do it, ${describeWhen(milestone.months)} at your current rate.`;
 }

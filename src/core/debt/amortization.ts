@@ -311,7 +311,7 @@ export function describeSplit(
       : '';
 
   return (
-    `${format(split.principal)} of this payment builds your equity — it reduces what you ` +
+    `${format(split.principal)} of this payment builds your equity. It reduces what you ` +
     `owe, so it stays yours. ${format(split.interest)} is interest, which is the cost of ` +
     `the money and does not come back.${escrowPart}`
   );

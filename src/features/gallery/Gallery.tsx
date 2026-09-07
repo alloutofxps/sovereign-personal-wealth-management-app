@@ -51,7 +51,7 @@ interface DemoTransaction {
 const SEED: DemoTransaction[] = [
   { id: 't1', merchant: 'Albert Heijn', category: 'Groceries', amount: minor(-4235), when: 'Today' },
   { id: 't2', merchant: 'NS Reizigers', category: 'Transport', amount: minor(-1180), when: 'Today', pending: true },
-  { id: 't3', merchant: 'Salary — Eurofiber', category: 'Income', amount: minor(412_000), when: 'Yesterday' },
+  { id: 't3', merchant: 'Salary, Eurofiber', category: 'Income', amount: minor(412_000), when: 'Yesterday' },
   { id: 't4', merchant: 'Spotify', category: 'Subscriptions', amount: minor(-1199), when: 'Yesterday' },
   { id: 't5', merchant: 'Coolblue', category: 'Refund from Electronics', amount: minor(8999), when: 'Mon' },
 ];
@@ -103,7 +103,7 @@ export function Gallery() {
 
         <Section
           title="Stat pills"
-          note="These sit along the bottom of your dashboard. Colour and a small dot show what needs attention — nothing here ever turns red at you."
+          note="These sit along the bottom of your dashboard. Colour and a small dot show what needs attention. Nothing here ever turns red at you."
         >
           <div className="grid grid-cols-2 gap-2">
             <StatPill
@@ -324,7 +324,7 @@ function CurrencySection() {
   return (
     <Section
       title="Base currency"
-      note="Sovereign works in one currency at a time. Change either setting below and every amount on this page updates straight away — the symbol, the separators, and even how many decimal places are shown."
+      note="Sovereign works in one currency at a time. Change either setting below and every amount on this page updates straight away: the symbol, the separators, and how many decimal places are shown."
     >
       <Card accent="liquid">
         <div className="flex flex-col gap-4">

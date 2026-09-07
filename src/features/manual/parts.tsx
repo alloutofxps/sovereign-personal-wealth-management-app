@@ -66,9 +66,13 @@ export function Points({ items }: { items: ReactNode[] }) {
     <ul className="flex max-w-[62ch] flex-col gap-2">
       {items.map((item, index) => (
         <li key={index} className="flex gap-3 text-body leading-relaxed text-ink-2">
-          <span className="select-none pt-[0.35em] text-liquid-dim" aria-hidden="true">
-            —
-          </span>
+          {/* A drawn rule rather than a dash character: it sits on the optical
+              baseline at any size, and it keeps the one glyph this app has no
+              other use for out of the running text. */}
+          <span
+            aria-hidden="true"
+            className="mt-[0.72em] h-px w-3 shrink-0 rounded-full bg-liquid-dim"
+          />
           <span>{item}</span>
         </li>
       ))}

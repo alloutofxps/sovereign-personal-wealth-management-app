@@ -65,7 +65,7 @@ export function PayCardSheet({
       open={open}
       onClose={onClose}
       title="Pay your card bill"
-      description="Moving money to your card is not spending — you already spent it when you used the card."
+      description="Moving money to your card is not spending. You spent it when you used the card."
       footer={
         <div className="flex flex-col gap-2">
           {problem && (

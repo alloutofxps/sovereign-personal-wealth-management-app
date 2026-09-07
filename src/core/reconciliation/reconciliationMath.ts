@@ -161,7 +161,7 @@ export function describeDifference(
 /** What finishing will do, said before it is done. */
 export function describeLock(count: number): string {
   if (count === 0) {
-    return 'There is nothing new to lock — everything up to this date is already checked.';
+    return 'There is nothing new to lock. Everything up to this date is already checked.';
   }
   return (
     `This will lock ${count} ${count === 1 ? 'payment' : 'payments'}. ` +

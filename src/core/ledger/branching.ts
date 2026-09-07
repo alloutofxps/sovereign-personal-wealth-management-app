@@ -223,8 +223,8 @@ export function describeDifference(
   const size = format(minor(Math.abs(result.difference)));
 
   return result.difference > 0
-    ? `${name} leaves you ${size} ahead of where you are now — ${format(result.branched)} against ${format(result.actual)}. Whether that makes it the right call is not a question this can answer.`
-    : `${name} leaves you ${size} behind where you are now — ${format(result.branched)} against ${format(result.actual)}. That is the money only, and money is rarely the whole of it.`;
+    ? `${name} leaves you ${size} ahead of where you are now: ${format(result.branched)} against ${format(result.actual)}. Whether that makes it the right call is not a question this can answer.`
+    : `${name} leaves you ${size} behind where you are now: ${format(result.branched)} against ${format(result.actual)}. That is the money only, and money is rarely the whole of it.`;
 }
 
 /**
