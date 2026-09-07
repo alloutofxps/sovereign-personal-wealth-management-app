@@ -13,7 +13,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { minor } from '@/core/money';
-import type { AccountId, LedgerAccount } from '@/core/ledger';
+import type { AccountId, EntryId, LedgerAccount } from '@/core/ledger';
 import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 import type { EntrySearchParams } from '@/data/repositories/searchRepo';
 import { useAccounts } from '@/app/ledger/useLedger';
@@ -22,6 +22,21 @@ import { presentEntry, type PresentedEntry } from '@/app/ledger/present';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
+import { useSelection } from '@/app/selection';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { describeSelection, describeTagging, describeUntagging } from '@/core/taxonomy/tags';
+import {
+  TAG_TABLES,
+  ensureTag,
+  listTags,
+  tagEntries,
+  tagsForEntries,
+  untagEntries,
+  type TagRecord,
+} from '@/data/repositories/tagsRepo';
+import { toast } from '@/app/toast';
+import { SelectionBar, Tick } from '@/features/shell/SelectionBar';
+import { TagSheet } from './TagSheet';
 import {
   Button,
   Card,
@@ -39,6 +54,17 @@ import { FilterSheet, describeFilters } from './FilterSheet';
 
 const PAGE_SIZE = 100;
 
+/**
+ * The empty list, once.
+ *
+ * `results.data?.entries ?? []` looks harmless and is not: a fresh array every
+ * render gives every `useMemo` and `useCallback` keyed on it a new identity,
+ * and a live query built from one of those re-subscribes on every render,
+ * which sets state, which renders again. The page locks up — and it only does
+ * so *after a write*, because that is when the query briefly has no data.
+ */
+const NOTHING: readonly EntryWithPostings[] = [];
+
 export function TransactionsView() {
   const [, navigate] = useRoute();
   const locale = useAppConfig((s) => s.locale);
@@ -48,6 +74,8 @@ export function TransactionsView() {
   const [filters, setFilters] = useState<EntrySearchParams>({});
   const [filtering, setFiltering] = useState(false);
   const [looking, setLooking] = useState<EntryWithPostings | null>(null);
+  const [tagging, setTagging] = useState<'add' | 'remove' | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const query = useDebounced(typed);
 
@@ -57,7 +85,7 @@ export function TransactionsView() {
   );
 
   const results = useEntrySearch(params);
-  const entries = results.data?.entries ?? [];
+  const entries = results.data?.entries ?? NOTHING;
   const total = results.data?.total ?? 0;
 
   const byId = useMemo(
@@ -65,15 +93,90 @@ export function TransactionsView() {
     [accounts.data],
   );
 
+  const entryIds = useMemo(() => entries.map((entry) => entry.id), [entries]);
+  const selection = useSelection<EntryId>(entryIds);
+
+  // Keyed on the ids themselves rather than the array holding them. Belt and
+  // braces with `NOTHING` above: a query that re-subscribes on every render is
+  // a loop, and this is the one query whose input is derived from a list.
+  const entryIdKey = entryIds.join(' ');
+  const tags = useLiveQuery(useCallback(() => listTags(), []), TAG_TABLES);
+  const onEntries = useLiveQuery(
+    useCallback(() => tagsForEntries(entryIdKey === '' ? [] : (entryIdKey.split(' ') as EntryId[])), [entryIdKey]),
+    TAG_TABLES,
+  );
+  const tagsById = onEntries.data ?? new Map();
+
+  // Only the tags actually present on what is chosen, so "take a tag off"
+  // never offers something that would do nothing.
+  const tagsOnChosen = useMemo(() => {
+    const seen = new Map<string, TagRecord>();
+    for (const id of selection.ids) {
+      for (const tag of tagsById.get(id) ?? []) seen.set(tag.id, tag);
+    }
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [selection.ids, tagsById]);
+
   const groups = useMonthGroups(entries, locale);
   const searching = query.trim().length > 0;
   const filterChips = describeFilters(filters, byId);
-  const narrowed = searching || filterChips.length > 0;
+  // A tag on its own narrows the list too. Without it here, filtering to a tag
+  // that matches nothing would say "nothing recorded yet" to somebody with
+  // four months of records, and offer to import a statement.
+  const narrowed = searching || filterChips.length > 0 || filters.tagId !== undefined;
 
   const clearEverything = useCallback(() => {
     setTyped('');
     setFilters({});
   }, []);
+
+  /**
+   * Put a tag on everything chosen, making it first if it is new.
+   *
+   * The count that comes back is what actually changed, not how many were
+   * chosen. Saying "tagged 17" when three of them already had it would be a
+   * number nobody could check and everybody would half-believe.
+   */
+  async function applyTag(name: string) {
+    if (selection.count === 0) return;
+    setBusy(true);
+    try {
+      // The stored name, not the one just typed: typing "italy 2026" into an
+      // existing "Italy 2026" adds to it, and the confirmation should say so.
+      const tag = await ensureTag(name);
+      const changed = await tagEntries(selection.ids, tag.id);
+      setTagging(null);
+      selection.cancel();
+      toast(describeTagging(changed, tag.name));
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'That could not be saved, so nothing has been tagged.',
+        { tone: 'attention' },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeTag(tag: TagRecord) {
+    if (selection.count === 0) return;
+    setBusy(true);
+    try {
+      const changed = await untagEntries(selection.ids, tag.id);
+      setTagging(null);
+      selection.cancel();
+      toast(describeUntagging(changed, tag.name));
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : 'That could not be changed just now.',
+        { tone: 'attention' },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -86,6 +189,15 @@ export function TransactionsView() {
               ? '1 payment.'
               : `${total} payments.`}
         </p>
+        {entries.length > 1 && !selection.active && (
+          <button
+            type="button"
+            onClick={() => selection.begin()}
+            className="self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+          >
+            Choose several at once
+          </button>
+        )}
       </header>
 
       <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-3 bg-base/95 px-4 pb-3 pt-1 backdrop-blur-md">
@@ -111,6 +223,22 @@ export function TransactionsView() {
               onDismiss={() => setFilters(chip.remove(filters))}
             >
               {chip.label}
+            </Chip>
+          ))}
+
+          {(tags.data ?? []).slice(0, 8).map((tag) => (
+            <Chip
+              key={tag.id}
+              active={filters.tagId === tag.id}
+              onClick={() =>
+                setFilters((previous) =>
+                  previous.tagId === tag.id
+                    ? withoutTag(previous)
+                    : { ...previous, tagId: tag.id },
+                )
+              }
+            >
+              {tag.name}
             </Chip>
           ))}
 
@@ -160,7 +288,12 @@ export function TransactionsView() {
                       entry={entry}
                       accounts={byId}
                       locale={locale}
-                      onOpen={() => setLooking(entry)}
+                      tags={tagsById.get(entry.id) ?? []}
+                      selecting={selection.active}
+                      chosen={selection.has(entry.id)}
+                      onOpen={() =>
+                        selection.active ? selection.toggle(entry.id) : setLooking(entry)
+                      }
                     />
                   ))}
                 </ul>
@@ -185,19 +318,64 @@ export function TransactionsView() {
         accounts={accounts.data ?? []}
       />
       <PaymentDetailsSheet entry={looking} onClose={() => setLooking(null)} />
+
+      {selection.active && (
+        <SelectionBar
+          count={selection.count}
+          summary={describeSelection(selection.count)}
+          allChosen={selection.allChosen}
+          onSelectAll={selection.selectAll}
+          onCancel={selection.cancel}
+          actions={[
+            {
+              label: 'Tag them',
+              primary: true,
+              disabled: busy,
+              onAction: () => setTagging('add'),
+            },
+            {
+              label: 'Take a tag off',
+              disabled: busy || tagsOnChosen.length === 0,
+              onAction: () => setTagging('remove'),
+            },
+          ]}
+        />
+      )}
+
+      <TagSheet
+        mode={tagging}
+        count={selection.count}
+        tags={tagging === 'remove' ? tagsOnChosen : (tags.data ?? [])}
+        busy={busy}
+        onApply={(name) => void applyTag(name)}
+        onRemove={(tag) => void removeTag(tag)}
+        onClose={() => setTagging(null)}
+      />
     </div>
   );
+}
+
+/** Drop the tag filter without leaving an undefined key behind. */
+function withoutTag(params: EntrySearchParams): EntrySearchParams {
+  const { tagId: _dropped, ...rest } = params;
+  return rest;
 }
 
 function Row({
   entry,
   accounts,
   locale,
+  tags,
+  selecting,
+  chosen,
   onOpen,
 }: {
   entry: EntryWithPostings;
   accounts: Map<AccountId, LedgerAccount>;
   locale: string;
+  tags: TagRecord[];
+  selecting: boolean;
+  chosen: boolean;
   onOpen: () => void;
 }) {
   const shown = presentEntry(entry, accounts);
@@ -216,12 +394,21 @@ function Row({
     <ListItem
       onClick={onOpen}
       muted={shown.isCorrection}
-      leading={<ClearanceMark clearance={shown.clearance} />}
+      {...(selecting ? { selected: chosen } : {})}
+      leading={selecting ? <Tick on={chosen} /> : <ClearanceMark clearance={shown.clearance} />}
       title={
         <span className="flex items-center gap-1.5">
           <span className="truncate">{shown.title}</span>
           {shown.note && <NoteIcon />}
           {shown.isSplit && shown.categories.length > 1 && <SplitIcon />}
+          {tags.map((tag) => (
+            <span
+              key={tag.id}
+              className="shrink-0 rounded-pill border border-line bg-raised px-1.5 py-0.5 text-micro text-ink-3"
+            >
+              {tag.name}
+            </span>
+          ))}
         </span>
       }
       subtitle={subtitle}

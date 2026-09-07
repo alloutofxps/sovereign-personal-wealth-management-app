@@ -22,6 +22,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { BOOTSTRAP_DDL, DDL, SCHEMA_VERSION } from './ddl';
 import { LATEST_VERSION, MIGRATIONS } from './migrations';
 import { TARGET_KIND_COLUMN, v17Statements } from './migrations/v17';
+import { v18Statements } from './migrations/v18';
 
 function fresh(): DatabaseSync {
   const db = new DatabaseSync(':memory:');
@@ -166,6 +167,113 @@ describe('stepping a database forward to v17', () => {
     const twice = db.prepare(`SELECT target_kind FROM accounts WHERE id = 'pot-open'`).get();
 
     expect(twice).toEqual(once);
+  });
+});
+
+describe('tags, and the promises the schema itself makes', () => {
+  let db: DatabaseSync;
+  beforeEach(() => {
+    db = fresh();
+    db.exec(`INSERT INTO entries (id, kind, date, description, created_at)
+             VALUES ('e1', 'SPEND', '2026-08-04', 'Paid the villa.', '2026-08-04T10:00:00Z')`);
+    db.exec(`INSERT INTO entries (id, kind, date, description, created_at)
+             VALUES ('e2', 'SPEND', '2026-08-05', 'Paid for wine.', '2026-08-05T10:00:00Z')`);
+    db.exec(`INSERT INTO tags (id, name, slug, created_at)
+             VALUES ('t1', 'Italy 2026', 'italy-2026', '2026-08-01T10:00:00Z')`);
+  });
+
+  it('lets one payment carry several tags and one tag cover several payments', () => {
+    db.exec(`INSERT INTO tags (id, name, slug, created_at)
+             VALUES ('t2', 'Reimbursable', 'reimbursable', '2026-08-01T10:00:00Z')`);
+    db.exec(`INSERT INTO entry_tags (entry_id, tag_id) VALUES ('e1','t1'),('e1','t2'),('e2','t1')`);
+
+    const onE1 = db.prepare(`SELECT count(*) AS n FROM entry_tags WHERE entry_id = 'e1'`).get() as {
+      n: number;
+    };
+    const onT1 = db.prepare(`SELECT count(*) AS n FROM entry_tags WHERE tag_id = 't1'`).get() as {
+      n: number;
+    };
+    expect(onE1.n).toBe(2);
+    expect(onT1.n).toBe(2);
+  });
+
+  it('takes tagging the same payment twice as no change rather than an error', () => {
+    db.exec(`INSERT INTO entry_tags (entry_id, tag_id) VALUES ('e1','t1')`);
+    db.exec(`INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES ('e1','t1')`);
+    const row = db.prepare(`SELECT count(*) AS n FROM entry_tags`).get() as { n: number };
+    expect(row.n).toBe(1);
+  });
+
+  it('refuses a second tag whose slug already exists', () => {
+    // The whole reason the slug carries the uniqueness: "italy 2026" typed on
+    // a Tuesday must not quietly split a year of holiday spending in two.
+    expect(() =>
+      db.exec(`INSERT INTO tags (id, name, slug, created_at)
+               VALUES ('t9', 'italy 2026', 'italy-2026', '2026-08-02T10:00:00Z')`),
+    ).toThrow();
+  });
+
+  it('allows two different spellings to coexist as genuinely different tags', () => {
+    expect(() =>
+      db.exec(`INSERT INTO tags (id, name, slug, created_at)
+               VALUES ('t3', 'Italy 2027', 'italy-2027', '2026-08-02T10:00:00Z')`),
+    ).not.toThrow();
+  });
+
+  it('takes its labels with it when a tag is deleted, and leaves the payments', () => {
+    db.exec(`INSERT INTO entry_tags (entry_id, tag_id) VALUES ('e1','t1'),('e2','t1')`);
+    db.exec(`DELETE FROM tags WHERE id = 't1'`);
+
+    const labels = db.prepare(`SELECT count(*) AS n FROM entry_tags`).get() as { n: number };
+    const entries = db.prepare(`SELECT count(*) AS n FROM entries`).get() as { n: number };
+    expect(labels.n).toBe(0);
+    expect(entries.n).toBe(2);
+  });
+
+  it('will not label a payment that does not exist', () => {
+    expect(() =>
+      db.exec(`INSERT INTO entry_tags (entry_id, tag_id) VALUES ('nope','t1')`),
+    ).toThrow();
+  });
+
+  it('joins tags to nothing that carries an amount', () => {
+    // The load-bearing rule. A tag that could reach a posting would be a
+    // second budgeting system running beside the first.
+    const sql = db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='entry_tags'`)
+      .get() as { sql: string };
+    expect(sql.sql).toContain('entries(id)');
+    expect(sql.sql).toContain('tags(id)');
+    expect(sql.sql).not.toMatch(/postings|amount|envelope|account/i);
+  });
+});
+
+describe('stepping a database forward to v18', () => {
+  it('creates both tables where neither existed', () => {
+    const db = fresh();
+    db.exec(`DROP TABLE IF EXISTS entry_tags`);
+    db.exec(`DROP TABLE IF EXISTS tags`);
+
+    for (const statement of v18Statements()) db.exec(statement);
+
+    const names = (
+      db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all() as unknown as {
+        name: string;
+      }[]
+    ).map((r) => r.name);
+    expect(names).toContain('tags');
+    expect(names).toContain('entry_tags');
+  });
+
+  it('is harmless to run twice, which is what a retry does', () => {
+    const db = fresh();
+    db.exec(`INSERT INTO tags (id, name, slug, created_at)
+             VALUES ('t1', 'Kitchen', 'kitchen', '2026-08-01T10:00:00Z')`);
+    for (const statement of v18Statements()) db.exec(statement);
+    for (const statement of v18Statements()) db.exec(statement);
+
+    const row = db.prepare(`SELECT count(*) AS n FROM tags`).get() as { n: number };
+    expect(row.n).toBe(1);
   });
 });
 

@@ -31,6 +31,8 @@ export interface EntrySearchParams {
   /** Compared against what the payment was worth, in minor units. */
   amountRange?: { min?: Minor; max?: Minor };
   hasNotes?: boolean;
+  /** Only payments carrying this tag. */
+  tagId?: string;
   limit?: number;
   offset?: number;
 }
@@ -45,7 +47,7 @@ export interface PaginatedEntries {
 }
 
 /** Tables whose changes should re-run a search. */
-export const SEARCH_TABLES = ['entries', 'postings', 'accounts'] as const;
+export const SEARCH_TABLES = ['entries', 'postings', 'accounts', 'entry_tags'] as const;
 
 const DEFAULT_LIMIT = 50;
 
@@ -134,6 +136,16 @@ function conditions(params: EntrySearchParams, fts: boolean): SQL[] {
     where.push(sql`EXISTS (
       SELECT 1 FROM postings p
        WHERE p.entry_id = entries.id AND p.memo IS NOT NULL AND TRIM(p.memo) <> ''
+    )`);
+  }
+
+  // A tag narrows which entries come back and nothing else. It never reaches
+  // a posting, so it cannot change what any of them is worth — which is the
+  // rule the whole tag design rests on.
+  if (params.tagId !== undefined && params.tagId !== '') {
+    where.push(sql`EXISTS (
+      SELECT 1 FROM entry_tags et
+       WHERE et.entry_id = entries.id AND et.tag_id = ${params.tagId}
     )`);
   }
 

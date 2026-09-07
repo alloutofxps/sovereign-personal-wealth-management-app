@@ -23,6 +23,15 @@ import {
   type CategoryNode,
 } from '@/data/repositories/categoriesRepo';
 import { deleteRule, setRuleActive } from '@/data/repositories/rulesRepo';
+import {
+  TAG_TABLES,
+  deleteTag,
+  listTags,
+  renameTag,
+  type TagRecord,
+} from '@/data/repositories/tagsRepo';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { MAX_TAG_LENGTH, describeTagRemoval } from '@/core/taxonomy/tags';
 import { useCategoryPicker, useRules, useTaxonomy } from '@/app/taxonomy/useTaxonomy';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
@@ -39,7 +48,7 @@ import {
   Tabs,
 } from '@/design/ui';
 
-type TabValue = 'taxonomy' | 'rules';
+type TabValue = 'taxonomy' | 'rules' | 'tags';
 
 export function CategoryManagerView() {
   const [, navigate] = useRoute();
@@ -49,34 +58,190 @@ export function CategoryManagerView() {
 
   const activeCount = (taxonomy.data?.all ?? []).filter((c) => !c.archivedAt).length;
   const ruleCount = (rules.data ?? []).filter((r) => r.active).length;
+  const allTags = useLiveQuery(useCallback(() => listTags(), []), TAG_TABLES);
+  const tagCount = (allTags.data ?? []).length;
 
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">Categories and rules</h1>
+        <h1 className="text-lead font-medium text-ink">Categories, rules and tags</h1>
         <p className="text-caption text-ink-2">
-          How your spending is divided up, and anything you have asked Sovereign to file for
-          you.
+          How your spending is divided up, anything you have asked Sovereign to file for you, and
+          the labels you put across it all.
         </p>
       </header>
 
       <Tabs
-        label="Categories or rules"
+        label="Categories, rules or tags"
         value={tab}
         onChange={setTab}
         tabs={[
           { value: 'taxonomy', label: 'Categories', count: activeCount },
           { value: 'rules', label: 'Rules', count: ruleCount },
+          { value: 'tags', label: 'Tags', count: tagCount },
         ]}
       />
 
-      {tab === 'taxonomy' ? <TaxonomyTab /> : <RulesTab />}
+      {tab === 'taxonomy' ? <TaxonomyTab /> : tab === 'rules' ? <RulesTab /> : <TagsTab />}
 
       <div>
         <Button variant="secondary" onClick={() => navigate('settings')}>
           Back to settings
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ===========================================================================
+ * TAGS
+ * ---------------------------------------------------------------------------
+ * The only place a tag can be renamed or removed. Without it, tags accumulate
+ * for ever: a typo made once while filing forty payments would be permanent,
+ * and the chip row along the top of the transactions list would slowly fill up
+ * with labels nobody meant to keep.
+ * ======================================================================== */
+
+function TagsTab() {
+  const all = useLiveQuery(useCallback(() => listTags(), []), TAG_TABLES);
+  const list = all.data ?? [];
+  const [renaming, setRenaming] = useState<TagRecord | null>(null);
+  const [draft, setDraft] = useState('');
+  const [removing, setRemoving] = useState<TagRecord | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!renaming) return;
+    setBusy(true);
+    try {
+      await renameTag(renaming.id, draft);
+      toast(`Renamed to ${draft.trim()}. Every payment carrying it now reads the new name.`);
+      setRenaming(null);
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : 'That could not be renamed just now.',
+        { tone: 'attention' },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!removing) return;
+    setBusy(true);
+    try {
+      await deleteTag(removing.id);
+      toast(`${removing.name} is gone. Every payment it was on is exactly as it was.`);
+      setRemoving(null);
+    } catch (error) {
+      toast(
+        error instanceof Error ? error.message : 'That could not be removed just now.',
+        { tone: 'attention' },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (list.length === 0) {
+    return (
+      <Card>
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <p className="text-lead text-ink">No tags yet</p>
+          <p className="max-w-[38ch] text-caption text-ink-2">
+            A tag is a label you put across payments that have nothing else in common — a trip, a
+            room, everything somebody owes you half of. Choose several payments on the
+            transactions screen and tag them there.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Card padding="none">
+        <ul className="divide-y divide-line-faint">
+          {list.map((tag) => (
+            <li key={tag.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-body text-ink">{tag.name}</p>
+                <p className="pt-0.5 text-caption text-ink-3">
+                  {tag.usedOn === 0
+                    ? 'Not on anything yet'
+                    : `On ${tag.usedOn} ${tag.usedOn === 1 ? 'payment' : 'payments'}`}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setDraft(tag.name);
+                    setRenaming(tag);
+                  }}
+                >
+                  Rename
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setRemoving(tag)}>
+                  Remove
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <p className="text-caption text-ink-3">
+        Tags never change a figure. Nothing that is safe to spend, no envelope and no total reads
+        one — they are only how you find things again.
+      </p>
+
+      <BottomSheet
+        open={renaming !== null}
+        onClose={() => setRenaming(null)}
+        title={renaming ? `Rename ${renaming.name}` : 'Rename'}
+        description="Every payment carrying it takes the new name. Nothing else changes."
+        footer={
+          <Button
+            variant="primary"
+            block
+            disabled={busy || draft.trim() === ''}
+            onClick={() => void save()}
+          >
+            {busy ? 'Saving…' : 'Save the new name'}
+          </Button>
+        }
+      >
+        <input
+          type="text"
+          value={draft}
+          maxLength={MAX_TAG_LENGTH}
+          onChange={(event) => setDraft(event.target.value)}
+          className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        title={removing ? `Remove ${removing.name}?` : 'Remove this tag?'}
+        footer={
+          <div className="flex gap-2">
+            <Button variant="secondary" block onClick={() => setRemoving(null)}>
+              Keep it
+            </Button>
+            <Button variant="primary" block disabled={busy} onClick={() => void remove()}>
+              {busy ? 'Removing…' : 'Remove the tag'}
+            </Button>
+          </div>
+        }
+      >
+        <p className="pb-2 text-body text-ink-2">
+          {removing ? describeTagRemoval(removing.name, removing.usedOn) : ''}
+        </p>
+      </BottomSheet>
     </div>
   );
 }

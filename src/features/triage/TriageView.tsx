@@ -17,7 +17,16 @@ import {
   listUnreviewed,
   type StagedRow,
 } from '@/data/repositories/stagingRepo';
-import { confirmStagedRow, noteScheduledCharge, voidEntry } from '@/app/ledger/actions';
+import {
+  confirmStagedRow,
+  fileStagedRows,
+  ignoreStagedRows,
+  noteScheduledCharge,
+  voidEntry,
+} from '@/app/ledger/actions';
+import { useSelection } from '@/app/selection';
+import { describeSelection } from '@/core/taxonomy/tags';
+import { SelectionBar, Tick } from '@/features/shell/SelectionBar';
 import { applyRulesToStagedRows } from '@/ingest';
 import { useCategoryPicker, useRules } from '@/app/taxonomy/useTaxonomy';
 import { recordRuleMatches, saveRule } from '@/data/repositories/rulesRepo';
@@ -51,6 +60,18 @@ export function TriageView() {
   const [splitLines, setSplitLines] = useState<DraftLine[]>([]);
 
   const rows = queue.data ?? [];
+
+  // Selection is pruned against the live queue, so a row filed in another tab
+  // cannot still be sitting in a batch about to be filed again here.
+  const rowIds = useMemo(() => rows.map((row) => row.id), [rows]);
+  const selection = useSelection(rowIds);
+  const [filingBatch, setFilingBatch] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  const chosenRows = useMemo(
+    () => rows.filter((row) => selection.has(row.id)),
+    [rows, selection],
+  );
 
   /**
    * Run the person's rules across the queue before they look at it.
@@ -151,6 +172,83 @@ export function TriageView() {
     }
   }
 
+  /**
+   * File everything chosen to one category.
+   *
+   * Deliberately does not offer to write a rule. Filing thirty rows together
+   * usually means they are thirty different shops that all belong in one
+   * place, and turning that into thirty rules would fill the rules screen with
+   * things nobody wrote.
+   */
+  async function fileChosen(categoryId: string) {
+    const category = picker.byId.get(categoryId);
+    if (!category || chosenRows.length === 0) return;
+
+    setBatchBusy(true);
+    try {
+      const result = await fileStagedRows(chosenRows, {
+        categoryId: category.categoryId,
+        envelopeId: category.envelopeId,
+        categoryName: category.name,
+      });
+
+      setFilingBatch(false);
+      selection.cancel();
+
+      const filed = result.filed.length;
+      const said =
+        result.refused.length === 0
+          ? `Filed ${filed} ${filed === 1 ? 'payment' : 'payments'} under ${category.name.toLowerCase()}.`
+          : `Filed ${filed} under ${category.name.toLowerCase()}. ` +
+            `${result.refused.length} could not be filed and ${result.refused.length === 1 ? 'is' : 'are'} ` +
+            `still in your queue.`;
+
+      toast(said, {
+        ...(filed > 0
+          ? {
+              action: {
+                label: 'Undo',
+                run: () => {
+                  void Promise.all(result.filed.map((id) => voidEntry(id)))
+                    .then(() =>
+                      toast(`Undone. ${filed === 1 ? 'It is' : 'They are'} back in your queue.`),
+                    )
+                    .catch((error: unknown) =>
+                      toast(
+                        error instanceof Error
+                          ? error.message
+                          : 'Some of those could not be undone. Your queue shows where they are.',
+                        { tone: 'attention' },
+                      ),
+                    );
+                },
+              },
+            }
+          : {}),
+        ...(result.refused.length > 0 ? { tone: 'attention' as const } : {}),
+      });
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  async function setAsideChosen() {
+    if (chosenRows.length === 0) return;
+    setBatchBusy(true);
+    try {
+      const { ignored, refused } = await ignoreStagedRows(chosenRows);
+      selection.cancel();
+      toast(
+        refused === 0
+          ? `Set ${ignored} aside. ${ignored === 1 ? 'It is' : 'They are'} out of your queue and nothing was recorded.`
+          : `Set ${ignored} aside. ${refused} could not be moved and ${refused === 1 ? 'is' : 'are'} still there.`,
+        refused > 0 ? { tone: 'attention' } : {},
+      );
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
@@ -162,6 +260,15 @@ export function TriageView() {
               ? `${rows.length} to go. ${ruled.matchedCount} already matched one of your rules — tap to confirm.`
               : `${rows.length} ${rows.length === 1 ? 'payment' : 'payments'} to go. Swipe right to file one, left to set it aside.`}
         </p>
+        {rows.length > 1 && !selection.active && (
+          <button
+            type="button"
+            onClick={() => selection.begin()}
+            className="self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+          >
+            Choose several at once
+          </button>
+        )}
       </header>
 
       {rows.length === 0 ? (
@@ -194,27 +301,19 @@ export function TriageView() {
             <ul className="divide-y divide-line-faint">
               {rows.map((row) => (
                 <li key={row.id}>
-                  <SwipeRow
-                    leftAction={{
-                      label: 'File it',
-                      tone: 'liquid',
-                      onAction: () => {
-                        setChosen((matchByRow.get(row.id)?.categoryId ?? null) as AccountId | null);
-                        setChoosing(row);
-                      },
-                    }}
-                    rightAction={{
-                      label: 'Not mine',
-                      tone: 'caution',
-                      onAction: () => void ignoreRow(row.id),
-                    }}
-                    onClick={() => {
+                  <RowShell
+                    selecting={selection.active}
+                    chosen={selection.has(row.id)}
+                    onToggle={() => selection.toggle(row.id)}
+                    onOpen={() => {
                       setChosen((matchByRow.get(row.id)?.categoryId ?? null) as AccountId | null);
                       setChoosing(row);
                     }}
+                    onIgnore={() => void ignoreRow(row.id)}
                   >
                     <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-                      <div className="min-w-0">
+                      {selection.active && <Tick on={selection.has(row.id)} />}
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-body text-ink">{row.description}</p>
                         <p className="truncate pt-0.5 text-caption text-ink-3">
                           {describeDate(row.date, locale)}
@@ -233,7 +332,7 @@ export function TriageView() {
                         tone={row.amount > 0 ? 'liquid' : 'neutral'}
                       />
                     </div>
-                  </SwipeRow>
+                  </RowShell>
                 </li>
               ))}
             </ul>
@@ -348,12 +447,101 @@ export function TriageView() {
         )}
       </BottomSheet>
 
+      {selection.active && (
+        <SelectionBar
+          count={selection.count}
+          summary={describeSelection(selection.count)}
+          allChosen={selection.allChosen}
+          onSelectAll={selection.selectAll}
+          onCancel={selection.cancel}
+          actions={[
+            {
+              label: batchBusy ? 'Filing…' : 'File them all as…',
+              primary: true,
+              disabled: batchBusy,
+              onAction: () => setFilingBatch(true),
+            },
+            {
+              label: 'Set them aside',
+              disabled: batchBusy,
+              onAction: () => void setAsideChosen(),
+            },
+          ]}
+        />
+      )}
+
+      <BottomSheet
+        open={filingBatch}
+        onClose={() => setFilingBatch(false)}
+        title={`File ${selection.count} ${selection.count === 1 ? 'payment' : 'payments'}`}
+        description="They will all go to the same category. Anything that refuses stays in your queue."
+      >
+        <div className="pb-2">
+          <CategoryPicker
+            value={null}
+            label="Where do they all belong?"
+            onChange={(id) => void fileChosen(id)}
+          />
+        </div>
+      </BottomSheet>
+
       <ImportSheet open={importing} onClose={() => setImporting(false)} />
     </div>
   );
 }
 
 /** Money arriving on a credit card, which needs a question rather than a guess. */
+/**
+ * A queue row, which is two quite different things depending on the mode.
+ *
+ * Normally it swipes: right to file, left to set aside. While a batch is being
+ * chosen it does not, and tapping ticks instead of opening. Leaving the swipes
+ * live during selection would mean the same gesture sometimes files one thing
+ * and sometimes ticks it, which is how somebody ends up filing fourteen rows
+ * they meant to choose.
+ */
+function RowShell({
+  selecting,
+  chosen,
+  onToggle,
+  onOpen,
+  onIgnore,
+  children,
+}: {
+  selecting: boolean;
+  chosen: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  onIgnore: () => void;
+  children: React.ReactNode;
+}) {
+  if (selecting) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={chosen}
+        className={clsx(
+          'block w-full text-left transition-colors',
+          chosen ? 'bg-liquid-wash' : 'hover:bg-raised',
+        )}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <SwipeRow
+      leftAction={{ label: 'File it', tone: 'liquid', onAction: onOpen }}
+      rightAction={{ label: 'Not mine', tone: 'caution', onAction: onIgnore }}
+      onClick={onOpen}
+    >
+      {children}
+    </SwipeRow>
+  );
+}
+
 function isCardCredit(row: StagedRow): boolean {
   return row.amount > 0 && row.accountId === ACCOUNT_IDS.card;
 }

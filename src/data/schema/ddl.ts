@@ -347,11 +347,26 @@ export const DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_valuations_account_date ON valuations(account_id, date DESC);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_account_day ON valuations(account_id, date);`,
 
+  // v18. Labels that cut across categories. Joined to entries and to nothing
+  // else: no posting, no amount, no envelope. See migrations/v18.ts.
+  `CREATE TABLE IF NOT EXISTS tags (
+     id         TEXT PRIMARY KEY,
+     name       TEXT NOT NULL,
+     slug       TEXT NOT NULL UNIQUE,
+     created_at TEXT NOT NULL
+   );`,
+  `CREATE TABLE IF NOT EXISTS entry_tags (
+     entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+     tag_id   TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+     PRIMARY KEY (entry_id, tag_id)
+   );`,
+
   `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
   `CREATE INDEX IF NOT EXISTS idx_rules_active_priority ON rules(active, priority ASC);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_book_type ON accounts(book, type, archived_at);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_target_kind ON accounts(envelope_role, target_kind);`,
+  `CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags(tag_id, entry_id);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS idx_scheduled_active_due ON scheduled_items(active, next_due ASC);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,

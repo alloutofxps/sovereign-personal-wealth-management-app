@@ -44,6 +44,13 @@ export interface ListItemProps {
   onClick?: () => void;
   /** Dims the row without removing it — an ignored or reversed entry. */
   muted?: boolean;
+  /**
+   * Marks the row as chosen while a list is picking several at once.
+   *
+   * A wash rather than a border: a border would change the row's height and
+   * make the whole list shift by a hairline as things are ticked.
+   */
+  selected?: boolean;
   className?: string;
 }
 
@@ -54,6 +61,7 @@ export function ListItem({
   trailing,
   onClick,
   muted,
+  selected,
   className,
 }: ListItemProps) {
   const body = (
@@ -81,10 +89,11 @@ export function ListItem({
         <button
           type="button"
           onClick={onClick}
+          {...(selected === undefined ? {} : { 'aria-pressed': selected })}
           className={clsx(
             shared,
             'transition-colors outline-none',
-            'active:bg-raised hover:bg-raised/60',
+            selected ? 'bg-liquid-wash' : 'active:bg-raised hover:bg-raised/60',
             'focus-visible:ring-1 focus-visible:ring-liquid focus-visible:ring-inset',
           )}
         >

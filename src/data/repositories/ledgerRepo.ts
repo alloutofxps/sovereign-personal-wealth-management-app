@@ -12,6 +12,7 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { minor, type Minor } from '@/core/money';
 import {
+  LedgerError,
   assertBalanced,
   type AccountId,
   type Book,
@@ -217,6 +218,72 @@ export async function saveEntry(
   await runBatch([
     ...[entryStatement, ...postingStatements].map((s) => ({ sql: s.sql, params: s.params })),
     ...alongside,
+  ]);
+}
+
+/* ===========================================================================
+ * CHANGING WHAT AN ENTRY SAYS, WITHOUT CHANGING WHAT IT COST
+ * ---------------------------------------------------------------------------
+ * A note was set-once until now: you could write one while recording a payment
+ * and never afterwards. That is the wrong way round. Nobody knows on the day
+ * that they will want to remember which trip the taxi was for — they find out
+ * three months later, looking at a statement and unable to place it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS ALLOWED ON A LOCKED ENTRY
+ *
+ * A statement check locks the money: the amount, the date, the accounts, the
+ * lines. This function touches none of them. It writes a memo, and a memo
+ * takes part in no total, no balance and no invariant — nothing in this
+ * application reads one except to show it to the person who wrote it.
+ *
+ * Refusing it would also get the timing exactly backwards. The moment somebody
+ * is most likely to want to annotate a payment is while they are checking it
+ * against a bank statement, which is the moment it becomes locked. A note you
+ * cannot add after checking is a note you can almost never add.
+ *
+ * The amount stays untouchable. That is what the lock is for, and it still is.
+ * ======================================================================== */
+
+export interface EntryMetadata {
+  /** The person's own words. An empty string clears the note. */
+  memo?: string;
+}
+
+/**
+ * Write a note onto an entry, or clear it.
+ *
+ * The note rides on the entry's first FINANCIAL line, which is the line every
+ * builder writes to say what the money was actually for — the same place
+ * `presentEntry` looks for it. Writing it anywhere else would produce a note
+ * that saves and never appears.
+ */
+export async function updateEntryMetadata(
+  id: EntryId,
+  metadata: EntryMetadata,
+): Promise<void> {
+  if (metadata.memo === undefined) return;
+
+  const note = metadata.memo.trim();
+  const rows = await db
+    .select({ id: postings.id })
+    .from(postings)
+    .where(and(eq(postings.entryId, id), eq(postings.book, 'FINANCIAL')))
+    .orderBy(postings.sequence)
+    .limit(1);
+
+  const first = rows[0]?.id;
+  if (first === undefined) {
+    throw new LedgerError(
+      'That payment could not be found, so the note has not been saved. Nothing has changed.',
+    );
+  }
+
+  await runBatch([
+    {
+      sql: `UPDATE postings SET memo = ? WHERE id = ?`,
+      params: [note === '' ? null : note, first],
+    },
   ]);
 }
 

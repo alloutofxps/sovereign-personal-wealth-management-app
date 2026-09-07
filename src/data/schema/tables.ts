@@ -8,7 +8,7 @@
  * is 64-bit, so nothing is lost on the way in or out.
  * ======================================================================== */
 
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const accounts = sqliteTable('accounts', {
   id: text('id').primaryKey(),
@@ -332,6 +332,25 @@ export const reconciliations = sqliteTable('reconciliations', {
   createdAt: text('created_at').notNull(),
 });
 
+/** v18. A label. Joined to entries and to nothing that carries an amount. */
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  /** As typed, case and all. */
+  name: text('name').notNull(),
+  /** Lower-cased and stripped; what two spellings of one tag agree on. */
+  slug: text('slug').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const entryTags = sqliteTable(
+  'entry_tags',
+  {
+    entryId: text('entry_id').notNull(),
+    tagId: text('tag_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.entryId, t.tagId] })],
+);
+
 export const TABLES = [
   'accounts',
   'entries',
@@ -340,6 +359,8 @@ export const TABLES = [
   'staged_transactions',
   'claims',
   'meta',
+  'tags',
+  'entry_tags',
   'valuations',
   'securities',
   'holdings',

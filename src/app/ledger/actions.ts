@@ -222,6 +222,86 @@ export async function confirmStagedRow(
   return entry.id;
 }
 
+/* ===========================================================================
+ * FILING A WHOLE BATCH AT ONCE
+ * ---------------------------------------------------------------------------
+ * A statement import lands forty rows and thirty of them are the same shop.
+ * Filing those one at a time is not review, it is data entry, and it is where
+ * people stop using the queue.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS A LOOP AND NOT ONE TRANSACTION
+ *
+ * Each row still goes through `confirmStagedRow`, one at a time, exactly as a
+ * single tap would. That costs a round trip per row, and it buys two things
+ * worth more than the milliseconds.
+ *
+ * Every entry is built by the same code path as a hand-filed one, so a batch
+ * cannot post differently from a single row. And a row that refuses — one that
+ * another tab already filed, one whose account has gone — stops itself rather
+ * than the batch. Nineteen good files are not thrown away because the
+ * twentieth was odd; the result says exactly what happened, and the queue
+ * still holds the ones that did not go through.
+ * ======================================================================== */
+
+export interface BatchFilingResult {
+  filed: EntryId[];
+  /** Rows that refused, with what each of them said. */
+  refused: { description: string; reason: string }[];
+}
+
+export async function fileStagedRows(
+  rows: readonly StagedRow[],
+  choice: StagedChoice,
+): Promise<BatchFilingResult> {
+  const filed: EntryId[] = [];
+  const refused: BatchFilingResult['refused'] = [];
+
+  for (const row of rows) {
+    try {
+      const id = await confirmStagedRow(row, choice);
+      filed.push(id);
+      // Same as a single confirmation: if this is one of their known bills,
+      // remember what it actually cost. Never blocks the filing.
+      if (row.amount < 0) void noteScheduledCharge(row.description, minor(-row.amount));
+    } catch (error) {
+      refused.push({
+        description: row.description,
+        reason:
+          error instanceof Error
+            ? error.message
+            : 'It could not be filed, and nothing about it has changed.',
+      });
+    }
+  }
+
+  return { filed, refused };
+}
+
+/**
+ * Set a batch of rows aside.
+ *
+ * Same shape and the same reasoning as filing: one at a time, and a row that
+ * refuses does not take the others with it.
+ */
+export async function ignoreStagedRows(
+  rows: readonly StagedRow[],
+): Promise<{ ignored: number; refused: number }> {
+  const { ignoreRow } = await import('@/data/repositories/stagingRepo');
+
+  let ignored = 0;
+  let refused = 0;
+  for (const row of rows) {
+    try {
+      await ignoreRow(row.id);
+      ignored += 1;
+    } catch {
+      refused += 1;
+    }
+  }
+  return { ignored, refused };
+}
+
 /**
  * Notice when a confirmed statement row is one of the person's known bills.
  *

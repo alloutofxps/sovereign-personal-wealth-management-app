@@ -10,9 +10,10 @@
  * is something that happened rather than something that never did.
  * ======================================================================== */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { EntryWithPostings } from '@/data/repositories/ledgerRepo';
 import { voidEntry } from '@/app/ledger/actions';
+import { updateEntryMetadata } from '@/data/repositories/ledgerRepo';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { presentEntry } from '@/app/ledger/present';
 import { describeDate, describeWhen } from '@/app/dates';
@@ -37,15 +38,64 @@ export function PaymentDetailsSheet({
     accounts.data?.find((a) => a.id === id)?.name ?? 'Another account';
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const [draftNote, setDraftNote] = useState('');
+  /**
+   * The note as just saved, until the sheet is next opened.
+   *
+   * The `entry` prop is a snapshot taken when the row was tapped, so it still
+   * carries the old note after a save — reading it back would show the note
+   * disappearing the instant it was written. This holds what was actually
+   * stored, and is cleared whenever a different payment is opened.
+   */
+  const [savedNote, setSavedNote] = useState<string | null>(null);
 
   const isCorrection = entry?.kind === 'REVERSAL';
   // The note rides on the entry's first line, so this finds it wherever a
   // builder happened to put it.
-  const note = entry?.postings.find((p) => p.memo)?.memo ?? null;
+  const storedNote = entry?.postings.find((p) => p.memo)?.memo ?? null;
+  const note = savedNote ?? storedNote;
   const byId = new Map((accounts.data ?? []).map((a) => [a.id, a]));
   const shown = entry ? presentEntry(entry, byId) : null;
   // A split is worth the sum of its parts, not the size of its first line.
   const amount = shown?.amount ?? null;
+
+  useEffect(() => {
+    setEditingNote(false);
+    setSavedNote(null);
+    setDraftNote(entry?.postings.find((p) => p.memo)?.memo ?? '');
+  }, [entry]);
+
+  /**
+   * Save a note, including onto a locked payment.
+   *
+   * A statement check locks the money. A note is not money — nothing in this
+   * app adds one up — and the moment somebody most wants to write one is while
+   * they are checking a statement, which is exactly the moment it becomes
+   * locked. See `updateEntryMetadata`.
+   */
+  async function saveNote() {
+    if (!entry) return;
+    setBusy(true);
+    try {
+      await updateEntryMetadata(entry.id, { memo: draftNote });
+      // Stays open, showing what was just written. Closing the whole sheet
+      // would take the note off screen the moment it was saved, and leave
+      // somebody unsure whether it had been.
+      setSavedNote(draftNote.trim() === '' ? null : draftNote.trim());
+      setEditingNote(false);
+      toast(draftNote.trim() === '' ? 'Note removed.' : 'Note saved.');
+    } catch (error) {
+      toast(
+        error instanceof Error
+          ? error.message
+          : 'That note could not be saved, so nothing has changed.',
+        { tone: 'attention' },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function undo() {
     if (!entry) return;
@@ -104,11 +154,50 @@ export function PaymentDetailsSheet({
             </div>
           )}
 
-          {note && (
-            <Detail label="Your note">
-              <p className="text-body text-ink">{note}</p>
-            </Detail>
-          )}
+          <Detail label="Your note">
+            {editingNote ? (
+              <div className="flex flex-col gap-2">
+                <textarea
+                  value={draftNote}
+                  onChange={(event) => setDraftNote(event.target.value)}
+                  rows={3}
+                  autoFocus
+                  placeholder="Which trip, whose half, what it was really for…"
+                  className="w-full resize-none rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setDraftNote(note ?? '');
+                      setEditingNote(false);
+                    }}
+                  >
+                    Leave it
+                  </Button>
+                  <Button variant="primary" size="sm" disabled={busy} onClick={() => void saveNote()}>
+                    {busy ? 'Saving…' : 'Save the note'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-start gap-1.5">
+                {note ? (
+                  <p className="text-body text-ink">{note}</p>
+                ) : (
+                  <p className="text-body text-ink-3">Nothing noted about this one.</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEditingNote(true)}
+                  className="text-caption text-liquid hover:text-liquid-bright"
+                >
+                  {note ? 'Change the note' : 'Add a note'}
+                </button>
+              </div>
+            )}
+          </Detail>
 
           {shown && shown.categories.length > 1 && (
             <Detail
