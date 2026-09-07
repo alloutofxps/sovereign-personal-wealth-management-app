@@ -23,6 +23,7 @@ import { BOOTSTRAP_DDL, DDL, SCHEMA_VERSION } from './ddl';
 import { LATEST_VERSION, MIGRATIONS } from './migrations';
 import { TARGET_KIND_COLUMN, v17Statements } from './migrations/v17';
 import { v18Statements } from './migrations/v18';
+import { v19Statements } from './migrations/v19';
 
 function fresh(): DatabaseSync {
   const db = new DatabaseSync(':memory:');
@@ -274,6 +275,87 @@ describe('stepping a database forward to v18', () => {
 
     const row = db.prepare(`SELECT count(*) AS n FROM tags`).get() as { n: number };
     expect(row.n).toBe(1);
+  });
+});
+
+describe('what-ifs, and where they are not', () => {
+  let db: DatabaseSync;
+  beforeEach(() => {
+    db = fresh();
+    db.exec(`INSERT INTO branches (id, name, diverges_on, created_at)
+             VALUES ('br1', 'If I took the Rotterdam job', '2026-10-01', '2026-09-07T10:00:00Z')`);
+    db.exec(`INSERT INTO branch_entries (id, branch_id, kind, date, description, postings, created_at)
+             VALUES ('be1','br1','SPEND','2026-11-01','Rent in the new place.','[]','2026-09-07T10:00:00Z')`);
+  });
+
+  /**
+   * The guarantee the whole design exists for.
+   *
+   * Not "no query does this" — "no query could". A branch entry is not in
+   * `entries` and its postings are not in `postings`, so every real query is
+   * structurally incapable of returning one, however carelessly it is written.
+   */
+  it('puts nothing hypothetical where a real query would find it', () => {
+    const entries = db.prepare(`SELECT count(*) AS n FROM entries`).get() as { n: number };
+    const postings = db.prepare(`SELECT count(*) AS n FROM postings`).get() as { n: number };
+    expect(entries.n).toBe(0);
+    expect(postings.n).toBe(0);
+  });
+
+  it('keeps them where a branch query will', () => {
+    const rows = db.prepare(`SELECT count(*) AS n FROM branch_entries`).get() as { n: number };
+    expect(rows.n).toBe(1);
+  });
+
+  it('has no column joining a branch to the real ledger', () => {
+    // A `branch_id` on `entries` is the obvious design and the wrong one: it
+    // would put `WHERE branch_id IS NULL` on every query in the application,
+    // forever, and the first one anybody forgets is money that never existed
+    // showing up in what somebody is worth.
+    const entryColumns = columnNames(db, 'entries');
+    const postingColumns = columnNames(db, 'postings');
+    expect(entryColumns).not.toContain('branch_id');
+    expect(postingColumns).not.toContain('branch_id');
+  });
+
+  it('will not sketch a what-if against a branch that does not exist', () => {
+    expect(() =>
+      db.exec(`INSERT INTO branch_entries (id, branch_id, kind, date, description, postings, created_at)
+               VALUES ('be9','nope','SPEND','2026-11-01','x','[]','2026-09-07T10:00:00Z')`),
+    ).toThrow();
+  });
+
+  it('takes the sketches with it when a what-if is dropped', () => {
+    db.exec(`DELETE FROM branches WHERE id = 'br1'`);
+    const rows = db.prepare(`SELECT count(*) AS n FROM branch_entries`).get() as { n: number };
+    expect(rows.n).toBe(0);
+  });
+
+  it('insists a what-if has a date it starts from', () => {
+    // A branch is an alternative future, never an alternative past.
+    expect(() =>
+      db.exec(`INSERT INTO branches (id, name, created_at)
+               VALUES ('br2', 'No date', '2026-09-07T10:00:00Z')`),
+    ).toThrow();
+  });
+});
+
+describe('stepping a database forward to v19', () => {
+  it('creates both tables where neither existed, and twice is harmless', () => {
+    const db = fresh();
+    db.exec(`DROP TABLE IF EXISTS branch_entries`);
+    db.exec(`DROP TABLE IF EXISTS branches`);
+
+    for (const statement of v19Statements()) db.exec(statement);
+    for (const statement of v19Statements()) db.exec(statement);
+
+    const names = (
+      db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all() as unknown as {
+        name: string;
+      }[]
+    ).map((r) => r.name);
+    expect(names).toContain('branches');
+    expect(names).toContain('branch_entries');
   });
 });
 

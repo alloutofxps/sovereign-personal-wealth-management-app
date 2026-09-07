@@ -361,12 +361,32 @@ export const DDL: readonly string[] = [
      PRIMARY KEY (entry_id, tag_id)
    );`,
 
+  // v19. What-ifs. Deliberately not `entries` and not `postings`: there is no
+  // query over the real ledger that could return one. See migrations/v19.ts.
+  `CREATE TABLE IF NOT EXISTS branches (
+     id           TEXT PRIMARY KEY,
+     name         TEXT NOT NULL,
+     diverges_on  TEXT NOT NULL CHECK (diverges_on LIKE '____-__-__'),
+     note         TEXT,
+     created_at   TEXT NOT NULL
+   );`,
+  `CREATE TABLE IF NOT EXISTS branch_entries (
+     id          TEXT PRIMARY KEY,
+     branch_id   TEXT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+     kind        TEXT NOT NULL,
+     date        TEXT NOT NULL CHECK (date LIKE '____-__-__'),
+     description TEXT NOT NULL,
+     postings    TEXT NOT NULL,
+     created_at  TEXT NOT NULL
+   );`,
+
   `CREATE INDEX IF NOT EXISTS staged_status_idx ON staged_transactions(status);`,
   `CREATE INDEX IF NOT EXISTS idx_rules_active_priority ON rules(active, priority ASC);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_book_type ON accounts(book, type, archived_at);`,
   `CREATE INDEX IF NOT EXISTS idx_accounts_target_kind ON accounts(envelope_role, target_kind);`,
   `CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags(tag_id, entry_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_branch_entries_branch ON branch_entries(branch_id, date);`,
   `CREATE INDEX IF NOT EXISTS scheduled_due_idx ON scheduled_items(next_due);`,
   `CREATE INDEX IF NOT EXISTS idx_scheduled_active_due ON scheduled_items(active, next_due ASC);`,
   `CREATE INDEX IF NOT EXISTS claims_status_idx ON claims(status);`,

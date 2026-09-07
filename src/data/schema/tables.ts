@@ -361,6 +361,8 @@ export const TABLES = [
   'meta',
   'tags',
   'entry_tags',
+  'branches',
+  'branch_entries',
   'valuations',
   'securities',
   'holdings',
