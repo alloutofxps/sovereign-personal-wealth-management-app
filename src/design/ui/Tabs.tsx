@@ -14,6 +14,23 @@
  * It respects reduced motion, because a moving pill is decoration and
  * decoration is the first thing that should hold still when somebody has asked
  * for less movement.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE STRIP SCROLLS RATHER THAN WRAPS
+ *
+ * The tabs were free to wrap, and on a 393px phone the Ahead strip wrapped
+ * "Where it went" onto three lines and "What if" onto two. That is worse than
+ * it sounds: every tab in a flex row is as tall as the tallest, so one wrapped
+ * label triples the height of the whole strip, and the sliding pill — sized
+ * from the selected button — stopped being a pill and became a circle.
+ *
+ * Five labels of this length genuinely do not fit across that screen at any
+ * size worth reading, so something had to give. Scrolling gives up the least:
+ * `whitespace-nowrap` holds every label on one line and stops a tab shrinking
+ * below it, `flex-1` still shares the space out evenly whenever there *is*
+ * enough, and the strip overflows into a horizontal scroll only when there is
+ * not. The selected tab is scrolled back into view on every change, so the
+ * current pane is never the one hidden off the edge.
  * ======================================================================== */
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -64,6 +81,35 @@ export function Tabs<T extends string = string>({
   // sliding in from the left the first time the strip renders.
   useLayoutEffect(measure, [measure]);
 
+  /*
+   * Bring the selected tab back into view.
+   *
+   * Only ever scrolls the strip itself. `scrollIntoView` would scroll every
+   * ancestor too, which on a strip sitting at the top of a screen means the
+   * whole page jumps whenever somebody changes pane.
+   *
+   * Instant rather than smooth, and that is not a shortcut. Where this strip
+   * drives a route, the view above it is keyed on that route and remounts, so
+   * every change arrives as a fresh strip scrolled to nought — and animating
+   * from nought is animating from a position nobody was ever looking at. It
+   * reads as the strip sliding about on its own.
+   *
+   * Does nothing at all when everything already fits, which is most strips.
+   */
+  useEffect(() => {
+    const strip = stripRef.current;
+    const index = tabs.findIndex((tab) => tab.value === value);
+    const button = refs.current[index];
+    if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
+
+    const left = button.offsetLeft;
+    const right = left + button.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
+    else if (right > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollLeft = right - strip.clientWidth + 8;
+    }
+  }, [tabs, value]);
+
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return;
     const strip = stripRef.current;
@@ -100,6 +146,10 @@ export function Tabs<T extends string = string>({
       onKeyDown={onKeyDown}
       className={clsx(
         'relative flex gap-1 rounded-pill border-[0.5px] border-[var(--hairline)] bg-sunken p-1',
+        // Scrolls only when the labels genuinely do not fit; see the note at
+        // the top of this file. The bar itself is hidden — the half-visible
+        // tab at the edge is the affordance, the way it is on iOS.
+        'no-bar overflow-x-auto',
         className,
       )}
     >
@@ -131,7 +181,7 @@ export function Tabs<T extends string = string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={clsx(
-              'press relative z-10 flex-1 rounded-pill px-3 py-1.5 text-caption outline-none',
+              'press relative z-10 flex-1 whitespace-nowrap rounded-pill px-3 py-1.5 text-caption outline-none',
               'transition-colors focus-visible:ring-1 focus-visible:ring-liquid',
               selected ? 'text-base' : 'text-ink-2 hover:text-ink',
             )}

@@ -10,7 +10,7 @@
  * ======================================================================== */
 
 import { Suspense, lazy, useEffect } from 'react';
-import { useRoute, type Route } from '@/app/router';
+import { isAheadRoute, useRoute, type Route } from '@/app/router';
 import { Tabs } from '@/design/ui';
 import { CalendarView } from '@/features/calendar/CalendarView';
 import { SubscriptionAudit } from '@/features/calendar/SubscriptionAudit';
@@ -65,15 +65,7 @@ export function AheadView() {
 
   // Keep the document in step when somebody arrives on a bare route.
   useEffect(() => {
-    if (
-      route !== 'forecast' &&
-      route !== 'calendar' &&
-      route !== 'analytics' &&
-      route !== 'debt' &&
-      route !== 'whatif'
-    ) {
-      navigate('forecast');
-    }
+    if (!isAheadRoute(route)) navigate('forecast');
   }, [route, navigate]);
 
   return (

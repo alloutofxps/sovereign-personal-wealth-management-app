@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import type { Route } from '@/app/router';
+import { isAheadRoute, type Route } from '@/app/router';
 
 interface Tab {
   route: Route;
@@ -43,15 +43,9 @@ export function BottomNav({
   const activeRoute = (tab: Route): boolean => {
     if (route === tab) return true;
     if (tab === 'home') return route === 'budget';
-    if (tab === 'forecast') {
-      return (
-        route === 'debt' ||
-        route === 'independence' ||
-        route === 'calendar' ||
-        route === 'analytics' ||
-        route === 'whatif'
-      );
-    }
+    // The same list the shell routes from, so the tab cannot light up for a
+    // route that renders something other than the Ahead screen.
+    if (tab === 'forecast') return isAheadRoute(route) || route === 'independence';
     if (tab === 'accounts') {
       return route === 'pots' || route === 'triage' || route === 'transactions';
     }

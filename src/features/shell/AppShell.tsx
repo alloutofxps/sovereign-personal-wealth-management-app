@@ -11,7 +11,7 @@ import clsx from 'clsx';
 import { openDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
 import type { StorageStatus } from '@/data/worker/protocol';
-import { useRoute, type Route } from '@/app/router';
+import { isAheadRoute, useRoute, type Route } from '@/app/router';
 import { Dashboard } from '@/features/dashboard/Dashboard';
 import { useAppUpdate } from '@/app/pwa/useAppUpdate';
 import { requestPersistence } from '@/data/persistence';
@@ -97,13 +97,12 @@ const BudgetGrid = lazy(() =>
   import('@/features/budget/BudgetGrid').then((m) => ({ default: m.BudgetGrid })),
 );
 
-// Quarantined deliberately: the analytics chunk carries the Sankey geometry,
-// the ranking maths and the trailing-median engine, none of which anybody
-// needs to open the app. Nothing above this line may import from
-// `@/core/analytics`, `@/charts/SankeyFlow` or `@/charts/CategoryBars`.
-const AnalyticsView = lazy(() =>
-  import('@/features/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView })),
-);
+// The analytics pane is not routed from here. It is one of the five panes
+// behind the Ahead toggle, so `AheadView` owns it along with the others — see
+// the 'analytics' case below. It stays quarantined either way: nothing above
+// this line may import from `@/core/analytics`, `@/charts/SankeyFlow` or
+// `@/charts/CategoryBars`, which carry the Sankey geometry, the ranking maths
+// and the trailing-median engine that nobody needs to open the app.
 const CategoryManagerView = lazy(() =>
   import('@/features/categories/CategoryManagerView').then((m) => ({
     default: m.CategoryManagerView,
@@ -211,9 +210,13 @@ function Shell({ storage, firstFlight }: { storage: StorageStatus; firstFlight: 
      * background behind it.
      *
      * The id is not decoration. `BottomSheet` finds this element to recede it
-     * when a sheet is presented, the way an iOS view controller does.
+     * when a sheet is presented, the way an iOS view controller does — and
+     * that recede is why tokens.css pins this element to the viewport with
+     * `inset: 0` rather than letting it take a height from here. A `h-dvh`
+     * shell put the dock 59px up the screen on iOS. The comment on
+     * `#app-shell` in tokens.css has the whole story.
      * -------------------------------------------------------------------- */
-    <div id="app-shell" className="relative flex h-dvh flex-col overflow-hidden bg-base">
+    <div id="app-shell" className="flex flex-col overflow-hidden bg-base">
       {!storage.durable && <StorageWarning explanation={storage.explanation} />}
 
       <main
@@ -253,6 +256,11 @@ function View({
   onAdd: () => void;
   unreviewed: number;
 }) {
+  // Five panes, one toggle, one component — and one list saying which five,
+  // so the shell, the dock and the view cannot disagree about it. See
+  // AHEAD_ROUTES in the router for what went wrong when they did.
+  if (isAheadRoute(route)) return <AheadView />;
+
   switch (route) {
     case 'home':
       return <Dashboard onAdd={onAdd} unreviewed={unreviewed} />;
@@ -264,19 +272,12 @@ function View({
       return <AccountsView />;
     case 'pots':
       return <PotsView />;
-    case 'forecast':
-    case 'calendar':
-    case 'debt':
-    case 'whatif':
-      return <AheadView />;
     case 'independence':
       return <IndependenceView />;
     case 'investments':
       return <InvestmentsView />;
     case 'budget':
       return <BudgetGrid />;
-    case 'analytics':
-      return <AnalyticsView />;
     case 'categories':
       return <CategoryManagerView />;
     case 'settings':
@@ -301,7 +302,7 @@ function ViewLoading() {
 
 function Opening() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-base px-6 text-center">
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-base px-6 text-center">
       <div
         className="size-6 animate-spin rounded-full border-2 border-line-strong border-t-liquid"
         aria-hidden="true"
@@ -313,7 +314,7 @@ function Opening() {
 
 function Failed({ message }: { message: string }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-base px-6 text-center">
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-base px-6 text-center">
       <h1 className="text-lead font-medium text-ink">Sovereign could not open your data</h1>
       <p className="max-w-[38ch] text-body text-ink-2">{message}</p>
       <p className="max-w-[38ch] text-caption text-ink-3">

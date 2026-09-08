@@ -200,7 +200,7 @@ describe('no component hard-codes a theme', () => {
   it('uses the named overlay tokens rather than white/N or black/N', () => {
     const offenders: string[] = [];
     for (const file of files) {
-      for (const match of readFileSync(file, 'utf8').matchAll(/(?:white|black)\/\d+/g)) {
+      for (const match of readFileSync(file, 'utf8').matchAll(/(?<![\w-])(?:white|black)\/\d+/g)) {
         offenders.push(`${file.slice(SRC.length)}: ${match[0]}`);
       }
     }
@@ -218,5 +218,60 @@ describe('no component hard-codes a theme', () => {
       }
     }
     expect(offenders, 'These force a dark date picker onto a light screen').toEqual([]);
+  });
+});
+
+/* ===========================================================================
+ * THE VIEWPORT LOCK
+ * ---------------------------------------------------------------------------
+ * `100dvh` is not the height of the screen on the platform this app is mostly
+ * used on. In an iOS home-screen app with a translucent status bar it comes
+ * back one status-bar inset short — 793px on a screen that is 852px tall.
+ *
+ * That alone would be survivable. What made it a defect is that `#app-shell`
+ * carries `will-change: transform` for the sheet-recede effect, and that makes
+ * it the containing block for every `position: fixed` descendant. So the
+ * floating dock's `bottom: 0` stopped meaning "the bottom of the screen" and
+ * started meaning "the bottom of a box that is 59px short", and the dock
+ * floated 59px above the gap it was already meant to leave.
+ *
+ * It is invisible everywhere `dvh` happens to be right, which is every
+ * browser anybody develops in. So it is guarded here rather than by looking.
+ * ======================================================================== */
+
+describe('the shell is pinned to the viewport by its edges', () => {
+  const css = readFileSync(TOKENS_CSS, 'utf8');
+
+  /** The declarations of one rule, found by its selector. */
+  function rule(selector: string): string {
+    const at = css.indexOf(selector);
+    expect(at, `${selector} is missing from tokens.css`).toBeGreaterThan(-1);
+    const open = css.indexOf('{', at);
+    return css.slice(open, css.indexOf('}', open));
+  }
+
+  it('sizes html and body by inset, never in viewport units', () => {
+    const lock = rule('html,\n  body {');
+    expect(lock).toMatch(/position:\s*fixed/);
+    expect(lock).toMatch(/inset:\s*0/);
+    expect(lock, '100dvh is a status bar short in an iOS home-screen app').not.toMatch(/dvh|vh|vw/);
+  });
+
+  it('pins #app-shell itself, because it is the dock’s containing block', () => {
+    const shell = rule('#app-shell {');
+    expect(shell).toMatch(/position:\s*fixed/);
+    expect(shell).toMatch(/inset:\s*0/);
+    expect(shell, 'will-change is what makes this the containing block').toMatch(
+      /will-change:\s*transform/,
+    );
+  });
+
+  it('leaves no viewport-unit height on the shell element in the markup', () => {
+    const shell = readFileSync(join(SRC, 'features', 'shell', 'AppShell.tsx'), 'utf8');
+    const tag = shell.slice(shell.indexOf('id="app-shell"'));
+    const classes = tag.slice(0, tag.indexOf('>'));
+    expect(classes, 'the shell takes its box from tokens.css, not from a class').not.toMatch(
+      /h-dvh|min-h-dvh|h-screen/,
+    );
   });
 });

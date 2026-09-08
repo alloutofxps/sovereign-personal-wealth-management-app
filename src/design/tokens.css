@@ -292,14 +292,33 @@
    *
    * `position: fixed` on both html and body is the part that does the work on
    * iOS: `overflow: hidden` alone still lets the visual viewport drag.
+   *
+   * -------------------------------------------------------------------------
+   * WHY inset: 0 AND NOT height: 100dvh
+   *
+   * These were sized `height: 100dvh; width: 100vw`, which is wrong on the one
+   * platform this app is mostly used on. In an iOS home-screen app with a
+   * translucent status bar, `100dvh` comes back one status-bar inset short of
+   * the web view it is actually rendering into — 793px on a screen that is
+   * 852px tall. Everything measured from the *top* looked perfect, so the
+   * error only ever showed up at the bottom edge.
+   *
+   * What it showed up as: the floating dock sat 59px too high, on top of the
+   * gap it was already meant to leave, and the bottom of the screen was a
+   * dead band. See `#app-shell` at the end of this file for why a *fixed*
+   * element inherited that mistake at all.
+   *
+   * `inset: 0` is measured against the web view's real frame rather than
+   * against a number WebKit reports, so there is nothing left to be short of.
+   * `100vw` had a smaller version of the same fault on desktop, where it
+   * counts the scrollbar and overflows by its width.
    * ---------------------------------------------------------------------- */
   html,
   body {
-    height: 100dvh;
-    width: 100vw;
+    position: fixed;
+    inset: 0;
     margin: 0;
     overflow: hidden;
-    position: fixed;
     overscroll-behavior: none;
     background: var(--color-base);
   }
@@ -353,6 +372,17 @@
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+  }
+
+  /* A scroll container with no visible bar. For strips where the overflow is
+     already obvious from a half-visible item at the edge, and a scrollbar
+     would only sit on top of the content. */
+  .no-bar {
+    scrollbar-width: none;
+  }
+
+  .no-bar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Money and any aligned digits. Applied via .tnum, never guessed at. */
@@ -551,7 +581,27 @@
  * `@layer components`, where Tailwind's own processing dropped the attribute
  * selector and left the shell sitting flat behind an open sheet.
  * ======================================================================== */
+/*
+ * THE SHELL, AND WHY IT IS PINNED BY ITS EDGES
+ *
+ * `will-change: transform` is not only a hint. It makes this element the
+ * containing block for every `position: fixed` descendant, which is most of
+ * the app's chrome and all of the dock. So `bottom: 0` on the dock stopped
+ * meaning "the bottom of the screen" the day the recede effect was added, and
+ * started meaning "the bottom of #app-shell" — silently, and correctly, on
+ * every surface where the two are the same.
+ *
+ * They are not the same on an iOS home-screen app (see the viewport lock
+ * above), so the shell has to be pinned to the viewport by its edges rather
+ * than sized in viewport units. `inset: 0` does that and cannot drift.
+ *
+ * The dock is deliberately left inside this element rather than portalled
+ * out: when a sheet is presented the whole screen recedes, tab bar included,
+ * the way a presented view does on iOS.
+ */
 #app-shell {
+  position: fixed;
+  inset: 0;
   transform-origin: 50% 0;
   transition:
     transform 380ms var(--ease-sheet),

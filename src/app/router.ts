@@ -28,6 +28,33 @@ export const ROUTES = [
 ] as const;
 export type Route = (typeof ROUTES)[number];
 
+/**
+ * The five panes behind the Ahead toggle.
+ *
+ * They are one screen with a segmented control, not five destinations, and
+ * three separate places used to decide that for themselves: the shell decided
+ * which routes render `AheadView`, the dock decided which routes light up the
+ * Ahead tab, and `AheadView` decided which pane it was showing. 'analytics'
+ * was in two of those three lists, so tapping "Where it went" rendered the
+ * pane bare — no toggle, while the dock still said Ahead — and the only way
+ * back to the strip was to tap Ahead again.
+ *
+ * One list, read by all three, so they cannot disagree again.
+ */
+export const AHEAD_ROUTES = [
+  'forecast',
+  'calendar',
+  'analytics',
+  'debt',
+  'whatif',
+] as const satisfies readonly Route[];
+
+export type AheadRoute = (typeof AHEAD_ROUTES)[number];
+
+export function isAheadRoute(route: Route): route is AheadRoute {
+  return (AHEAD_ROUTES as readonly Route[]).includes(route);
+}
+
 const DEFAULT: Route = 'home';
 
 /**
