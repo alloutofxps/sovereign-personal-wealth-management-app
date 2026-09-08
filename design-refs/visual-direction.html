@@ -1,0 +1,618 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sovereign — visual direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF0EA; --paper-2:#E3E8DF; --card:#FFFFFF;
+  --ink:#10130F; --ink-2:#5A6157; --ink-3:#8A9185; --hair:#DCE2D7;
+  --vault:#0E1A17; --vault-2:#16241F;
+  --liquid:#B9E2D2; --liquid-ink:#0C5A47;
+  --spend:#F7DCA8;  --spend-ink:#8A5A0B;
+  --invest:#C6CCF2; --invest-ink:#2B3480;
+  --debt:#F4C6B6;   --debt-ink:#9E432C;
+  --income:#E6C7E4; --income-ink:#6B2A62;
+  --reserve:#C3DEE3;--reserve-ink:#1D4B55;
+  --hot:#FF3C1F;
+  --ui:'Space Grotesk','Helvetica Neue',system-ui,sans-serif;
+  --dis:'Fraunces','Iowan Old Style',Palatino,Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#D7DCD2;font-family:var(--ui);color:var(--ink);padding:56px 32px 96px}
+.deck-head{max-width:900px;margin:0 auto 56px}
+.deck-head h1{font-family:var(--dis);font-size:52px;font-weight:600;letter-spacing:-.02em;line-height:1.02;font-variation-settings:'SOFT' 20,'WONK' 1}
+.deck-head p{margin-top:14px;color:#4B524A;font-size:16px;line-height:1.55;max-width:62ch}
+.swatches{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.sw{width:52px;height:52px;border-radius:14px;display:grid;place-items:end center;font-size:9px;padding-bottom:5px;color:#00000060;font-weight:600}
+.grid{display:flex;flex-wrap:wrap;gap:52px 44px;justify-content:center;align-items:flex-start;max-width:1500px;margin:0 auto}
+.slot{width:390px}
+.cap{margin-top:16px;font-size:12.5px;line-height:1.5;color:#3F463D}
+.cap b{display:block;font-family:var(--dis);font-size:16px;font-weight:600;margin-bottom:3px;color:#10130F}
+
+/* ---------- phone ---------- */
+.phone{width:390px;height:844px;border-radius:46px;background:var(--paper);position:relative;
+  overflow:hidden;box-shadow:0 2px 0 #ffffff70 inset,0 28px 60px -22px #0000004d,0 0 0 9px #1b1f1a,0 0 0 10px #33392f}
+.phone.dark{background:var(--vault)}
+.notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:108px;height:30px;background:#12160f;border-radius:20px;z-index:40}
+.status{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 30px;font-size:14px;font-weight:600;z-index:30;letter-spacing:.01em}
+.dark .status{color:#EAF2EE}
+.status .bars{display:flex;gap:3px;align-items:flex-end}
+.status .bars i{display:block;width:3px;background:currentColor;border-radius:1px}
+.screen{position:absolute;inset:52px 0 0 0;overflow:hidden}
+.pad{padding:0 22px}
+
+/* ---------- chrome ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 22px 18px}
+.avi{width:42px;height:42px;border-radius:15px;background:var(--income);color:var(--income-ink);
+  display:grid;place-items:center;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.daystamp{font-size:12.5px;color:var(--ink-3);line-height:1.3}
+.daystamp b{display:block;font-size:15px;color:var(--ink);font-weight:600}
+.icobtn{width:40px;height:40px;border-radius:14px;background:#fff;display:grid;place-items:center;
+  box-shadow:0 1px 2px #0000000f;position:relative}
+.dot{position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--hot)}
+
+h2.title{font-family:var(--dis);font-size:31px;font-weight:600;letter-spacing:-.02em;line-height:1.05;
+  font-variation-settings:'SOFT' 20,'WONK' 1}
+h2.title em{font-style:italic;font-variation-settings:'SOFT' 40,'WONK' 1}
+.sub{font-size:13px;color:var(--ink-3);margin-top:6px}
+
+/* ---------- panels & tiles ---------- */
+.hero{margin:0 14px;border-radius:34px;padding:24px 24px 20px;position:relative;overflow:hidden}
+.tile{border-radius:26px;padding:18px}
+.card{background:var(--card);border-radius:26px;padding:18px;box-shadow:0 1px 2px #00000010,0 10px 26px -18px #0000002e}
+.lbl{font-size:12.5px;font-weight:500;letter-spacing:0;opacity:.72}
+.fig{font-family:var(--dis);font-weight:600;letter-spacing:-.03em;font-variation-settings:'SOFT' 20;
+  font-variant-numeric:tabular-nums;line-height:.95}
+.f64{font-size:64px} .f46{font-size:46px} .f34{font-size:34px} .f26{font-size:26px} .f20{font-size:20px}
+.unit{font-size:.52em;font-weight:500;opacity:.55;letter-spacing:0}
+.tnum{font-variant-numeric:tabular-nums}
+
+.pillrow{display:flex;gap:7px}
+.pill{border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:500;background:#ffffff9e;color:var(--ink-2)}
+.pill.on{background:var(--ink);color:#fff}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:600}
+
+.statstrip{display:flex;gap:8px;margin-top:20px}
+.statstrip>div{flex:1;background:#ffffffa8;border-radius:18px;padding:11px 12px}
+.statstrip .k{font-size:11px;opacity:.6;font-weight:500}
+.statstrip .v{font-family:var(--dis);font-size:19px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ---------- nav ---------- */
+.nav{position:absolute;left:20px;right:20px;bottom:20px;height:66px;border-radius:26px;background:#131711;
+  display:flex;align-items:center;justify-content:space-around;padding:0 10px;box-shadow:0 16px 34px -14px #00000073;z-index:20}
+.nav i{display:block;width:22px;height:22px;border-radius:7px;background:#ffffff42}
+.nav .act{background:var(--liquid);width:46px;height:46px;border-radius:17px;display:grid;place-items:center}
+.nav .act i{background:var(--liquid-ink);width:19px;height:19px;border-radius:6px}
+.fab{width:52px;height:52px;border-radius:19px;background:var(--hot);display:grid;place-items:center;color:#fff;font-size:26px;font-weight:300;line-height:1}
+
+/* ---------- list rows ---------- */
+.row{display:flex;align-items:center;gap:13px;padding:12px 0}
+.row+.row{border-top:1px solid var(--hair)}
+.sq{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:14px;flex:none}
+.row .nm{font-size:14.5px;font-weight:500;line-height:1.25}
+.row .mt{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.row .amt{margin-left:auto;font-family:var(--dis);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+
+.minibar{height:5px;border-radius:99px;background:var(--paper-2);overflow:hidden;margin-top:7px}
+.minibar>i{display:block;height:100%;border-radius:99px}
+
+/* ---------- numpad ---------- */
+.pad3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.key{height:58px;border-radius:20px;background:#fff;display:grid;place-items:center;
+  font-family:var(--dis);font-size:25px;font-weight:600;box-shadow:0 1px 2px #0000000f}
+.key.sm{font-family:var(--ui);font-size:15px;font-weight:600;background:var(--paper-2);box-shadow:none}
+
+/* ---------- vault ---------- */
+.dark .card{background:var(--vault-2);box-shadow:none;border:1px solid #ffffff12}
+.dark h2.title,.dark .fig{color:#F1F6F3}
+.dark .sub,.dark .row .mt{color:#7E8F89}
+.dark .row+.row{border-top:1px solid #ffffff12}
+.dark .row .nm{color:#E6EDEA}
+.dark .icobtn{background:#ffffff12}
+</style></head><body>
+<div class="deck-head">
+  <h1>Sovereign, in <em style="font-style:italic">daylight</em></h1>
+  <p>Eight screens. Colour carries category, not mood; every number is shown as a shape before it is shown as a digit; and no card explains itself in prose. Built as real HTML and SVG so the components lift straight into the existing React tree.</p>
+  <div class="swatches"><div class="sw" style="background:#EDF0EA">paper</div><div class="sw" style="background:#B9E2D2">liquid</div><div class="sw" style="background:#F7DCA8">spend</div><div class="sw" style="background:#C6CCF2">invest</div><div class="sw" style="background:#F4C6B6">debt</div><div class="sw" style="background:#E6C7E4">income</div><div class="sw" style="background:#C3DEE3">reserve</div><div class="sw" style="background:#FF3C1F">hot</div><div class="sw" style="background:#0E1A17">vault</div></div>
+</div>
+<div class="grid"><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="avi">PB</div>
+    <div class="daystamp"><b>Tuesday</b>8 September</div>
+  </div>
+  <div class="icobtn"><div class="dot"></div>
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#10130F" stroke-width="1.8" stroke-linecap="round">
+    <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+</div>
+
+<div class="hero" style="background:var(--liquid);color:var(--liquid-ink)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="lbl">Safe to spend</div>
+      <div class="fig f64" style="margin-top:8px">2,140<span class="unit">.60</span></div>
+    </div>
+    <svg width="64" height="64" viewBox="0 0 64 64" style="margin-top:2px">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="#0C5A4726" stroke-width="7"/>
+      <circle cx="32" cy="32" r="26" fill="none" stroke="var(--liquid-ink)" stroke-width="7" stroke-linecap="round"
+        stroke-dasharray="163.36" stroke-dashoffset="68.61" transform="rotate(-90 32 32)"/>
+      <text x="32" y="34" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="17" font-weight="600" fill="var(--liquid-ink)">12</text>
+      <text x="32" y="44" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="7.5" fill="#0C5A47" opacity=".65">DAYS</text>
+    </svg>
+  </div>
+  <div class="statstrip">
+    <div><div class="k">A day</div><div class="v">€76</div></div>
+    <div><div class="k">Cushion</div><div class="v">€900</div></div>
+    <div><div class="k">Bills left</div><div class="v">€412</div></div>
+  </div>
+</div>
+
+<div class="pad" style="margin-top:16px">
+  <div class="card">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <div style="font-size:14.5px;font-weight:600">Spending pace</div>
+      <span class="chip" style="background:var(--spend);color:var(--spend-ink)">4 days ahead</span>
+    </div>
+    <svg viewBox="0 0 300 96" width="100%" height="96" style="margin-top:10px;overflow:visible">
+      <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8A5A0B" stop-opacity=".22"/><stop offset="1" stop-color="#8A5A0B" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="M 0.00,74.00 C 2.63,73.25 10.53,70.54 15.79,69.52 C 21.05,68.50 26.32,68.99 31.58,67.87 C 36.84,66.75 42.11,63.98 47.37,62.80 C 52.63,61.62 57.89,61.68 63.16,60.80 C 68.42,59.92 73.68,58.21 78.95,57.50 C 84.21,56.79 89.47,57.66 94.74,56.56 C 100.00,55.46 105.26,52.20 110.53,50.90 C 115.79,49.60 121.05,49.66 126.32,48.78 C 131.58,47.89 136.84,46.66 142.11,45.60 C 147.37,44.54 152.63,43.02 157.89,42.41 C 163.16,41.81 168.42,42.92 173.68,41.94 C 178.95,40.96 184.21,37.86 189.47,36.52 C 194.74,35.19 200.00,34.87 205.26,33.93 C 210.53,32.99 215.79,31.89 221.05,30.86 C 226.32,29.84 231.58,28.66 236.84,27.80 C 242.11,26.94 247.37,26.92 252.63,25.68 C 257.89,24.44 263.16,21.55 268.42,20.38 C 273.68,19.20 278.95,19.45 284.21,18.61 C 289.47,17.76 297.37,15.86 300.00,15.31 L 300.00,80 L 0,80 Z" fill="url(#pg)"/>
+      <path d="M 0.00,74.00 C 2.63,73.49 10.53,71.96 15.79,70.94 C 21.05,69.91 26.32,68.89 31.58,67.87 C 36.84,66.85 42.11,65.83 47.37,64.81 C 52.63,63.79 57.89,62.76 63.16,61.74 C 68.42,60.72 73.68,59.70 78.95,58.68 C 84.21,57.66 89.47,56.64 94.74,55.61 C 100.00,54.59 105.26,53.57 110.53,52.55 C 115.79,51.53 121.05,50.51 126.32,49.49 C 131.58,48.46 136.84,47.44 142.11,46.42 C 147.37,45.40 152.63,44.38 157.89,43.36 C 163.16,42.34 168.42,41.31 173.68,40.29 C 178.95,39.27 184.21,38.25 189.47,37.23 C 194.74,36.21 200.00,35.19 205.26,34.16 C 210.53,33.14 215.79,32.12 221.05,31.10 C 226.32,30.08 231.58,29.06 236.84,28.04 C 242.11,27.01 247.37,25.99 252.63,24.97 C 257.89,23.95 263.16,22.93 268.42,21.91 C 273.68,20.89 278.95,19.86 284.21,18.84 C 289.47,17.82 297.37,16.29 300.00,15.78" fill="none" stroke="#8A918570" stroke-width="1.6" stroke-dasharray="3 4"/>
+      <path d="M 0.00,74.00 C 2.63,73.25 10.53,70.54 15.79,69.52 C 21.05,68.50 26.32,68.99 31.58,67.87 C 36.84,66.75 42.11,63.98 47.37,62.80 C 52.63,61.62 57.89,61.68 63.16,60.80 C 68.42,59.92 73.68,58.21 78.95,57.50 C 84.21,56.79 89.47,57.66 94.74,56.56 C 100.00,55.46 105.26,52.20 110.53,50.90 C 115.79,49.60 121.05,49.66 126.32,48.78 C 131.58,47.89 136.84,46.66 142.11,45.60 C 147.37,44.54 152.63,43.02 157.89,42.41 C 163.16,41.81 168.42,42.92 173.68,41.94 C 178.95,40.96 184.21,37.86 189.47,36.52 C 194.74,35.19 200.00,34.87 205.26,33.93 C 210.53,32.99 215.79,31.89 221.05,30.86 C 226.32,29.84 231.58,28.66 236.84,27.80 C 242.11,26.94 247.37,26.92 252.63,25.68 C 257.89,24.44 263.16,21.55 268.42,20.38 C 273.68,19.20 278.95,19.45 284.21,18.61 C 289.47,17.76 297.37,15.86 300.00,15.31" fill="none" stroke="var(--spend-ink)" stroke-width="2.6" stroke-linecap="round"/>
+      <line x1="300.0" y1="15.31" x2="300.0" y2="80" stroke="#8A5A0B" stroke-width="1" stroke-dasharray="2 3" opacity=".5"/>
+      <circle cx="300.0" cy="15.31" r="5" fill="#fff" stroke="var(--spend-ink)" stroke-width="2.6"/>
+      <g font-size="9.5" fill="#8A9185" font-family="Space Grotesk,sans-serif">
+        <text x="0" y="93">1 Sep</text><text x="140" y="93">15</text><text x="278" y="93">30</text></g>
+    </svg>
+    <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;color:var(--ink-3)">
+      <span style="display:flex;align-items:center;gap:5px"><i style="width:14px;height:2.6px;background:var(--spend-ink);border-radius:2px"></i>Spent</span>
+      <span style="display:flex;align-items:center;gap:5px"><i style="width:14px;height:0;border-top:2px dashed #8A9185"></i>Even spread</span>
+    </div>
+  </div>
+
+  <div class="two" style="margin-top:12px">
+    <div class="tile" style="background:var(--debt);color:var(--debt-ink)">
+      <div class="lbl">Due this week</div>
+      <div class="fig f34" style="margin-top:10px">€318</div>
+      <div style="font-size:11.5px;opacity:.7;margin-top:6px">Rent · Zilveren Kruis</div>
+    </div>
+    <div class="tile" style="background:var(--invest);color:var(--invest-ink)">
+      <div class="lbl">Invested</div>
+      <div class="fig f34" style="margin-top:10px">€61.4<span class="unit">k</span></div>
+      <div style="font-size:11.5px;opacity:.7;margin-top:6px">+2.8% this month</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 2px">
+    <div style="font-size:14.5px;font-weight:600">Recorded</div>
+    <span style="font-size:12.5px;color:var(--hot);font-weight:500">See all</span>
+  </div>
+  <div class="row"><div class="sq" style="background:var(--spend);color:var(--spend-ink)">☕</div>
+    <div><div class="nm">Albert Heijn</div><div class="mt">Groceries · today</div></div><div class="amt">−€42.10</div></div>
+  <div class="row"><div class="sq" style="background:var(--reserve);color:var(--reserve-ink)">⇄</div>
+    <div><div class="nm">To Emergency pot</div><div class="mt">Transfer · yesterday</div></div><div class="amt" style="color:var(--ink-3)">€250.00</div></div>
+</div>
+<div class="nav"><div class="act"><i></i></div><i></i><div class="fab">+</div><i></i><i></i></div></div></div><div class="cap"><b>Today</b>One hero figure, one hero colour. The three supporting numbers became pills instead of a paragraph. Every sentence of explanation is gone — the ring answers \u201chow long\u201d without a caption.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:6px">
+  <h2 class="title">Where it <em>went</em></h2>
+  <div class="pillrow" style="margin-top:16px">
+    <span class="pill">Jul</span><span class="pill">Aug</span><span class="pill on">Sep</span>
+    <span class="pill">3 mo</span><span class="pill">Year</span>
+  </div>
+</div>
+
+<div style="position:relative;margin-top:8px;height:290px">
+  <svg viewBox="0 0 260 260" width="260" height="260" style="position:absolute;left:65px;top:14px"><circle cx="130" cy="130" r="88" fill="none" stroke="#0C5A47" stroke-width="30" stroke-linecap="butt" stroke-dasharray="183.99 368.93" stroke-dashoffset="0" transform="rotate(-90 130 130)"/><circle cx="130" cy="130" r="88" fill="none" stroke="#8A5A0B" stroke-width="30" stroke-linecap="butt" stroke-dasharray="117.64 435.28" stroke-dashoffset="-187.99" transform="rotate(-90 130 130)"/><circle cx="130" cy="130" r="88" fill="none" stroke="#2B3480" stroke-width="30" stroke-linecap="butt" stroke-dasharray="73.41 479.51" stroke-dashoffset="-309.64" transform="rotate(-90 130 130)"/><circle cx="130" cy="130" r="88" fill="none" stroke="#6B2A62" stroke-width="30" stroke-linecap="butt" stroke-dasharray="62.35 490.57" stroke-dashoffset="-387.04" transform="rotate(-90 130 130)"/><circle cx="130" cy="130" r="88" fill="none" stroke="#1D4B55" stroke-width="30" stroke-linecap="butt" stroke-dasharray="45.76 507.16" stroke-dashoffset="-453.39" transform="rotate(-90 130 130)"/><circle cx="130" cy="130" r="88" fill="none" stroke="#9E432C" stroke-width="30" stroke-linecap="butt" stroke-dasharray="45.76 507.16" stroke-dashoffset="-503.16" transform="rotate(-90 130 130)"/>
+    <text x="130" y="126" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="46" font-weight="600" fill="#10130F" style="letter-spacing:-.03em">€3.5<tspan font-size="24" fill="#8A9185">k</tspan></text>
+    <text x="130" y="147" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11.5" fill="#8A9185">out in September</text>
+    <text x="130" y="167" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" fill="#0C5A47" font-weight="600">−8% on August</text>
+  </svg>
+  <div style="position:absolute;left:16px;top:44px">
+    <span class="chip" style="background:var(--liquid);color:var(--liquid-ink)">34% Housing</span></div>
+  <div style="position:absolute;right:14px;top:74px">
+    <span class="chip" style="background:var(--spend);color:var(--spend-ink)">22% Food</span></div>
+  <div style="position:absolute;right:8px;bottom:66px">
+    <span class="chip" style="background:var(--invest);color:var(--invest-ink)">14% Transport</span></div>
+  <div style="position:absolute;left:22px;bottom:52px">
+    <span class="chip" style="background:var(--income);color:var(--income-ink)">12% Leisure</span></div>
+</div>
+
+<div class="pad" style="margin-top:-6px"><div class="row"><div class="sq" style="background:var(--liquid);color:#0C5A47;font-size:12px;font-weight:700">34</div>
+      <div style="flex:1"><div class="nm">Housing</div><div class="minibar"><i style="width:88.4%;background:#0C5A47"></i></div></div>
+      <div class="amt">€1,190</div></div><div class="row"><div class="sq" style="background:var(--spend);color:#8A5A0B;font-size:12px;font-weight:700">22</div>
+      <div style="flex:1"><div class="nm">Food</div><div class="minibar"><i style="width:57.2%;background:#8A5A0B"></i></div></div>
+      <div class="amt">€770</div></div><div class="row"><div class="sq" style="background:var(--invest);color:#2B3480;font-size:12px;font-weight:700">14</div>
+      <div style="flex:1"><div class="nm">Transport</div><div class="minibar"><i style="width:36.4%;background:#2B3480"></i></div></div>
+      <div class="amt">€490</div></div><div class="row"><div class="sq" style="background:var(--income);color:#6B2A62;font-size:12px;font-weight:700">12</div>
+      <div style="flex:1"><div class="nm">Leisure</div><div class="minibar"><i style="width:31.200000000000003%;background:#6B2A62"></i></div></div>
+      <div class="amt">€420</div></div><div class="row"><div class="sq" style="background:var(--reserve);color:#1D4B55;font-size:12px;font-weight:700">9</div>
+      <div style="flex:1"><div class="nm">Health</div><div class="minibar"><i style="width:23.400000000000002%;background:#1D4B55"></i></div></div>
+      <div class="amt">€315</div></div><div class="row"><div class="sq" style="background:var(--debt);color:#9E432C;font-size:12px;font-weight:700">9</div>
+      <div style="flex:1"><div class="nm">Other</div><div class="minibar"><i style="width:23.400000000000002%;background:#9E432C"></i></div></div>
+      <div class="amt">€315</div></div></div>
+<div class="nav"><i></i><div class="act"><i></i></div><div class="fab">+</div><i></i><i></i></div></div></div><div class="cap"><b>Where it went</b>Image 1's donut mechanic: values live outside on tinted pills, the centre holds the total plus one comparison. Category rows repeat the same hue so colour is the index, not decoration.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:6px">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between">
+    <div>
+      <h2 class="title">Net worth</h2>
+      <div class="fig f46" style="margin-top:12px">€296<span class="unit">,480</span></div>
+    </div>
+    <span class="chip" style="background:var(--liquid);color:var(--liquid-ink);margin-top:8px">↑ €48.2k this year</span>
+  </div>
+
+  <div style="display:flex;gap:22px;margin-top:20px;border-bottom:1px solid var(--hair);padding-bottom:9px">
+    <span style="font-size:13px;color:var(--ink-3)">6 mo</span>
+    <span style="font-size:13px;color:var(--ink-3)">1 yr</span>
+    <span style="font-size:13px;font-weight:600;position:relative">2 yr
+      <i style="position:absolute;left:0;right:0;bottom:-10px;height:2px;background:var(--hot);border-radius:2px"></i></span>
+    <span style="font-size:13px;color:var(--ink-3)">All</span>
+  </div>
+</div>
+
+<svg viewBox="0 0 320 160" width="100%" height="188" style="margin-top:14px;overflow:visible">
+  <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#0C5A47" stop-opacity=".2"/><stop offset="1" stop-color="#0C5A47" stop-opacity="0"/>
+  </linearGradient></defs>
+  <g stroke="#DCE2D7" stroke-width="1">
+    <line x1="0" y1="140" x2="320" y2="140"/><line x1="0" y1="98" x2="320" y2="98"/>
+    <line x1="0" y1="56" x2="320" y2="56"/><line x1="0" y1="14" x2="320" y2="14"/></g>
+  <path d="M 0.00,116.40 C 2.30,115.97 9.22,114.14 13.83,113.82 C 18.43,113.50 23.04,115.11 27.65,114.47 C 32.26,113.82 36.87,111.24 41.48,109.96 C 46.09,108.67 50.70,107.06 55.30,106.73 C 59.91,106.41 64.52,108.67 69.13,108.02 C 73.74,107.38 78.35,104.48 82.96,102.87 C 87.57,101.26 92.17,99.64 96.78,98.36 C 101.39,97.07 106.00,95.46 110.61,95.13 C 115.22,94.81 119.83,97.17 124.43,96.42 C 129.04,95.67 133.65,92.45 138.26,90.62 C 142.87,88.80 147.48,87.08 152.09,85.47 C 156.70,83.86 161.30,81.28 165.91,80.96 C 170.52,80.63 175.13,84.39 179.74,83.53 C 184.35,82.67 188.96,77.95 193.57,75.80 C 198.17,73.65 202.78,72.26 207.39,70.64 C 212.00,69.03 216.61,68.17 221.22,66.13 C 225.83,64.09 230.43,60.66 235.04,58.40 C 239.65,56.14 244.26,54.10 248.87,52.60 C 253.48,51.10 258.09,50.88 262.70,49.38 C 267.30,47.87 271.91,45.94 276.52,43.58 C 281.13,41.21 285.74,37.35 290.35,35.20 C 294.96,33.05 299.57,33.05 304.17,30.69 C 308.78,28.33 315.70,22.63 318.00,21.02 L 318.00,140 L 0.00,140 Z" fill="url(#wg)" transform="translate(22,0)"/>
+  <path d="M 0.00,116.40 C 2.30,116.08 9.22,115.11 13.83,114.47 C 18.43,113.82 23.04,113.18 27.65,112.53 C 32.26,111.89 36.87,111.24 41.48,110.60 C 46.09,109.96 50.70,109.31 55.30,108.67 C 59.91,108.02 64.52,107.38 69.13,106.73 C 73.74,106.09 78.35,105.44 82.96,104.80 C 87.57,104.16 92.17,103.51 96.78,102.87 C 101.39,102.22 106.00,101.58 110.61,100.93 C 115.22,100.29 119.83,99.64 124.43,99.00 C 129.04,98.36 133.65,97.71 138.26,97.07 C 142.87,96.42 147.48,95.78 152.09,95.13 C 156.70,94.49 161.30,93.84 165.91,93.20 C 170.52,92.56 175.13,91.91 179.74,91.27 C 184.35,90.62 188.96,89.98 193.57,89.33 C 198.17,88.69 202.78,88.04 207.39,87.40 C 212.00,86.76 216.61,86.11 221.22,85.47 C 225.83,84.82 230.43,84.18 235.04,83.53 C 239.65,82.89 244.26,82.24 248.87,81.60 C 253.48,80.96 258.09,80.31 262.70,79.67 C 267.30,79.02 271.91,78.38 276.52,77.73 C 281.13,77.09 285.74,76.44 290.35,75.80 C 294.96,75.16 299.57,74.51 304.17,73.87 C 308.78,73.22 315.70,72.26 318.00,71.93" fill="none" stroke="#8A9185" stroke-width="1.7" stroke-dasharray="4 5" transform="translate(22,0)"/>
+  <path d="M 0.00,116.40 C 2.30,115.97 9.22,114.14 13.83,113.82 C 18.43,113.50 23.04,115.11 27.65,114.47 C 32.26,113.82 36.87,111.24 41.48,109.96 C 46.09,108.67 50.70,107.06 55.30,106.73 C 59.91,106.41 64.52,108.67 69.13,108.02 C 73.74,107.38 78.35,104.48 82.96,102.87 C 87.57,101.26 92.17,99.64 96.78,98.36 C 101.39,97.07 106.00,95.46 110.61,95.13 C 115.22,94.81 119.83,97.17 124.43,96.42 C 129.04,95.67 133.65,92.45 138.26,90.62 C 142.87,88.80 147.48,87.08 152.09,85.47 C 156.70,83.86 161.30,81.28 165.91,80.96 C 170.52,80.63 175.13,84.39 179.74,83.53 C 184.35,82.67 188.96,77.95 193.57,75.80 C 198.17,73.65 202.78,72.26 207.39,70.64 C 212.00,69.03 216.61,68.17 221.22,66.13 C 225.83,64.09 230.43,60.66 235.04,58.40 C 239.65,56.14 244.26,54.10 248.87,52.60 C 253.48,51.10 258.09,50.88 262.70,49.38 C 267.30,47.87 271.91,45.94 276.52,43.58 C 281.13,41.21 285.74,37.35 290.35,35.20 C 294.96,33.05 299.57,33.05 304.17,30.69 C 308.78,28.33 315.70,22.63 318.00,21.02" fill="none" stroke="#0C5A47" stroke-width="3" stroke-linecap="round" transform="translate(22,0)"/>
+  <g transform="translate(22,0)">
+    <line x1="235.04" y1="8" x2="235.04" y2="140" stroke="#10130F" stroke-width="1" stroke-dasharray="2 3" opacity=".35"/>
+    <circle cx="235.04" cy="58.4" r="6" fill="#fff" stroke="#0C5A47" stroke-width="3"/>
+  </g>
+  <g font-family="Space Grotesk,sans-serif" font-size="9.5" fill="#8A9185">
+    <text x="0" y="17">300k</text><text x="0" y="59">250k</text><text x="0" y="101">200k</text><text x="0" y="143">150k</text></g>
+</svg>
+
+<div class="pad">
+  <div class="pillrow" style="justify-content:space-between;margin-top:2px">
+    <span class="pill">2024</span><span class="pill">Q1</span><span class="pill">Q2</span>
+    <span class="pill on">Q3</span><span class="pill">Q4</span><span class="pill">2026</span>
+  </div>
+  <div style="display:flex;gap:16px;margin-top:14px;font-size:11.5px;color:var(--ink-3)">
+    <span style="display:flex;align-items:center;gap:5px"><i style="width:14px;height:3px;background:#0C5A47;border-radius:2px"></i>Actual</span>
+    <span style="display:flex;align-items:center;gap:5px"><i style="width:14px;height:0;border-top:2px dashed #8A9185"></i>Last year's savings rate</span>
+  </div>
+
+  <div class="two" style="margin-top:18px">
+    <div class="tile" style="background:var(--reserve);color:var(--reserve-ink);padding:15px">
+      <div class="lbl">Crossed</div><div class="fig f26" style="margin-top:8px">€250k</div>
+      <div style="font-size:11px;opacity:.7;margin-top:4px">March 2026</div></div>
+    <div class="tile" style="background:var(--paper-2);color:var(--ink-2);padding:15px">
+      <div class="lbl">Assets − debts</div>
+      <div style="display:flex;gap:6px;margin-top:12px;align-items:center">
+        <div style="height:9px;flex:3.4;background:#0C5A47;border-radius:9px"></div>
+        <div style="height:9px;flex:1;background:#9E432C;border-radius:9px"></div></div>
+      <div style="font-size:11px;margin-top:8px">€382k held · €86k owed</div></div>
+  </div>
+</div>
+<div class="nav"><i></i><i></i><div class="fab">+</div><i></i><i></i></div></div></div><div class="cap"><b>Net worth</b>Image 1's dual-line: solid actual against a dashed counterfactual, one scrubber dot, quarter pills below. The dashed line is your \u201clast year's savings rate\u201d \u2014 a comparison, never a forecast.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:6px">
+  <h2 class="title">Envelopes</h2>
+  <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+    <div style="flex:1;height:10px;border-radius:9px;background:var(--paper-2);overflow:hidden;display:flex">
+      <i style="width:34%;background:#0C5A47"></i><i style="width:22%;background:#8A5A0B"></i>
+      <i style="width:14%;background:#2B3480"></i><i style="width:12%;background:#6B2A62"></i>
+      <i style="width:9%;background:#1D4B55"></i><i style="width:9%;background:#9E432C"></i></div>
+    <span class="fig f20">€2,055</span>
+  </div>
+  <div class="sub">assigned of €3,500 · €1,445 waiting for a job</div>
+  <div class="two" style="margin-top:18px"><div class="tile" style="background:var(--liquid);color:var(--liquid-ink);padding:16px;position:relative">
+      
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="45.74" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">99</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Housing</div>
+      <div class="fig f20" style="margin-top:6px">€10</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">left of €1200</div>
+    </div><div class="tile" style="background:var(--spend);color:var(--spend-ink);padding:16px;position:relative">
+      
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="14.7" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">91</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Food</div>
+      <div class="fig f20" style="margin-top:6px">€40</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">left of €450</div>
+    </div><div class="tile" style="background:var(--invest);color:var(--invest-ink);padding:16px;position:relative">
+      
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="101.28" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">38</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Transport</div>
+      <div class="fig f20" style="margin-top:6px">€148</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">left of €240</div>
+    </div><div class="tile" style="background:var(--debt);color:var(--debt-ink);padding:16px;position:relative">
+      <span style="position:absolute;top:14px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--hot)"></span>
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="0" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">104</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Leisure</div>
+      <div class="fig f20" style="margin-top:6px">€8</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">over of €200</div>
+    </div><div class="tile" style="background:var(--reserve);color:var(--reserve-ink);padding:16px;position:relative">
+      
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="127.42" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">22</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Health</div>
+      <div class="fig f20" style="margin-top:6px">€117</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">left of €150</div>
+    </div><div class="tile" style="background:var(--income);color:var(--income-ink);padding:16px;position:relative">
+      
+      <svg width="62" height="62" viewBox="0 0 62 62">
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="6"/>
+        <circle cx="31" cy="31" r="26" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="163.36" stroke-dashoffset="63.71" transform="rotate(-90 31 31)"/>
+        <text x="31" y="35" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-size="15" font-weight="600" fill="currentColor">61</text>
+      </svg>
+      <div style="font-size:14px;font-weight:600;margin-top:12px">Gifts</div>
+      <div class="fig f20" style="margin-top:6px">€78</div>
+      <div style="font-size:11px;opacity:.72;margin-top:3px">left of €200</div>
+    </div></div>
+  <div class="tile" style="background:var(--ink);color:#EFF3EC;margin-top:12px;display:flex;align-items:center;gap:14px;padding:16px">
+    <div style="width:36px;height:36px;border-radius:13px;background:var(--hot);display:grid;place-items:center;flex:none">↑</div>
+    <div style="flex:1"><div style="font-size:13.5px;font-weight:600">Leisure is €8 over</div>
+      <div style="font-size:11.5px;opacity:.62;margin-top:2px">Cover it from Transport</div></div>
+    <div class="chip" style="background:#ffffff1f;color:#fff">Cover</div>
+  </div>
+</div>
+<div class="nav"><i></i><i></i><div class="fab">+</div><div class="act"><i></i></div><i></i></div></div></div><div class="cap"><b>Envelopes</b>Image 2's tile grid, but each hue is bound to a category and each ring is real pacing. Over-budget gets a dot, not a red card. The dark strip is the only place a sentence is allowed.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:6px">
+  <h2 class="title">What's <em>ahead</em></h2>
+  <div class="sub">Next 24 days · 9 payments scheduled</div>
+  <div class="pillrow" style="margin-top:18px;justify-content:space-between"><span class="pill" style="width:38px;text-align:center;padding:9px 0">MO</span><span class="pill" style="width:38px;text-align:center;padding:9px 0">TU</span><span class="pill" style="width:38px;text-align:center;padding:9px 0">WE</span><span class="pill" style="width:38px;text-align:center;padding:9px 0">TH</span><span class="pill on" style="width:38px;text-align:center;padding:9px 0">FR</span><span class="pill" style="width:38px;text-align:center;padding:9px 0">SA</span><span class="pill" style="width:38px;text-align:center;padding:9px 0">SU</span></div>
+</div>
+
+<div style="position:relative;margin-top:20px">
+  <svg viewBox="0 0 330 120" width="100%" height="150" style="overflow:visible">
+    <defs>
+      <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0" x2="0" y2="7" stroke="#9E432C" stroke-width="2.6" opacity=".38"/></pattern>
+    </defs>
+    <line x1="8.0" y1="18" x2="8.0" y2="100" stroke="#C9D1C4" stroke-width="2.2" opacity="0.9"/><line x1="21.65" y1="18" x2="21.65" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="35.3" y1="18" x2="35.3" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="48.96" y1="18" x2="48.96" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="62.61" y1="18" x2="62.61" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="76.26" y1="18" x2="76.26" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="89.91" y1="18" x2="89.91" y2="100" stroke="#C9D1C4" stroke-width="2.2" opacity="0.9"/><line x1="103.57" y1="18" x2="103.57" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="117.22" y1="18" x2="117.22" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="130.87" y1="18" x2="130.87" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="144.52" y1="18" x2="144.52" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="158.17" y1="18" x2="158.17" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="171.83" y1="18" x2="171.83" y2="100" stroke="#C9D1C4" stroke-width="2.2" opacity="0.9"/><line x1="185.48" y1="18" x2="185.48" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="199.13" y1="18" x2="199.13" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="212.78" y1="18" x2="212.78" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="226.43" y1="18" x2="226.43" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="240.09" y1="18" x2="240.09" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="253.74" y1="18" x2="253.74" y2="100" stroke="#C9D1C4" stroke-width="2.2" opacity="0.9"/><line x1="267.39" y1="18" x2="267.39" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="281.04" y1="18" x2="281.04" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="294.7" y1="18" x2="294.7" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="308.35" y1="18" x2="308.35" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/><line x1="322.0" y1="18" x2="322.0" y2="100" stroke="#C9D1C4" stroke-width="1" opacity="0.5"/>
+    <rect x="117.22" y="18" width="54.61" height="82" fill="url(#hatch)"/>
+    <path d="M 8.00,79.60 C 10.28,78.99 17.10,76.11 21.65,75.96 C 26.20,75.80 30.75,80.06 35.30,78.69 C 39.86,77.32 44.41,71.55 48.96,67.76 C 53.51,63.96 58.06,56.97 62.61,55.91 C 67.16,54.85 71.71,59.10 76.26,61.38 C 80.81,63.66 85.36,67.76 89.91,69.58 C 94.46,71.40 99.01,73.07 103.57,72.31 C 108.12,71.55 112.67,69.88 117.22,65.02 C 121.77,60.16 126.32,48.93 130.87,43.16 C 135.42,37.39 139.97,31.61 144.52,30.40 C 149.07,29.19 153.62,32.22 158.17,35.87 C 162.72,39.51 167.28,47.86 171.83,52.27 C 176.38,56.67 180.93,59.56 185.48,62.29 C 190.03,65.02 194.58,67.15 199.13,68.67 C 203.68,70.19 208.23,70.64 212.78,71.40 C 217.33,72.16 221.88,75.35 226.43,73.22 C 230.99,71.10 235.54,63.20 240.09,58.64 C 244.64,54.09 249.19,47.10 253.74,45.89 C 258.29,44.67 262.84,48.47 267.39,51.36 C 271.94,54.24 276.49,60.01 281.04,63.20 C 285.59,66.39 290.14,68.67 294.70,70.49 C 299.25,72.31 303.80,73.22 308.35,74.13 C 312.90,75.04 319.72,75.65 322.00,75.96" fill="none" stroke="#10130F" stroke-width="2.2" stroke-dasharray="1 5" stroke-linecap="round"/>
+    <line x1="144.52" y1="18" x2="144.52" y2="100" stroke="#10130F" stroke-width="1.4"/>
+    <circle cx="144.52" cy="30.4" r="6" fill="#10130F"/>
+    <circle cx="48.96" cy="76" r="4.5" fill="#fff" stroke="#10130F" stroke-width="2"/>
+    <circle cx="253.74" cy="52" r="4.5" fill="#fff" stroke="#10130F" stroke-width="2"/>
+    <g font-family="Space Grotesk,sans-serif" font-size="9.5" fill="#8A9185">
+      <text x="4" y="115">8 Sep</text><text x="150" y="115">20</text><text x="298" y="115">2 Oct</text></g>
+  </svg>
+  <div style="position:absolute;right:24px;top:-14px;text-align:right">
+    <div class="fig f34">€1,842</div>
+    <div style="font-size:11px;color:var(--ink-3)">leaves before payday</div>
+  </div>
+  <div style="position:absolute;left:112px;bottom:34px;font-family:var(--dis);font-size:15px;font-weight:600;color:var(--debt-ink)">tight week</div>
+</div>
+
+<div class="pad" style="margin-top:6px">
+  <div class="card" style="padding:6px 18px">
+    <div class="row"><div class="sq" style="background:var(--debt);color:var(--debt-ink)">🏠</div>
+      <div><div class="nm">Rent</div><div class="mt">Thu 11 Sep · every month</div></div><div class="amt">€1,180</div></div>
+    <div class="row"><div class="sq" style="background:var(--reserve);color:var(--reserve-ink)">＋</div>
+      <div><div class="nm">Zilveren Kruis</div><div class="mt">Fri 12 Sep · every month</div></div><div class="amt">€148</div></div>
+    <div class="row"><div class="sq" style="background:var(--income);color:var(--income-ink)">♪</div>
+      <div><div class="nm">Spotify</div><div class="mt">Mon 15 Sep · unused 61 days</div></div><div class="amt" style="color:var(--hot)">€11.99</div></div>
+  </div>
+</div>
+<div class="nav"><i></i><div class="act"><i></i></div><div class="fab">+</div><i></i><i></i></div></div></div><div class="cap"><b>Ahead</b>Image 2's audience-flow chart repurposed: tick lines are days, the hatched band is the squeeze between rent and payday, the dotted curve is outflow pressure.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:6px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><h2 class="title">Invested</h2>
+      <div class="fig f46" style="margin-top:12px">€61,430</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <span class="chip" style="background:var(--liquid);color:var(--liquid-ink)">+€9,180 gain</span>
+        <span class="chip" style="background:var(--paper-2);color:var(--ink-2)">0.19% fees</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:22px">
+    <div style="display:flex;height:44px;border-radius:16px;overflow:hidden;gap:3px">
+      <div style="flex:46;background:#0C5A47"></div><div style="flex:34;background:#2B3480"></div>
+      <div style="flex:13;background:#8A5A0B"></div><div style="flex:7;background:#9E432C"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:11px;color:var(--ink-2)">
+      <span>46% World</span><span>34% Developed</span><span>13% Bonds</span><span>7% Crypto</span></div>
+  </div>
+
+  <div class="tile" style="background:var(--invest);color:var(--invest-ink);margin-top:18px;display:flex;gap:14px;align-items:center;padding:16px">
+    <svg width="46" height="46" viewBox="0 0 46 46" style="flex:none">
+      <circle cx="23" cy="23" r="18" fill="none" stroke="#2B348030" stroke-width="6"/>
+      <circle cx="23" cy="23" r="18" fill="none" stroke="#2B3480" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="113" stroke-dashoffset="96" transform="rotate(-90 23 23)"/></svg>
+    <div style="flex:1"><div style="font-size:13.5px;font-weight:600">Bonds drifted 4pts low</div>
+      <div style="font-size:11.5px;opacity:.72;margin-top:2px">€2,460 buy brings it back</div></div>
+    <div class="chip" style="background:#2B348021;color:#2B3480">Fix</div>
+  </div>
+
+  <div style="font-size:14.5px;font-weight:600;margin:22px 0 2px">Holdings</div>
+  <div class="row">
+      <div class="sq" style="background:#0C5A471a;color:#0C5A47;font-size:10.5px;font-weight:700">VWRL</div>
+      <div style="flex:1;min-width:0"><div class="nm">Vanguard All-World</div><div class="mt">+18.2% since bought</div></div>
+      <svg width="56" height="22" viewBox="0 0 56 22" style="margin-right:10px;overflow:visible">
+        <path d="M 0.00,20.00 C 0.85,19.68 3.39,18.26 5.09,18.11 C 6.79,17.95 8.48,19.53 10.18,19.05 C 11.88,18.58 13.58,15.74 15.27,15.26 C 16.97,14.79 18.67,16.68 20.36,16.21 C 22.06,15.74 23.76,12.89 25.45,12.42 C 27.15,11.95 28.85,13.84 30.55,13.37 C 32.24,12.89 33.94,10.53 35.64,9.58 C 37.33,8.63 39.03,7.84 40.73,7.68 C 42.42,7.53 44.12,9.11 45.82,8.63 C 47.52,8.16 49.21,5.95 50.91,4.84 C 52.61,3.74 55.15,2.47 56.00,2.00" fill="none" stroke="#0C5A47" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="amt" style="font-size:15.5px">€28,410</div></div><div class="row">
+      <div class="sq" style="background:#2B34801a;color:#2B3480;font-size:10.5px;font-weight:700">IWDA</div>
+      <div style="flex:1;min-width:0"><div class="nm">iShares Core World</div><div class="mt">+14.7% since bought</div></div>
+      <svg width="56" height="22" viewBox="0 0 56 22" style="margin-right:10px;overflow:visible">
+        <path d="M 0.00,18.20 C 0.85,18.50 3.39,20.15 5.09,20.00 C 6.79,19.85 8.48,18.05 10.18,17.30 C 11.88,16.55 13.58,15.65 15.27,15.50 C 16.97,15.35 18.67,16.85 20.36,16.40 C 22.06,15.95 23.76,13.85 25.45,12.80 C 27.15,11.75 28.85,10.25 30.55,10.10 C 32.24,9.95 33.94,12.20 35.64,11.90 C 37.33,11.60 39.03,9.35 40.73,8.30 C 42.42,7.25 44.12,5.90 45.82,5.60 C 47.52,5.30 49.21,7.10 50.91,6.50 C 52.61,5.90 55.15,2.75 56.00,2.00" fill="none" stroke="#2B3480" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="amt" style="font-size:15.5px">€21,060</div></div><div class="row">
+      <div class="sq" style="background:#8A5A0B1a;color:#8A5A0B;font-size:10.5px;font-weight:700">AGGH</div>
+      <div style="flex:1;min-width:0"><div class="nm">Global Aggregate Bond</div><div class="mt">−1.4% since bought</div></div>
+      <svg width="56" height="22" viewBox="0 0 56 22" style="margin-right:10px;overflow:visible">
+        <path d="M 0.00,2.00 C 0.85,2.00 3.39,1.25 5.09,2.00 C 6.79,2.75 8.48,5.75 10.18,6.50 C 11.88,7.25 13.58,5.75 15.27,6.50 C 16.97,7.25 18.67,11.00 20.36,11.00 C 22.06,11.00 23.76,6.50 25.45,6.50 C 27.15,6.50 28.85,9.50 30.55,11.00 C 32.24,12.50 33.94,15.50 35.64,15.50 C 37.33,15.50 39.03,11.00 40.73,11.00 C 42.42,11.00 44.12,14.00 45.82,15.50 C 47.52,17.00 49.21,20.00 50.91,20.00 C 52.61,20.00 55.15,16.25 56.00,15.50" fill="none" stroke="#9E432C" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="amt" style="font-size:15.5px">€7,940</div></div><div class="row">
+      <div class="sq" style="background:#9E432C1a;color:#9E432C;font-size:10.5px;font-weight:700">BTC</div>
+      <div style="flex:1;min-width:0"><div class="nm">Bitcoin</div><div class="mt">+61.0% since bought</div></div>
+      <svg width="56" height="22" viewBox="0 0 56 22" style="margin-right:10px;overflow:visible">
+        <path d="M 0.00,20.00 C 0.85,19.53 3.39,17.40 5.09,17.20 C 6.79,17.00 8.48,19.13 10.18,18.80 C 11.88,18.47 13.58,15.60 15.27,15.20 C 16.97,14.80 18.67,17.00 20.36,16.40 C 22.06,15.80 23.76,12.07 25.45,11.60 C 27.15,11.13 28.85,14.13 30.55,13.60 C 32.24,13.07 33.94,8.93 35.64,8.40 C 37.33,7.87 39.03,10.87 40.73,10.40 C 42.42,9.93 44.12,6.13 45.82,5.60 C 47.52,5.07 49.21,7.80 50.91,7.20 C 52.61,6.60 55.15,2.87 56.00,2.00" fill="none" stroke="#9E432C" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="amt" style="font-size:15.5px">€4,020</div></div>
+</div>
+<div class="nav"><i></i><i></i><div class="fab">+</div><div class="act"><i></i></div><i></i></div></div></div><div class="cap"><b>Invested</b>Allocation as one 44px stacked bar rather than a second donut. Sparklines live in the row, so the list is a chart. Drift becomes a single actionable tile with a number in it.</div></div><div class="slot"><div class="phone"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:14px;display:flex;flex-direction:column;height:100%">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:14px;color:var(--ink-3)">Cancel</span>
+    <span style="font-size:14.5px;font-weight:600">New payment</span>
+    <span style="font-size:14px;color:var(--ink-3)">Split</span>
+  </div>
+
+  <div style="text-align:center;margin-top:38px">
+    <div class="fig" style="font-size:72px">€42<span class="unit">.10</span><i style="display:inline-block;width:3px;height:56px;background:var(--hot);margin-left:5px;vertical-align:-6px;border-radius:2px"></i></div>
+    <div style="font-size:12.5px;color:var(--ink-3);margin-top:12px">from Bunq current · €2,140 safe after this</div>
+  </div>
+
+  <div style="display:flex;gap:8px;overflow:hidden;margin-top:30px">
+    <span class="chip" style="background:var(--spend);color:var(--spend-ink);padding:9px 14px;font-size:12.5px">🛒 Groceries</span>
+    <span class="chip" style="background:#fff;color:var(--ink-2);padding:9px 14px;font-size:12.5px">🚲 Transport</span>
+    <span class="chip" style="background:#fff;color:var(--ink-2);padding:9px 14px;font-size:12.5px">🍽 Eating out</span>
+  </div>
+
+  <div class="card" style="margin-top:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+    <div class="sq" style="background:var(--spend);color:var(--spend-ink)">☕</div>
+    <div style="flex:1"><div class="nm">Albert Heijn</div>
+      <div class="mt">Matched from your last 14 payments</div></div>
+    <span style="font-size:12.5px;color:var(--hot);font-weight:500">Change</span>
+  </div>
+
+  <div style="margin-top:auto;padding-bottom:24px">
+    <div class="pad3" style="padding:0">
+      <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div>
+      <div class="key sm">.</div><div class="key">0</div><div class="key sm">⌫</div>
+    </div>
+    <div style="height:56px;border-radius:20px;background:var(--ink);color:#fff;display:grid;place-items:center;
+      font-size:15.5px;font-weight:600;margin-top:12px">Record €42.10</div>
+  </div>
+</div></div></div><div class="cap"><b>Record</b>Entry is a full-screen moment, not a sheet full of fields. Amount is 72px, the payee is guessed, and the button says what it does with the figure inside it.</div></div><div class="slot"><div class="phone dark"><div class="notch"></div><div class="status">
+      <span>9:41</span>
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:13px"></i>
+        <svg width="17" height="12" viewBox="0 0 17 12" style="margin-left:5px" fill="currentColor">
+        <path d="M8.5 9.6 5.9 7c1.5-1.3 3.7-1.3 5.2 0L8.5 9.6zM3.4 4.5C6.3 1.8 10.7 1.8 13.6 4.5l1.5-1.6C11.4-.7 5.6-.7 1.9 2.9l1.5 1.6z"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" style="margin-left:5px" fill="none">
+        <rect x=".6" y=".6" width="20" height="10.8" rx="3.2" stroke="currentColor" stroke-opacity=".4"/>
+        <rect x="2.2" y="2.2" width="16" height="7.6" rx="2" fill="currentColor"/>
+        <path d="M22.4 4v4c1-.3 1.6-1 1.6-2s-.6-1.7-1.6-2z" fill="currentColor" fill-opacity=".5"/></svg>
+      </span></div><div class="screen">
+<div class="pad" style="padding-top:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2 class="title">Vault</h2>
+    <div class="icobtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#EAF2EE" stroke-width="1.9">
+      <rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/></svg></div>
+  </div>
+
+  <div class="card" style="margin-top:20px;padding:22px">
+    <div style="font-size:12.5px;color:#7E8F89">Everything, net</div>
+    <div class="fig f46" style="margin-top:10px">€296,480</div>
+    <svg viewBox="0 0 300 60" width="100%" height="60" style="margin-top:16px;overflow:visible">
+      <path d="M 0.00,116.40 C 2.30,115.97 9.22,114.14 13.83,113.82 C 18.43,113.50 23.04,115.11 27.65,114.47 C 32.26,113.82 36.87,111.24 41.48,109.96 C 46.09,108.67 50.70,107.06 55.30,106.73 C 59.91,106.41 64.52,108.67 69.13,108.02 C 73.74,107.38 78.35,104.48 82.96,102.87 C 87.57,101.26 92.17,99.64 96.78,98.36 C 101.39,97.07 106.00,95.46 110.61,95.13 C 115.22,94.81 119.83,97.17 124.43,96.42 C 129.04,95.67 133.65,92.45 138.26,90.62 C 142.87,88.80 147.48,87.08 152.09,85.47 C 156.70,83.86 161.30,81.28 165.91,80.96 C 170.52,80.63 175.13,84.39 179.74,83.53 C 184.35,82.67 188.96,77.95 193.57,75.80 C 198.17,73.65 202.78,72.26 207.39,70.64 C 212.00,69.03 216.61,68.17 221.22,66.13 C 225.83,64.09 230.43,60.66 235.04,58.40 C 239.65,56.14 244.26,54.10 248.87,52.60 C 253.48,51.10 258.09,50.88 262.70,49.38 C 267.30,47.87 271.91,45.94 276.52,43.58 C 281.13,41.21 285.74,37.35 290.35,35.20 C 294.96,33.05 299.57,33.05 304.17,30.69 C 308.78,28.33 315.70,22.63 318.00,21.02" fill="none" stroke="#5FD3AE" stroke-width="2.4" stroke-linecap="round"
+        transform="scale(0.94,0.431)"/>
+    </svg>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#7E8F89">
+      <span>2 years ago</span><span>today</span></div>
+  </div>
+
+  <div class="two" style="margin-top:14px"><div class="tile" style="background:#B9E2D2;color:#0C5A47;padding:16px">
+      <div style="font-size:12.5px;font-weight:500;opacity:.75">Bunq current</div>
+      <div class="fig f26" style="margin-top:10px">€4,180</div></div><div class="tile" style="background:#C3DEE3;color:#1D4B55;padding:16px">
+      <div style="font-size:12.5px;font-weight:500;opacity:.75">ASN savings</div>
+      <div class="fig f26" style="margin-top:10px">€21,400</div></div><div class="tile" style="background:#C6CCF2;color:#2B3480;padding:16px">
+      <div style="font-size:12.5px;font-weight:500;opacity:.75">DEGIRO</div>
+      <div class="fig f26" style="margin-top:10px">€61,430</div></div><div class="tile" style="background:#F4C6B6;color:#9E432C;padding:16px">
+      <div style="font-size:12.5px;font-weight:500;opacity:.75">Mortgage</div>
+      <div class="fig f26" style="margin-top:10px">−€86,020</div></div></div>
+
+  <div style="display:flex;align-items:center;gap:11px;margin-top:20px;padding:14px 16px;border-radius:20px;background:#ffffff0d">
+    <span style="width:8px;height:8px;border-radius:50%;background:#5FD3AE;flex:none"></span>
+    <div style="font-size:12.5px;color:#9DB0A9;line-height:1.45">Held on this phone. Nothing leaves it.</div>
+    <span style="margin-left:auto;font-size:12px;color:#5FD3AE;font-weight:500">Back up</span>
+  </div>
+</div>
+<div class="nav"><i></i><i></i><div class="fab">+</div><i></i><div class="act"><i></i></div></div></div></div><div class="cap"><b>Vault</b>The only dark screen in the app. Darkness is now a signal \u2014 this is the private, at-rest view \u2014 instead of the default everything is painted with.</div></div></div>
+</body></html>

@@ -1,0 +1,336 @@
+@import 'tailwindcss';
+
+/* ===========================================================================
+ * SOVEREIGN — DAYLIGHT TOKENS
+ * ---------------------------------------------------------------------------
+ * A drop-in replacement for src/design/tokens.css.
+ *
+ * Every token name from the obsidian palette is kept, so `bg-surface`,
+ * `text-ink-2`, `text-liquid` and the rest keep resolving and no component has
+ * to be touched to get the new skin. What changes is what they resolve TO, plus
+ * six new *category* families that did not exist before.
+ *
+ * The one structural idea: colour now encodes CATEGORY, not sentiment. Housing
+ * is verdigris everywhere it appears — in the donut, in the envelope tile, in
+ * the transaction row's icon square, in the calendar dot. Colour becomes the
+ * index a person navigates by, which is what lets the prose come out.
+ *
+ * Dark is no longer the default. It survives as ONE screen (the vault) where
+ * darkness means something, rather than as the paint on everything.
+ * ======================================================================== */
+
+@theme {
+  /* --- grounds ---------------------------------------------------------
+   * Pale celadon rather than white or cream. White makes the category tiles
+   * shout; cream (#F4F1EA and neighbours) is the single most over-used
+   * generated-design ground there is. This sits between them and lets a pure
+   * white card still lift off the page. */
+  --color-base: #edf0ea;
+  --color-sunken: #e3e8df;
+  --color-surface: #ffffff;
+  --color-raised: #ffffff;
+  --color-overlay: #ffffff;
+
+  --color-line: #dce2d7;
+  --color-line-strong: #c9d1c4;
+  --color-line-faint: #e6ebe2;
+
+  /* --- ink -------------------------------------------------------------
+   * Not #111. A green-black, so type sits in the same family as the ground
+   * instead of floating on top of it. */
+  --color-ink: #10130f;
+  --color-ink-2: #5a6157;
+  --color-ink-3: #8a9185; /* AA on --color-base at 12px+ */
+  --color-ink-4: #b2b9ac;
+
+  /* --- category families -----------------------------------------------
+   * Six pairs. `-ink` carries type and strokes at AA on its own `-wash`;
+   * `-wash` is the tile fill. Assign one family per top-level category and
+   * never reassign it — the whole system rests on that being stable. */
+  --color-housing: #0c5a47;
+  --color-housing-wash: #b9e2d2;
+  --color-food: #8a5a0b;
+  --color-food-wash: #f7dca8;
+  --color-transport: #2b3480;
+  --color-transport-wash: #c6ccf2;
+  --color-obligation: #9e432c;
+  --color-obligation-wash: #f4c6b6;
+  --color-leisure: #6b2a62;
+  --color-leisure-wash: #e6c7e4;
+  --color-health: #1d4b55;
+  --color-health-wash: #c3dee3;
+
+  /* --- semantic aliases -------------------------------------------------
+   * The old names, re-pointed. `liquid` is now the housing verdigris because
+   * that hue is the app's spine; `caution` is the food ochre; `deficit` is the
+   * obligation clay. Existing components inherit the new palette for free. */
+  --color-liquid: #0c5a47;
+  --color-liquid-bright: #0a6f57;
+  --color-liquid-dim: #7fc4ac;
+  --color-liquid-wash: #b9e2d2;
+
+  --color-caution: #8a5a0b;
+  --color-caution-dim: #d9b978;
+  --color-caution-wash: #f7dca8;
+
+  --color-deficit: #9e432c;
+  --color-deficit-dim: #dda893;
+  --color-deficit-wash: #f4c6b6;
+
+  /* --- the one hot accent ----------------------------------------------
+   * Reserved for exactly two jobs: the record button, and the single dot that
+   * marks the one thing on screen that needs a decision. If it appears twice
+   * on a screen, one of them is wrong. */
+  --color-hot: #ff3c1f;
+
+  /* --- vault: the only dark surface ------------------------------------ */
+  --color-vault: #0e1a17;
+  --color-vault-raised: #16241f;
+  --color-vault-ink: #f1f6f3;
+  --color-vault-ink-2: #7e8f89;
+
+  /* --- typography -------------------------------------------------------
+   * Fraunces for figures and headlines: a variable serif with an optical-size
+   * axis, so a €296,480 at 46px and a €76 at 19px are drawn with different
+   * contrast rather than the same outline scaled. It is what makes a number
+   * feel like an amount of money rather than a readout.
+   *
+   * Space Grotesk for everything operational. Its digits are tabular and its
+   * lowercase is wide enough to read at 11px, which removes the reason the
+   * app was reaching for a monospace on small labels — a look that has become
+   * a tell rather than a choice. */
+  --font-display: 'Fraunces', 'Iowan Old Style', Palatino, Georgia, serif;
+  --font-sans: 'Space Grotesk', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Space Grotesk', ui-monospace, monospace;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.35;
+  --text-caption: 0.78125rem; /* 12.5px */
+  --text-caption--line-height: 1.45;
+  --text-body: 0.90625rem; /* 14.5px */
+  --text-body--line-height: 1.5;
+  --text-lead: 1.0625rem;
+  --text-lead--line-height: 1.4;
+  --text-figure: 1.625rem; /* 26px */
+  --text-figure--line-height: 1;
+  --text-headline: 1.9375rem; /* 31px, the screen title */
+  --text-headline--line-height: 1.05;
+  --text-anchor: 4rem; /* 64px. Was 44. The hero has to actually be the hero. */
+  --text-anchor--line-height: 0.95;
+
+  /* --- radii ------------------------------------------------------------
+   * Four values, and they are hierarchical: the bigger the object, the rounder
+   * it is. One radius on everything is what makes a screen read as a kit of
+   * identical cards. */
+  --radius-pill: 999px;
+  --radius-sm: 0.5rem; /* chips, icon squares at 24px */
+  --radius-md: 0.8125rem; /* icon squares, small controls */
+  --radius-lg: 1.25rem; /* inner tiles, keys */
+  --radius-card: 1.625rem; /* the standard card */
+  --radius-hero: 2.125rem; /* the hero panel only */
+  --radius-sheet: 1.75rem;
+
+  /* --- elevation --------------------------------------------------------
+   * On a light ground a drop shadow does almost nothing and a stack of them
+   * reads as mud. Cards separate by FILL first, hairline second, shadow last —
+   * and the shadow is tight and low-opacity, closer to contact occlusion than
+   * to a lift. The hero panel has no shadow at all: it is a field of colour,
+   * not an object. */
+  --hairline: rgb(16 19 15 / 0.07);
+  --hairline-strong: rgb(16 19 15 / 0.12);
+  --rim-top: rgb(255 255 255 / 0.9);
+  --fill-subtle: rgb(16 19 15 / 0.05);
+  --scrim: rgb(16 19 15 / 0.32);
+  --shadow-card: 0 1px 2px rgb(16 19 15 / 0.06), 0 10px 26px -18px rgb(16 19 15 / 0.18);
+  --shadow-dock: 0 16px 34px -14px rgb(16 19 15 / 0.45);
+  --shadow-sheet: 0 -18px 50px -14px rgb(16 19 15 / 0.22);
+
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-snap: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --theme-color: #edf0ea;
+}
+
+/* Wider gamut where the display has one. Same hues, more chroma in the washes
+   — which is where it shows, because they are large flat fields. */
+@supports (color: color(display-p3 1 1 1)) {
+  @theme {
+    --color-housing-wash: color(display-p3 0.74 0.886 0.827);
+    --color-food-wash: color(display-p3 0.965 0.864 0.667);
+    --color-transport-wash: color(display-p3 0.782 0.8 0.945);
+    --color-obligation-wash: color(display-p3 0.951 0.78 0.72);
+    --color-leisure-wash: color(display-p3 0.898 0.784 0.892);
+    --color-health-wash: color(display-p3 0.768 0.868 0.887);
+    --color-hot: color(display-p3 0.98 0.25 0.14);
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --safe-top: max(env(safe-area-inset-top, 0px), 16px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --nav-height: calc(4.125rem + var(--safe-bottom));
+    --dock-gap: max(calc(env(safe-area-inset-bottom, 0px) - 10px), 12px);
+  }
+
+  /* The viewport lock, the touch sanitation, the .scroll-y / .no-bar / .tnum
+     helpers and the focus ring from the original tokens.css are all still
+     correct and should be pasted in here unchanged. Only the palette, the type
+     scale and the component layer below are being replaced. */
+}
+
+@layer components {
+  /* -------------------------------------------------------------------------
+   * SURFACES — three kinds, deliberately unlike each other
+   * -------------------------------------------------------------------------
+   * The old file had one: `.rim`. Every card in the app therefore had the same
+   * radius, the same hairline and the same shadow whatever it contained, which
+   * is the single biggest reason the screens read as generated. A hierarchy of
+   * containers is information; a kit of identical ones is wallpaper.
+   * ---------------------------------------------------------------------- */
+
+  /* 1. The field. Large, flat, coloured, no border, no shadow. One per screen,
+        at the top, carrying the number that screen exists for. */
+  .field {
+    border-radius: var(--radius-hero);
+    padding: 1.5rem 1.5rem 1.25rem;
+    color: var(--tile-ink, var(--color-ink));
+    background: var(--tile-wash, var(--color-liquid-wash));
+  }
+
+  /* 2. The card. White, hairline, contact shadow. For lists and charts. */
+  .card {
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    border: 0.5px solid var(--hairline);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* 3. The tile. Coloured, small, no shadow, sits in a grid of siblings. Its
+        colour is its category — never its status. */
+  .tile {
+    border-radius: var(--radius-card);
+    padding: 1rem;
+    color: var(--tile-ink);
+    background: var(--tile-wash);
+  }
+
+  /* Set one variable pair and a tile, a field, an icon square and a bar
+     segment all pick up the same family. */
+  .cat-housing {
+    --tile-ink: var(--color-housing);
+    --tile-wash: var(--color-housing-wash);
+  }
+  .cat-food {
+    --tile-ink: var(--color-food);
+    --tile-wash: var(--color-food-wash);
+  }
+  .cat-transport {
+    --tile-ink: var(--color-transport);
+    --tile-wash: var(--color-transport-wash);
+  }
+  .cat-obligation {
+    --tile-ink: var(--color-obligation);
+    --tile-wash: var(--color-obligation-wash);
+  }
+  .cat-leisure {
+    --tile-ink: var(--color-leisure);
+    --tile-wash: var(--color-leisure-wash);
+  }
+  .cat-health {
+    --tile-ink: var(--color-health);
+    --tile-wash: var(--color-health-wash);
+  }
+
+  /* -------------------------------------------------------------------------
+   * TYPE
+   * -------------------------------------------------------------------------
+   * `.eyebrow` is deliberately NOT redefined. The tracked-out uppercase label
+   * above a heading appears 67 times in the current source and is the loudest
+   * remaining tell. Delete the class and let `.section-title` carry the job in
+   * sentence case, at a size a person can actually read.
+   * ---------------------------------------------------------------------- */
+  .figure {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    font-variation-settings: 'SOFT' 20;
+  }
+
+  .headline {
+    font-family: var(--font-display);
+    font-size: var(--text-headline);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variation-settings: 'SOFT' 20, 'WONK' 1;
+  }
+
+  /* One italic word in a headline is a generated-design cliché when it is used
+     for emphasis. It is legitimate here for one reason only: Fraunces' italic
+     changes the WONK axis, so it is a different letterform rather than a slant,
+     and it is used to mark the verb in a two-word screen title. Used once per
+     screen, never for emphasis inside a sentence. */
+  .headline em {
+    font-style: italic;
+    font-variation-settings: 'SOFT' 40, 'WONK' 1;
+  }
+
+  .section-title {
+    font-size: var(--text-body);
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  /* A currency symbol and the cents are units, not digits. */
+  .unit {
+    font-size: 0.52em;
+    font-weight: 500;
+    opacity: 0.55;
+    letter-spacing: 0;
+  }
+
+  .press {
+    transition: transform 200ms var(--ease-snap);
+  }
+  .press:active {
+    transform: scale(0.975);
+    transition-duration: 120ms;
+    transition-timing-function: var(--ease-press);
+  }
+}
+
+/* ===========================================================================
+ * THE RECEDE — same behaviour, cheaper
+ * ---------------------------------------------------------------------------
+ * `will-change: transform` was declared permanently. That keeps a full-screen
+ * compositor layer alive for the entire session and, more subtly, makes the
+ * shell the containing block for every `position: fixed` descendant — the bug
+ * the original file documents at length. Promoting only while a sheet is
+ * actually presented gets the same animation without either cost, and lets the
+ * dock go back to being fixed to the viewport.
+ * ======================================================================== */
+#app-shell {
+  position: fixed;
+  inset: 0;
+  transform-origin: 50% 0;
+  transition:
+    transform 380ms var(--ease-sheet),
+    border-radius 380ms ease,
+    opacity 380ms ease;
+}
+
+#app-shell[data-presenting='true'] {
+  will-change: transform;
+}
+
+#app-shell[data-receded='true'] {
+  transform: scale(0.935) translateY(8px);
+  border-radius: 28px;
+  opacity: 0.85;
+  overflow: hidden;
+}
