@@ -1,7 +1,14 @@
-/* Fonts are bundled, not fetched from a CDN — a local-first ledger must render
- * correctly offline and must not announce itself to a third party at load. */
-import '@fontsource-variable/geist';
-import '@fontsource-variable/jetbrains-mono';
+/* Fonts are bundled, not fetched from a CDN. Two reasons, and the second is
+ * not a preference: a local-first ledger must render correctly offline and
+ * must not announce itself to a third party at load — and `require-corp` is
+ * set on this origin, so a Google Fonts <link> would be blocked outright.
+ *
+ * Fraunces ships as the `opsz` subset rather than `full`. Production runs the
+ * face at its default SOFT and WONK, so those axes do not need to be in the
+ * file to reach the look, and leaving them out costs 54kB less on latin for a
+ * pixel-identical result. See the note in tokens.css. */
+import '@fontsource-variable/fraunces/opsz.css';
+import '@fontsource-variable/space-grotesk';
 import './design/tokens.css';
 
 import { StrictMode } from 'react';

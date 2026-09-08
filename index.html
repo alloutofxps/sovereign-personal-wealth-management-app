@@ -10,12 +10,14 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#050607" />
-    <meta name="color-scheme" content="dark light" />
+    <!-- Daylight is the default, so these are its values. The script below
+         switches both to Midnight's before the first paint where it has to. -->
+    <meta name="theme-color" content="#edf0ea" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Autonomous precision, sovereign wealth." />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Sovereign" />
     <meta name="mobile-web-app-capable" content="yes" />
 
@@ -26,27 +28,53 @@
 
     <!-- Stamp the chosen theme before the first paint.
          This has to run here, in the head, ahead of the stylesheet and well
-         ahead of the bundle: an app that paints obsidian and then flips to
-         white a beat later has already shown the wrong thing. It reads a bare
-         string under one key on purpose, so it needs no parser and cannot be
-         broken by the shape of a persisted store changing.
+         ahead of the bundle: an app that paints one ground and then flips to
+         the other a beat later has already shown the wrong thing. It reads a
+         bare string under one key on purpose, so it needs no parser and cannot
+         be broken by the shape of a persisted store changing.
+
+         Two meta tags move together. `theme-color` is the ground the browser
+         continues past the edges of the page. The iOS status-bar style decides
+         whether the clock and the battery are drawn dark or light, and pinning
+         it to `black-translucent` is what painted white glyphs over a pale
+         ground the moment a light theme existed.
+
+         The two legacy values are translated here as well as in theme.ts,
+         because this runs first and an untranslated `light` would stamp an
+         attribute that matches nothing.
+
          The key matches THEME_STORAGE_KEY in src/app/theme.ts. -->
     <script>
-      try {
-        var t = localStorage.getItem('sovereign.theme');
-        if (t === 'light' || t === 'dark') {
-          document.documentElement.setAttribute('data-theme', t);
-          document
-            .querySelector('meta[name="theme-color"]')
-            .setAttribute('content', t === 'light' ? '#f6f7f8' : '#050607');
-        } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-          document
-            .querySelector('meta[name="theme-color"]')
-            .setAttribute('content', '#f6f7f8');
+      (function () {
+        try {
+          var raw = localStorage.getItem('sovereign.theme');
+          var choice =
+            raw === 'daylight' || raw === 'light'
+              ? 'daylight'
+              : raw === 'midnight' || raw === 'dark'
+                ? 'midnight'
+                : 'system';
+
+          if (choice !== 'system') {
+            document.documentElement.setAttribute('data-theme', choice);
+          }
+
+          var dark =
+            choice === 'midnight' ||
+            (choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+          if (dark) {
+            document
+              .querySelector('meta[name="theme-color"]')
+              .setAttribute('content', '#0b0f22');
+            document
+              .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+              .setAttribute('content', 'black-translucent');
+          }
+        } catch (e) {
+          /* No storage, or none we are allowed to read. Daylight stands. */
         }
-      } catch (e) {
-        /* No storage, or none we are allowed to read. Dark stands. */
-      }
+      })();
     </script>
   </head>
   <body>

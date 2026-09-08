@@ -3,251 +3,387 @@
 /* ===========================================================================
  * SOVEREIGN — DESIGN TOKENS
  * ---------------------------------------------------------------------------
- * A calm, high-contrast dark surface. The palette carries meaning:
- *
- *   liquid   (emerald)  available capital, confirmed state, forward momentum
- *   caution  (amber)    needs a decision: bills due, envelopes needing cover
- *   deficit  (clay)     a negative number. Warm, desaturated, never crimson.
- *   ink      (zinc)     type and rules
- *
- * There is deliberately no `danger` red. Overspending is a number that needs
- * cover, not a failure that needs a siren. The research is explicit that
- * punitive deficit framing is what drives the Ostrich Effect and churn.
+ * Two themes. Daylight is the default and Midnight is the considered dark one;
+ * neither is the other inverted.
  *
  * ---------------------------------------------------------------------------
- * ON THE TWO COLOUR SPACES
+ * THE ONE STRUCTURAL IDEA
  *
- * Every accent is declared twice: once in sRGB, then again in Display P3
- * behind an @supports guard. On a modern iPhone the emerald gains roughly a
- * quarter more chroma without shifting hue, and the obsidian grounds sit
- * deeper. On anything older the first declaration stands and nothing is lost.
+ * Colour encodes CATEGORY, never sentiment. Housing is the same verdigris in
+ * the donut, the envelope tile, the transaction row's icon square and the
+ * calendar dot. Colour becomes the index a person navigates by — and that is
+ * what makes it possible to delete the explanatory prose from the screens,
+ * because the screen is showing them the answer instead of describing it.
  *
- * The hex values are not approximations of the P3 ones. They are the colours
- * this app shipped with, kept exactly, so no existing screenshot or
- * expectation changes on a display that cannot render the wider gamut.
+ * Six families, each a `-ink` that carries type and strokes and a `-wash` that
+ * fills. Bind one with a single class (`.cat-housing`) and a tile, a field, an
+ * icon square, a ring and a bar segment all pick it up.
+ *
+ * Never reassign a family's hue. Never use one to mean good or bad.
+ *
+ * ---------------------------------------------------------------------------
+ * THE OLD NAMES STILL RESOLVE
+ *
+ * `liquid`, `caution` and `deficit` are kept and re-pointed: liquid is the
+ * housing verdigris because that hue is the app's spine, caution is the food
+ * ochre, deficit is the obligation clay. Every existing component inherits the
+ * new palette without being touched.
+ *
+ * ---------------------------------------------------------------------------
+ * CONTRAST IS COMPUTED, NOT EYEBALLED
+ *
+ * Three values here differ from the ones in `design-refs/tokens-daylight.css`
+ * as first written, because they did not clear WCAG AA and the brief requires
+ * that they do:
+ *
+ *   --color-ink-3     #8A9185 -> #63695F   was 2.82:1 on base, now 4.91:1
+ *   --color-food      #8A5A0B -> #89590B   was 4.44:1 on its wash, now 4.51:1
+ *   --color-obligation #9E432C -> #943F29  was 4.13:1 on its wash, now 4.53:1
+ *
+ * `ink-3` was the significant one: it carries row metadata, chart axes and
+ * every caption, and the comment claiming it was AA at 12px+ was simply wrong.
+ * `tokens.test.ts` recomputes all of this on every run, so it cannot rot.
+ *
+ * `--color-ink-4` is 1.75:1 on base and stays that way. It is a muted bar fill
+ * and the neutral half of a paired bar; it must never carry type, and the test
+ * asserts exactly that rather than pretending it is a text colour.
  * ======================================================================== */
 
 @theme {
-  /* --- surfaces: obsidian, five elevations ------------------------------ */
-  /* Base is true black on OLED. On an always-dark app it is the one choice
-     that costs no power and gives the accents the most room to sing. */
-  --color-base: #050607;
-  --color-sunken: #010203;
-  --color-surface: #0d1012;
-  --color-raised: #14181b;
-  --color-overlay: #1c2126;
-
-  /* --- zinc rules: subtle by default, never a hard white line ----------- */
-  --color-line: #222729;
-  --color-line-strong: #2f3538;
-  --color-line-faint: #171b1d;
-
-  /* --- ink ------------------------------------------------------------- */
-  --color-ink: #e9edec;
-  --color-ink-2: #98a3a1;
-  --color-ink-3: #7a8482; /* AA on --color-base at 11-13px */
-  --color-ink-4: #4e5654; /* muted fills, the neutral half of a paired bar */
-
-  /* --- liquid: emerald, the primary accent ------------------------------ */
-  --color-liquid: #34d8a0;
-  --color-liquid-bright: #5ceab8;
-  --color-liquid-dim: #1d7f5f;
-  --color-liquid-wash: #0e2b23;
-
-  /* --- caution: warm amber --------------------------------------------- */
-  --color-caution: #e8b03f;
-  --color-caution-dim: #8a6520;
-  --color-caution-wash: #2a2113;
-
-  /* --- deficit: warm clay. Desaturated on purpose. ---------------------- */
-  --color-deficit: #d08a72;
-  --color-deficit-dim: #7d4e3e;
-  --color-deficit-wash: #2a1a15;
-
-  /* --- typography ------------------------------------------------------ */
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
-
-  --text-micro: 0.6875rem; /* 11px, uppercase labels only */
-  --text-micro--line-height: 1.3;
-  --text-caption: 0.8125rem; /* 13px */
-  --text-caption--line-height: 1.4;
-  --text-body: 0.9375rem; /* 15px, the base reading size */
-  --text-body--line-height: 1.5;
-  --text-lead: 1.0625rem; /* 17px */
-  --text-lead--line-height: 1.45;
-  --text-figure: 1.5rem; /* 24px, secondary numbers */
-  --text-figure--line-height: 1.15;
-  --text-anchor: 2.75rem; /* 44px, the Safe-to-Spend anchor */
-  --text-anchor--line-height: 1;
-
-  /* --- radii ----------------------------------------------------------- */
-  --radius-pill: 999px;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-sheet: 1.5rem;
-
-  /* --- overlays --------------------------------------------------------
-   * The values that used to be written into components as `white/8` and
-   * `black/60`. They are the only things in the palette that have to invert
-   * between themes rather than merely change shade: a rim highlight lit from
-   * above is white on a dark card and white on a light one, but a hairline is
-   * white on dark and *black* on light. Naming them by job rather than by
-   * colour is what lets one component serve both. */
-  --hairline: rgb(255 255 255 / 0.07);
-  --hairline-strong: rgb(255 255 255 / 0.1);
-  --rim-top: rgb(255 255 255 / 0.08);
-  --fill-subtle: rgb(255 255 255 / 0.08);
-  --scrim: rgb(0 0 0 / 0.6);
-  --shadow-card: 0 8px 24px -4px rgb(0 0 0 / 0.45);
-  --shadow-dock: 0 12px 32px -8px rgb(0 0 0 / 0.6);
-  --shadow-sheet: 0 -16px 48px -12px rgb(0 0 0 / 0.7);
-
-  /* --- motion ----------------------------------------------------------
-   * One easing curve for anything that moves under a finger. It is the
-   * standard iOS sheet curve: fast to leave, slow to settle, no bounce.
-   * A second, springier curve is used only where something snaps back. */
-  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-snap: cubic-bezier(0.175, 0.885, 0.32, 1.1);
-  --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  /* --- the browser's own chrome ----------------------------------------
-   * What the phone paints around the app: the iOS status bar, the Android
-   * system bars, the gutter an overscroll reveals. It lives here rather than
-   * as two hex strings in TypeScript so the palette stays the one source, and
-   * it stays out of the P3 block below because the meta tag takes a colour,
-   * not a colour function. */
-  --theme-color: #050607;
-}
-
-/* Wider gamut where the display has one. Same hues, more chroma. */
-@supports (color: color(display-p3 1 1 1)) {
-  @theme {
-    --color-base: color(display-p3 0.02 0.024 0.028);
-    --color-sunken: color(display-p3 0.004 0.008 0.012);
-    --color-surface: color(display-p3 0.05 0.062 0.07);
-    --color-raised: color(display-p3 0.08 0.095 0.105);
-    --color-liquid: color(display-p3 0.2 0.85 0.6);
-    --color-liquid-bright: color(display-p3 0.44 0.92 0.73);
-    --color-caution: color(display-p3 0.91 0.69 0.25);
-    --color-deficit: color(display-p3 0.82 0.54 0.45);
-  }
-}
-
-/* ===========================================================================
- * LIGHT
- * ---------------------------------------------------------------------------
- * Dark is the default, so nothing changes for anybody already using the app
- * and a failed media query cannot leave somebody on a half-applied theme.
- * Light arrives two ways: because the system asked for it, or because the
- * person did. An explicit choice always beats the system, in both directions.
- *
- * The palette is not the dark one inverted. Emerald at #34d8a0 is a beautiful
- * accent on black and illegible on white, so the accents are darkened until
- * they carry text at AA, and the grounds are warmed slightly off-white so a
- * pure-white card still lifts off the page.
- *
- * The block is written twice on purpose. CSS cannot share one declaration
- * list between a media query and an attribute selector, and the alternative
- * (making light the default and duplicating dark instead) would change what
- * every existing install renders on first paint.
- * ======================================================================== */
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
-    color-scheme: light;
-
-    --color-base: #f6f7f8;
-    --color-sunken: #eceff0;
-    --color-surface: #ffffff;
-    --color-raised: #ffffff;
-    --color-overlay: #ffffff;
-
-    --color-line: #dfe3e4;
-    --color-line-strong: #c8ced0;
-    --color-line-faint: #edf0f0;
-
-    --color-ink: #0c1012;
-    --color-ink-2: #55605e;
-    --color-ink-3: #6f7a78;
-    --color-ink-4: #a9b2b0;
-
-    --color-liquid: #0b8f61;
-    --color-liquid-bright: #0a7d55;
-    --color-liquid-dim: #7fd9b8;
-    --color-liquid-wash: #e3f7ef;
-
-    --color-caution: #9a6b06;
-    --color-caution-dim: #e2c48a;
-    --color-caution-wash: #fdf4e3;
-
-    --color-deficit: #b4553a;
-    --color-deficit-dim: #e8b6a5;
-    --color-deficit-wash: #fceee9;
-
-    --hairline: rgb(0 0 0 / 0.08);
-    --hairline-strong: rgb(0 0 0 / 0.12);
-    --rim-top: rgb(255 255 255 / 0.9);
-    --fill-subtle: rgb(0 0 0 / 0.06);
-    --scrim: rgb(15 23 25 / 0.32);
-    --shadow-card: 0 6px 18px -6px rgb(15 23 25 / 0.1);
-    --shadow-dock: 0 10px 28px -8px rgb(15 23 25 / 0.16);
-    --shadow-sheet: 0 -16px 48px -12px rgb(15 23 25 / 0.18);
-
-    /* What the browser paints around the app. Plain hex on purpose: the meta
-       tag does not understand color(display-p3 ...). */
-    --theme-color: #f6f7f8;
-  }
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  --color-base: #f6f7f8;
-  --color-sunken: #eceff0;
+  /* --- grounds ---------------------------------------------------------
+   * Pale celadon rather than white or cream. White makes the category tiles
+   * shout; cream is the single most over-used generated-design ground there
+   * is. This sits between them and lets a pure white card still lift. */
+  --color-base: #edf0ea;
+  --color-sunken: #e3e8df;
   --color-surface: #ffffff;
   --color-raised: #ffffff;
   --color-overlay: #ffffff;
 
-  --color-line: #dfe3e4;
-  --color-line-strong: #c8ced0;
-  --color-line-faint: #edf0f0;
+  --color-line: #dce2d7;
+  --color-line-strong: #c9d1c4;
+  --color-line-faint: #e6ebe2;
 
-  --color-ink: #0c1012;
-  --color-ink-2: #55605e;
-  --color-ink-3: #6f7a78;
-  --color-ink-4: #a9b2b0;
+  /* --- ink -------------------------------------------------------------
+   * Not #111. A green-black, so type sits in the same family as the ground
+   * rather than floating on top of it. */
+  --color-ink: #10130f;
+  --color-ink-2: #5a6157;
+  --color-ink-3: #63695f; /* 4.91:1 on base — see the note above */
+  --color-ink-4: #b2b9ac; /* fills only, never type */
 
-  --color-liquid: #0b8f61;
-  --color-liquid-bright: #0a7d55;
-  --color-liquid-dim: #7fd9b8;
-  --color-liquid-wash: #e3f7ef;
+  /* --- the six category families --------------------------------------- */
+  --color-housing: #0c5a47;
+  --color-housing-wash: #b9e2d2;
+  --color-food: #89590b;
+  --color-food-wash: #f7dca8;
+  --color-transport: #2b3480;
+  --color-transport-wash: #c6ccf2;
+  --color-obligation: #943f29;
+  --color-obligation-wash: #f4c6b6;
+  --color-leisure: #6b2a62;
+  --color-leisure-wash: #e6c7e4;
+  --color-health: #1d4b55;
+  --color-health-wash: #c3dee3;
 
-  --color-caution: #9a6b06;
-  --color-caution-dim: #e2c48a;
-  --color-caution-wash: #fdf4e3;
+  /* --- semantic aliases, re-pointed at the families --------------------- */
+  --color-liquid: #0c5a47;
+  --color-liquid-bright: #0a6f57;
+  --color-liquid-dim: #7fc4ac;
+  --color-liquid-wash: #b9e2d2;
 
-  --color-deficit: #b4553a;
-  --color-deficit-dim: #e8b6a5;
-  --color-deficit-wash: #fceee9;
+  --color-caution: #89590b;
+  --color-caution-dim: #d9b978;
+  --color-caution-wash: #f7dca8;
 
-  --hairline: rgb(0 0 0 / 0.08);
-  --hairline-strong: rgb(0 0 0 / 0.12);
+  --color-deficit: #943f29;
+  --color-deficit-dim: #dda893;
+  --color-deficit-wash: #f4c6b6;
+
+  /* --- the one hot accent ----------------------------------------------
+   * Two jobs and no others: the record button, and the single dot marking the
+   * one thing on screen that needs a decision. Three occurrences on a screen
+   * is a bug.
+   *
+   * It is a FILL and a MARKER, never small type. White on it is 3.55:1 and it
+   * is 3.08:1 on base — which clears WCAG's 3:1 for non-text and does not
+   * clear 4.5:1 for text. An inline link that wants emphasis takes
+   * `--color-ink` or the screen's category ink instead. */
+  --color-hot: #ff3c1f;
+
+  /* --- vault: the one dark surface inside Daylight ---------------------- */
+  --color-vault: #0e1a17;
+  --color-vault-raised: #16241f;
+  --color-vault-ink: #f1f6f3;
+  --color-vault-ink-2: #7e8f89;
+
+  /* --- typography -------------------------------------------------------
+   * Fraunces for figures and screen titles. The reason is its optical-size
+   * axis: a €296,480 at 64px and a €76 at 17px are drawn with different stroke
+   * contrast rather than one outline scaled, which is what makes a number feel
+   * like an amount of money instead of a readout.
+   *
+   * We ship the `opsz` subset, not `full`. The production setting is Fraunces
+   * at its default SOFT and WONK — 0 and 0 — which is what dials back the
+   * splayed g, the curled f and the soft terminals that do the "magazine"
+   * work. Since those are the defaults, the axes do not need to be in the file
+   * to reach the look, and leaving them out costs 54kB less on latin
+   * (67,304 vs 121,016 bytes) for a pixel-identical result. The optical-size
+   * axis, which is the whole reason for the typeface, is present and driven by
+   * `font-optical-sizing: auto`.
+   *
+   * Space Grotesk for everything operational. Its digits are tabular and its
+   * lowercase reads at 11px, which removes the reason the app was reaching for
+   * a monospace on small labels.
+   *
+   * `--font-mono` stays a real monospace, pointed at the system stack. Ticker
+   * chips and data labels are Space Grotesk now, but four things genuinely
+   * need character-cell alignment and would break without it: the field
+   * manual's pre-formatted arithmetic, the two bulk-paste boxes, and the
+   * recovery phrase. Using the system stack means no third font ships.
+   *
+   * If Fraunces still reads too editorial after review, swapping to
+   * `@fontsource-variable/newsreader` is a one-line change here and nothing
+   * else moves. Keep it that way. */
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Palatino, Georgia, serif;
+  --font-sans: 'Space Grotesk Variable', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-micro: 0.6875rem; /* 11px, chart axes only */
+  --text-micro--line-height: 1.35;
+  --text-caption: 0.78125rem; /* 12.5px, row metadata */
+  --text-caption--line-height: 1.45;
+  --text-body: 0.90625rem; /* 14.5px, the base reading size */
+  --text-body--line-height: 1.5;
+  --text-lead: 1.0625rem; /* 17px, row amounts */
+  --text-lead--line-height: 1.4;
+  --text-figure: 1.625rem; /* 26px, secondary figures */
+  --text-figure--line-height: 1;
+  --text-headline: 1.625rem; /* 26px, screen titles */
+  --text-headline--line-height: 1.15;
+  --text-anchor: 4rem; /* 64px. Was 44. The hero has to actually be the hero. */
+  --text-anchor--line-height: 0.95;
+
+  /* --- radii ------------------------------------------------------------
+   * Hierarchical on purpose: the bigger the object, the rounder it is. One
+   * radius on everything is what makes a screen read as a kit of identical
+   * boxes rather than as a hierarchy. */
+  --radius-pill: 999px;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.8125rem;
+  --radius-lg: 1.25rem;
+  --radius-card: 1.625rem;
+  --radius-hero: 2.125rem;
+  --radius-sheet: 1.75rem;
+
+  /* --- elevation --------------------------------------------------------
+   * On a light ground a drop shadow does almost nothing and a stack of them
+   * reads as mud. Cards separate by FILL first, hairline second, shadow last,
+   * and the shadow is tight and low-opacity — closer to contact occlusion than
+   * to a lift. The field has no shadow at all: it is a field of colour, not an
+   * object sitting on one.
+   *
+   * These are the only things in the palette that invert by JOB rather than
+   * merely changing shade. A rim highlight lit from above is white on both
+   * grounds; a hairline is black on light and white on dark. Naming them by
+   * what they do is what lets one component serve both themes. */
+  --hairline: rgb(16 19 15 / 0.07);
+  --hairline-strong: rgb(16 19 15 / 0.12);
   --rim-top: rgb(255 255 255 / 0.9);
-  --fill-subtle: rgb(0 0 0 / 0.06);
-  --scrim: rgb(15 23 25 / 0.32);
-  --shadow-card: 0 6px 18px -6px rgb(15 23 25 / 0.1);
-  --shadow-dock: 0 10px 28px -8px rgb(15 23 25 / 0.16);
-  --shadow-sheet: 0 -16px 48px -12px rgb(15 23 25 / 0.18);
+  --fill-subtle: rgb(16 19 15 / 0.05);
+  --scrim: rgb(16 19 15 / 0.32);
+  --shadow-card: 0 1px 2px rgb(16 19 15 / 0.06), 0 10px 26px -18px rgb(16 19 15 / 0.18);
+  --shadow-dock: 0 16px 34px -14px rgb(16 19 15 / 0.45);
+  --shadow-sheet: 0 -18px 50px -14px rgb(16 19 15 / 0.22);
 
-  /* See above: the meta tag takes a colour, not a colour function. */
-  --theme-color: #f6f7f8;
+  /* --- motion ----------------------------------------------------------
+   * One curve for anything moving under a finger: the iOS sheet curve, fast to
+   * leave and slow to settle, no bounce. A springier one only where something
+   * snaps back. */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-snap: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* What the phone paints around the app: the iOS status bar, the Android
+     system bars, the gutter an overscroll reveals. Plain hex, because the meta
+     tag takes a colour and not a colour function — which is also why it stays
+     out of the P3 block below. */
+  --theme-color: #edf0ea;
 }
 
-/* An explicit dark choice has to win back over a light system. */
-:root[data-theme='dark'] {
+/* Wider gamut where the display has one. Same hues, more chroma — and it shows
+   in the washes, because they are large flat fields. */
+@supports (color: color(display-p3 1 1 1)) {
+  @theme {
+    --color-housing-wash: color(display-p3 0.74 0.886 0.827);
+    --color-food-wash: color(display-p3 0.965 0.864 0.667);
+    --color-transport-wash: color(display-p3 0.782 0.8 0.945);
+    --color-obligation-wash: color(display-p3 0.951 0.78 0.72);
+    --color-leisure-wash: color(display-p3 0.898 0.784 0.892);
+    --color-health-wash: color(display-p3 0.768 0.868 0.887);
+    --color-liquid-wash: color(display-p3 0.74 0.886 0.827);
+    --color-caution-wash: color(display-p3 0.965 0.864 0.667);
+    --color-deficit-wash: color(display-p3 0.951 0.78 0.72);
+    --color-hot: color(display-p3 0.98 0.25 0.14);
+  }
+}
+
+/* ===========================================================================
+ * MIDNIGHT
+ * ---------------------------------------------------------------------------
+ * Not obsidian. A deep indigo-navy ground with a cool green carrying the
+ * analytical work and a warm gold for selective emphasis. The point is that
+ * the dark theme has a HUE, so it reads as a considered surface rather than as
+ * the absence of light.
+ *
+ * The category pairs invert by job: `-ink` becomes the light one and `-wash`
+ * the dark one, so a tile is still ink-on-wash and every component that reads
+ * the pair keeps working without knowing which theme it is in.
+ *
+ * Daylight is the default, so nothing here can leave somebody on a
+ * half-applied theme if a media query fails. Midnight arrives two ways —
+ * because the system asked, or because the person did — and an explicit choice
+ * always beats the system, in both directions.
+ *
+ * The block is written twice on purpose. CSS cannot share one declaration list
+ * between a media query and an attribute selector, and the alternative would
+ * change what a first paint renders.
+ * ======================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='daylight']) {
+    color-scheme: dark;
+
+    --color-base: #0b0f22;
+    --color-sunken: #070a18;
+    --color-surface: #131936;
+    --color-raised: #1b2244;
+    --color-overlay: #232b52;
+
+    --color-line: #2b3358;
+    --color-line-strong: #3a4370;
+    --color-line-faint: #1e2544;
+
+    --color-ink: #eceef8;
+    --color-ink-2: #a6adcb;
+    --color-ink-3: #7b84a6;
+    --color-ink-4: #545c80;
+
+    --color-housing: #4fd1a5;
+    --color-housing-wash: #0e3a30;
+    --color-food: #e8b75e;
+    --color-food-wash: #37290f;
+    --color-transport: #93a0f5;
+    --color-transport-wash: #1c2350;
+    --color-obligation: #e39073;
+    --color-obligation-wash: #3a1e17;
+    --color-leisure: #d79bd0;
+    --color-leisure-wash: #341930;
+    --color-health: #7fc4d4;
+    --color-health-wash: #10303a;
+
+    --color-liquid: #4fd1a5;
+    --color-liquid-bright: #6fe0bb;
+    --color-liquid-dim: #2a7d64;
+    --color-liquid-wash: #0e3a30;
+
+    --color-caution: #e8b75e;
+    --color-caution-dim: #8a6b33;
+    --color-caution-wash: #37290f;
+
+    --color-deficit: #e39073;
+    --color-deficit-dim: #8a5442;
+    --color-deficit-wash: #3a1e17;
+
+    /* Lifted from #FF3C1F so it clears AA on indigo. */
+    --color-hot: #ff5a3c;
+
+    /* Darkness no longer means "private" here, because everything is dark. The
+       vault takes the ordinary surfaces so it stops being a special case. */
+    --color-vault: #070a18;
+    --color-vault-raised: #131936;
+    --color-vault-ink: #eceef8;
+    --color-vault-ink-2: #7b84a6;
+
+    --hairline: rgb(255 255 255 / 0.08);
+    --hairline-strong: rgb(255 255 255 / 0.13);
+    --rim-top: rgb(255 255 255 / 0.07);
+    --fill-subtle: rgb(255 255 255 / 0.07);
+    --scrim: rgb(3 5 12 / 0.62);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 30px -18px rgb(0 0 0 / 0.7);
+    --shadow-dock: 0 16px 34px -14px rgb(0 0 0 / 0.66);
+    --shadow-sheet: 0 -18px 50px -14px rgb(0 0 0 / 0.6);
+
+    --theme-color: #0b0f22;
+  }
+}
+
+:root[data-theme='midnight'] {
   color-scheme: dark;
+
+  --color-base: #0b0f22;
+  --color-sunken: #070a18;
+  --color-surface: #131936;
+  --color-raised: #1b2244;
+  --color-overlay: #232b52;
+
+  --color-line: #2b3358;
+  --color-line-strong: #3a4370;
+  --color-line-faint: #1e2544;
+
+  --color-ink: #eceef8;
+  --color-ink-2: #a6adcb;
+  --color-ink-3: #7b84a6;
+  --color-ink-4: #545c80;
+
+  --color-housing: #4fd1a5;
+  --color-housing-wash: #0e3a30;
+  --color-food: #e8b75e;
+  --color-food-wash: #37290f;
+  --color-transport: #93a0f5;
+  --color-transport-wash: #1c2350;
+  --color-obligation: #e39073;
+  --color-obligation-wash: #3a1e17;
+  --color-leisure: #d79bd0;
+  --color-leisure-wash: #341930;
+  --color-health: #7fc4d4;
+  --color-health-wash: #10303a;
+
+  --color-liquid: #4fd1a5;
+  --color-liquid-bright: #6fe0bb;
+  --color-liquid-dim: #2a7d64;
+  --color-liquid-wash: #0e3a30;
+
+  --color-caution: #e8b75e;
+  --color-caution-dim: #8a6b33;
+  --color-caution-wash: #37290f;
+
+  --color-deficit: #e39073;
+  --color-deficit-dim: #8a5442;
+  --color-deficit-wash: #3a1e17;
+
+  --color-hot: #ff5a3c;
+
+  --color-vault: #070a18;
+  --color-vault-raised: #131936;
+  --color-vault-ink: #eceef8;
+  --color-vault-ink-2: #7b84a6;
+
+  --hairline: rgb(255 255 255 / 0.08);
+  --hairline-strong: rgb(255 255 255 / 0.13);
+  --rim-top: rgb(255 255 255 / 0.07);
+  --fill-subtle: rgb(255 255 255 / 0.07);
+  --scrim: rgb(3 5 12 / 0.62);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 30px -18px rgb(0 0 0 / 0.7);
+  --shadow-dock: 0 16px 34px -14px rgb(0 0 0 / 0.66);
+  --shadow-sheet: 0 -18px 50px -14px rgb(0 0 0 / 0.6);
+
+  --theme-color: #0b0f22;
+}
+
+/* An explicit Daylight choice has to win back over a dark system. */
+:root[data-theme='daylight'] {
+  color-scheme: light;
 }
 
 /* ---------------------------------------------------------------------------
@@ -255,7 +391,7 @@
  * ------------------------------------------------------------------------ */
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
 
     /* Safe-area insets, resolved once so components never repeat the env().
        Each carries a floor, so a device with no notch still gets a margin
@@ -266,7 +402,7 @@
     --safe-left: env(safe-area-inset-left, 0px);
 
     /* Height of the floating dock, including its safe area. */
-    --nav-height: calc(3.5rem + var(--safe-bottom));
+    --nav-height: calc(4.125rem + var(--safe-bottom));
 
     /*
      * How far the floating dock sits off the bottom edge.
@@ -388,7 +524,6 @@
   /* Money and any aligned digits. Applied via .tnum, never guessed at. */
   .tnum {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: 'tnum' 1, 'cv01' 1;
   }
 
   button,
@@ -423,7 +558,7 @@
   }
 
   ::selection {
-    background: var(--color-liquid-dim);
+    background: var(--color-liquid-wash);
     color: var(--color-ink);
   }
 
@@ -441,15 +576,121 @@
 
 @layer components {
   /* -------------------------------------------------------------------------
-   * SPECULAR RIM LIGHTING
+   * SURFACES — three kinds, deliberately unlike each other
    * -------------------------------------------------------------------------
-   * A flat 1px border says "div". A card lit from above says "object". The
-   * inset highlight along the top edge is the whole trick: it reads as a
-   * physical chamfer catching the same light the rest of the screen is under,
-   * and it costs one box-shadow.
+   * The old file had one, `.rim`, so every container in the app carried the
+   * same radius, the same hairline and the same shadow whatever it held. That
+   * is the single biggest reason the screens read as generated: a hierarchy of
+   * containers is information, a kit of identical ones is wallpaper.
    *
-   * The hairline is 0.5px because that is one device pixel on a 2x/3x screen,
-   * and a 1px line at 3x is visibly a rope.
+   * The components that consume these arrive in phase 2. `.rim` and `.eyebrow`
+   * below are kept until then so the app stays coherent between commits.
+   * ---------------------------------------------------------------------- */
+
+  /* 1. The field. Large, flat, coloured, no border, no shadow. Exactly one per
+        screen, at the top, carrying the number that screen exists for. */
+  .field {
+    border-radius: var(--radius-hero);
+    padding: 1.5rem 1.5rem 1.25rem;
+    color: var(--tile-ink, var(--color-ink));
+    background: var(--tile-wash, var(--color-liquid-wash));
+  }
+
+  /* 2. The card. Surface fill, hairline, contact shadow. Lists and charts. */
+  .card {
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    border: 0.5px solid var(--hairline);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* 3. The tile. Coloured, small, no shadow, in a grid of siblings. Its colour
+        is its category — never its status. */
+  .tile {
+    border-radius: var(--radius-card);
+    padding: 1rem;
+    color: var(--tile-ink);
+    background: var(--tile-wash);
+  }
+
+  /* One class binds a family, and everything inside inherits it. */
+  .cat-housing {
+    --tile-ink: var(--color-housing);
+    --tile-wash: var(--color-housing-wash);
+  }
+  .cat-food {
+    --tile-ink: var(--color-food);
+    --tile-wash: var(--color-food-wash);
+  }
+  .cat-transport {
+    --tile-ink: var(--color-transport);
+    --tile-wash: var(--color-transport-wash);
+  }
+  .cat-obligation {
+    --tile-ink: var(--color-obligation);
+    --tile-wash: var(--color-obligation-wash);
+  }
+  .cat-leisure {
+    --tile-ink: var(--color-leisure);
+    --tile-wash: var(--color-leisure-wash);
+  }
+  .cat-health {
+    --tile-ink: var(--color-health);
+    --tile-wash: var(--color-health-wash);
+  }
+
+  /* -------------------------------------------------------------------------
+   * TYPE
+   * -------------------------------------------------------------------------
+   * Fraunces at its defaults, which is the dialled-back setting. The reference
+   * sheet runs it hot at `SOFT 20, WONK 1` — the splayed g and curled f doing
+   * most of the "magazine" work — and production deliberately does not. Since
+   * 0 and 0 are the axis defaults, we ship the smaller `opsz` subset and let
+   * them fall where they land rather than declaring them.
+   *
+   * `font-optical-sizing: auto` is the part that earns the typeface: the
+   * stroke contrast of a 64px hero and a 17px row amount genuinely differ.
+   * ---------------------------------------------------------------------- */
+  .figure {
+    font-family: var(--font-display);
+    font-weight: 550;
+    font-optical-sizing: auto;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
+  }
+
+  .headline {
+    font-family: var(--font-display);
+    font-size: var(--text-headline);
+    line-height: var(--text-headline--line-height);
+    font-weight: 560;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+
+  /* Sentence case, at a size a person can actually read. This replaces the
+     tracked-out uppercase label that sat above 67 headings and was the loudest
+     generated-design tell left in the app. */
+  .section-title {
+    font-size: var(--text-body);
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  /* A currency symbol and the cents are units, not digits. */
+  .unit {
+    font-size: 0.52em;
+    font-weight: 500;
+    opacity: 0.55;
+    letter-spacing: 0;
+  }
+
+  /* -------------------------------------------------------------------------
+   * KEPT UNTIL PHASE 2
+   * -------------------------------------------------------------------------
+   * `.rim` is worn by `Card` and `Toasts`, and `.eyebrow` by every `Card`
+   * label. Deleting them here would leave 115 containers unstyled for the
+   * length of one commit. They go when their call sites do.
    * ---------------------------------------------------------------------- */
   .rim {
     border: 0.5px solid var(--hairline);
@@ -458,11 +699,23 @@
       var(--shadow-card);
   }
 
-  /* The same lighting without the drop shadow, for surfaces already sitting
-     inside something raised. Stacked shadows read as mud. */
   .rim-flat {
     border: 0.5px solid var(--hairline);
     box-shadow: inset 0 1px 0 0 var(--rim-top);
+  }
+
+  .eyebrow {
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .display {
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    font-weight: 500;
   }
 
   /* -------------------------------------------------------------------------
@@ -519,48 +772,20 @@
   }
 
   /* Rows are wide, so the same scale reads as a much larger movement. */
+  .press-row {
+    transition: transform 200ms var(--ease-snap);
+  }
+
   .press-row:active {
     transform: scale(0.99);
     transition-duration: 120ms;
     transition-timing-function: var(--ease-press);
   }
-
-  .press-row {
-    transition: transform 200ms var(--ease-snap);
-  }
-
-  /* -------------------------------------------------------------------------
-   * TYPOGRAPHY
-   * -------------------------------------------------------------------------
-   * Two opposing tensions, applied deliberately. Large figures pull inwards
-   * so a long number reads as one object; small uppercase labels push apart
-   * so they read as a legend rather than a word.
-   * ---------------------------------------------------------------------- */
-  .display {
-    letter-spacing: -0.025em;
-    line-height: 1.1;
-    font-weight: 500;
-  }
-
-  .eyebrow {
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  /* A currency symbol is a unit, not a digit. Holding it back a little is
-     what lets the figure itself carry the line. */
-  .unit {
-    opacity: 0.7;
-    font-weight: 400;
-  }
 }
 
 @layer utilities {
-  /* Applied to the app root when the vault is locked or backgrounded.
-     Phase 5 wires this to visibilitychange for app-switcher privacy. */
+  /* Applied to the app root when the vault is locked or backgrounded, so the
+     app-switcher snapshot carries nothing readable. */
   .privacy-veil {
     filter: blur(18px) saturate(0.4);
     pointer-events: none;
@@ -580,25 +805,30 @@
  * quietly win against this. It also has to be here rather than in
  * `@layer components`, where Tailwind's own processing dropped the attribute
  * selector and left the shell sitting flat behind an open sheet.
- * ======================================================================== */
-/*
- * THE SHELL, AND WHY IT IS PINNED BY ITS EDGES
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE SHELL IS PINNED BY ITS EDGES
  *
  * `will-change: transform` is not only a hint. It makes this element the
  * containing block for every `position: fixed` descendant, which is most of
  * the app's chrome and all of the dock. So `bottom: 0` on the dock stopped
- * meaning "the bottom of the screen" the day the recede effect was added, and
- * started meaning "the bottom of #app-shell" — silently, and correctly, on
- * every surface where the two are the same.
+ * meaning "the bottom of the screen" the day the recede was added, and started
+ * meaning "the bottom of #app-shell" — silently, and correctly, on every
+ * surface where the two are the same. They are not the same in an iOS
+ * home-screen app; see the viewport lock above.
  *
- * They are not the same on an iOS home-screen app (see the viewport lock
- * above), so the shell has to be pinned to the viewport by its edges rather
- * than sized in viewport units. `inset: 0` does that and cannot drift.
+ * `inset: 0` fixes that permanently: the shell's rectangle and the viewport
+ * are now the same thing, so it no longer matters whether the shell is the
+ * containing block or not.
  *
- * The dock is deliberately left inside this element rather than portalled
- * out: when a sheet is presented the whole screen recedes, tab bar included,
- * the way a presented view does on iOS.
- */
+ * The dock stays inside this element rather than being portalled out, so the
+ * whole screen recedes together, tab bar included, the way a presented view
+ * does on iOS.
+ *
+ * `will-change` is scoped to the moment a sheet is presenting rather than
+ * declared permanently — see phase 7 — because a permanent one keeps a
+ * full-screen compositor layer alive for the entire session.
+ * ======================================================================== */
 #app-shell {
   position: fixed;
   inset: 0;

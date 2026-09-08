@@ -6,6 +6,10 @@ Written after reading `DESIGN-BRIEF.md`, `visual-direction.html`,
 `src/app/theme.ts`, `src/app/router.ts` and `index.html`.
 
 Phase 0 is done: `design-refs/INVENTORY.md` is committed on its own at `4a38f11`.
+Phase 1 is done at the commit below. The seven decisions were approved as
+recommended, and the corrections they produced have been folded back into
+`DESIGN-BRIEF.md` and `tokens-daylight.css` — marked **[amended]** in the brief
+— so nothing in `design-refs/` contradicts what shipped.
 
 Every phase ends with `npm run typecheck && npm test -- --run && npm run lint`
 green, a reported test count, and its own commit.

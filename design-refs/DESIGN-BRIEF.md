@@ -3,6 +3,10 @@
 Durable spec. Lives at `design-refs/DESIGN-BRIEF.md`. Re-read it at the start of any
 session that touches `src/design`, `src/features`, or `src/content`.
 
+**This file is authoritative** wherever it and `tokens-daylight.css` differ.
+Corrections found while building are folded back into it, marked **[amended]**,
+so the spec never contradicts what shipped.
+
 Companion files in the same folder:
 
 | File | What it is |
@@ -52,19 +56,29 @@ See `design-refs/tokens-daylight.css` for the authoritative values. Summary:
 | sunken | `#E3E8DF` |
 | surface / raised | `#FFFFFF` |
 | line | `#DCE2D7` |
-| ink / ink-2 / ink-3 | `#10130F` / `#5A6157` / `#8A9185` |
+| ink / ink-2 / ink-3 | `#10130F` / `#5A6157` / `#63695F` **[amended]** |
 | hot accent | `#FF3C1F` |
+
+**[amended]** `ink-3` was `#8A9185`, which is **2.82:1** on base — not AA at any
+size, despite a comment in the token file claiming it was AA at 12px and up. It
+carries every row subtitle, chart axis and caption in the app. `#63695F` is
+4.91:1.
 
 Six category families, each `ink` + `wash`:
 
 | Category | ink | wash |
 | --- | --- | --- |
 | housing | `#0C5A47` | `#B9E2D2` |
-| food | `#8A5A0B` | `#F7DCA8` |
+| food | `#89590B` **[amended]** | `#F7DCA8` |
 | transport | `#2B3480` | `#C6CCF2` |
-| obligation | `#9E432C` | `#F4C6B6` |
+| obligation | `#943F29` **[amended]** | `#F4C6B6` |
 | leisure | `#6B2A62` | `#E6C7E4` |
 | health | `#1D4B55` | `#C3DEE3` |
+
+**[amended]** Food ink on its own wash was 4.44:1 and obligation ink 4.13:1 —
+both under the AA this section requires of exactly that pair. The new values
+are 4.51:1 and 4.53:1, and are close enough to the originals to be
+indistinguishable side by side.
 
 ### Midnight (dark)
 
@@ -105,11 +119,22 @@ both.
 - The hot accent appears **at most twice per screen**: the record button, and
   the single dot marking the one thing needing a decision. Three occurrences is
   a bug.
+- **[amended]** The hot accent is a fill and a marker, **never small text**.
+  White on it is 3.55:1 and it is 3.08:1 on base: fine for a non-text mark,
+  where WCAG wants 3:1, and not fine for type, where it wants 4.5:1. The
+  reference sheet sets "See all" and "Change" as 12.5px hot text — those take
+  `--color-ink` or the screen's category ink instead.
 - Dark is no longer the default paint. The **Vault** screen is the one place
   darkness is used *within* Daylight, where it signals "private, at rest".
 - Every category pair must clear **WCAG AA at 14px** for `ink` on `wash` and
   `ink` on `base`. Compute it, don't eyeball it. Write the computed ratios into
   `src/design/tokens.test.ts`.
+  **[amended]** Done, and it found three failures — see the two tables above.
+  `tokens.test.ts` now parses `tokens.css` itself and recomputes every pair on
+  every run, so a later palette edit cannot quietly reintroduce one.
+- **[amended]** `ink-4` is the one exception and is held to the non-text rule
+  instead. It is the muted half of a paired bar and the fill of a dim track; it
+  must never carry type, and the test asserts that rather than exempting it.
 
 ---
 
@@ -123,7 +148,20 @@ npm i @fontsource-variable/fraunces @fontsource-variable/space-grotesk
 
 **Self-hosting is mandatory, not a preference.** `vercel.json` sets
 `Cross-Origin-Embedder-Policy: require-corp`. A Google Fonts `<link>` will be
-blocked outright. Import the fontsource CSS in `src/main.tsx` alongside the
+blocked outright.
+
+**[amended]** The registered family names carry a `Variable` suffix:
+`'Fraunces Variable'` and `'Space Grotesk Variable'`. Naming them without it
+falls through to the fallback stack silently.
+
+**[amended]** Import `@fontsource-variable/fraunces/opsz.css`, not the package
+root and not `full.css`. Production runs Fraunces at its default `SOFT` and
+`WONK`, and those defaults are 0 and 0 — so neither axis has to be in the file
+to reach the look. The `opsz` subset is 67,304 bytes on latin against 121,016
+for `full`: **54kB saved for a pixel-identical result**. Verified in the
+browser — setting `SOFT` or `WONK` on the shipped face changes no metric, while
+`opsz` moves them by roughly 100px across its range at 64px, and
+`font-optical-sizing: auto` is active. Import the fontsource CSS in `src/main.tsx` alongside the
 existing imports, and remove `@fontsource-variable/geist` and
 `@fontsource-variable/jetbrains-mono` once nothing references them.
 
@@ -172,6 +210,14 @@ Labels, rows, buttons, list metadata, chart axes. Its digits are tabular and
 its lowercase reads at 11px, which removes the reason the app was reaching for
 a monospace on small labels. **Do not reintroduce a mono face for data
 labels.**
+
+**[amended]** That rule is about *labels*. `--font-mono` stays a real monospace,
+pointed at the system stack (`ui-monospace, 'SF Mono', Menlo, Consolas,
+monospace`), so no third font ships. Pointing it at Space Grotesk would have
+broken four things that need character-cell alignment: the field manual's
+`Formula` blocks (`whitespace-pre` arithmetic), the bulk-paste boxes in
+`UpdatePricesSheet` and `FxRatesSheet`, and the BIP-39 recovery phrase. Ticker
+chips move to Space Grotesk as intended.
 
 ### Scale
 
@@ -312,6 +358,12 @@ fail on any string literal longer than 90 characters that is not a
 `aria-label`, a toast, an error message, or an import path. This is the guard
 that stops the prose creeping back in.
 
+**[amended]** `src/features/manual/chapters/**` is exempt, with a comment in the
+test saying why. Section 6 keeps the field manual as long-form prose on
+purpose; it holds 64 strings over the threshold and is supposed to. Onboarding
+is **not** exempt: its explanatory asides move into the registry like every
+other screen's, and only the step copy stays.
+
 ---
 
 ## 6. The field manual
@@ -378,10 +430,16 @@ The app must stay wrappable (Capacitor or PWABuilder) without a rewrite.
 - **No API absent from WKWebView.** Keep OPFS and the SQLite worker. Do not
   introduce Web Bluetooth, Web Share Target, or Background Sync as a
   dependency for any core flow.
-- Motion uses the `motion` package already in `package.json`. **One
-  orchestrated moment per screen** — the hero figure counting up on first
-  paint, or the sheet presenting. Fade-and-slide on every card is the generated
-  default. `prefers-reduced-motion` disables all of it.
+- **[amended]** Motion is built on CSS transitions and the Web Animations API.
+  The `motion` package was listed in `package.json` but imported nowhere:
+  commit `ffc299e` removed every use of it, which took first paint from 184.92
+  to 145.02 kB gzipped against a 185.50 kB budget. Re-adding it costs about
+  40 kB and would land near 188 kB, over budget. It has now been removed from
+  `package.json` entirely. `BottomSheet`, `SwipeRow`, `Tabs` and `Toasts`
+  already do hand-written physics on pointer events and are better for being
+  specific. **One orchestrated moment per screen** — the hero figure counting
+  up on first paint, or the sheet presenting. Fade-and-slide on every card is
+  the generated default. `prefers-reduced-motion` disables all of it.
 
 ---
 

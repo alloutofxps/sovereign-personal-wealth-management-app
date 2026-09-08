@@ -286,10 +286,12 @@ export function SettingsView() {
  * already showing it, is a control explaining itself to nobody.
  * ======================================================================== */
 
+/* The two themes have names now, so the control uses them. Phase 6 gives this
+   the live swatches and the shared row pattern; this keeps it working. */
 const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Match my phone' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'daylight', label: 'Daylight' },
+  { value: 'midnight', label: 'Midnight' },
 ];
 
 function Appearance() {

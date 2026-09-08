@@ -3,6 +3,27 @@
 /* ===========================================================================
  * SOVEREIGN — DAYLIGHT TOKENS
  * ---------------------------------------------------------------------------
+ * REFERENCE ONLY. `src/design/tokens.css` is what ships, and
+ * `DESIGN-BRIEF.md` is authoritative wherever this file and the brief differ.
+ * This file is kept because it is where the Daylight palette was worked out,
+ * not because it is the source of truth.
+ *
+ * Amended after phase 1, so nothing here contradicts what shipped:
+ *
+ *   - Three colours moved because they did not clear WCAG AA. ink-3 was
+ *     2.82:1 on base under a comment claiming it was AA at 12px and up; food
+ *     and obligation inks were 4.44:1 and 4.13:1 on their own washes.
+ *   - Fraunces and Space Grotesk are named with the `Variable` suffix, which
+ *     is what the fontsource packages actually register. Without it both fell
+ *     through to the fallback stack silently.
+ *   - `--font-mono` stays a real monospace on the system stack. Pointing it at
+ *     Space Grotesk would have broken the field manual's pre-formatted
+ *     arithmetic, both bulk-paste boxes and the recovery phrase.
+ *   - `--text-headline` is 26px and `.figure` / `.headline` run at the dialled
+ *     back settings, per brief section 3. The hot 31px / SOFT 20 / WONK 1
+ *     values below were the reference-sheet look, not production.
+ *   - `.headline em` is gone.
+ *
  * A drop-in replacement for src/design/tokens.css.
  *
  * Every token name from the obsidian palette is kept, so `bg-surface`,
@@ -40,7 +61,7 @@
    * instead of floating on top of it. */
   --color-ink: #10130f;
   --color-ink-2: #5a6157;
-  --color-ink-3: #8a9185; /* AA on --color-base at 12px+ */
+  --color-ink-3: #63695f; /* 4.91:1 on base. #8A9185 was 2.82:1 — not AA. */
   --color-ink-4: #b2b9ac;
 
   /* --- category families -----------------------------------------------
@@ -49,11 +70,11 @@
    * never reassign it — the whole system rests on that being stable. */
   --color-housing: #0c5a47;
   --color-housing-wash: #b9e2d2;
-  --color-food: #8a5a0b;
+  --color-food: #89590b; /* was #8A5A0B: 4.44:1 on its wash */
   --color-food-wash: #f7dca8;
   --color-transport: #2b3480;
   --color-transport-wash: #c6ccf2;
-  --color-obligation: #9e432c;
+  --color-obligation: #943f29; /* was #9E432C: 4.13:1 on its wash */
   --color-obligation-wash: #f4c6b6;
   --color-leisure: #6b2a62;
   --color-leisure-wash: #e6c7e4;
@@ -69,18 +90,23 @@
   --color-liquid-dim: #7fc4ac;
   --color-liquid-wash: #b9e2d2;
 
-  --color-caution: #8a5a0b;
+  --color-caution: #89590b;
   --color-caution-dim: #d9b978;
   --color-caution-wash: #f7dca8;
 
-  --color-deficit: #9e432c;
+  --color-deficit: #943f29;
   --color-deficit-dim: #dda893;
   --color-deficit-wash: #f4c6b6;
 
   /* --- the one hot accent ----------------------------------------------
    * Reserved for exactly two jobs: the record button, and the single dot that
    * marks the one thing on screen that needs a decision. If it appears twice
-   * on a screen, one of them is wrong. */
+   * on a screen, one of them is wrong.
+   *
+   * It is a FILL and a MARKER, never small type. White on it is 3.55:1 and it
+   * is 3.08:1 on base — which clears WCAG's 3:1 for a non-text mark and does
+   * not clear 4.5:1 for text. An inline link that wants emphasis takes
+   * `--color-ink` or the screen's category ink instead. */
   --color-hot: #ff3c1f;
 
   /* --- vault: the only dark surface ------------------------------------ */
@@ -99,9 +125,13 @@
    * lowercase is wide enough to read at 11px, which removes the reason the
    * app was reaching for a monospace on small labels — a look that has become
    * a tell rather than a choice. */
-  --font-display: 'Fraunces', 'Iowan Old Style', Palatino, Georgia, serif;
-  --font-sans: 'Space Grotesk', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Space Grotesk', ui-monospace, monospace;
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Palatino, Georgia, serif;
+  --font-sans: 'Space Grotesk Variable', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  /* A real monospace, on the system stack so no third font ships. Four
+     things need character-cell alignment and would break without it: the
+     manual's pre-formatted arithmetic, the two bulk-paste boxes, and the
+     recovery phrase. Ticker chips and data labels are Space Grotesk. */
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1.35;
@@ -113,8 +143,8 @@
   --text-lead--line-height: 1.4;
   --text-figure: 1.625rem; /* 26px */
   --text-figure--line-height: 1;
-  --text-headline: 1.9375rem; /* 31px, the screen title */
-  --text-headline--line-height: 1.05;
+  --text-headline: 1.625rem; /* 26px, the screen title. 31px was the hot version. */
+  --text-headline--line-height: 1.15;
   --text-anchor: 4rem; /* 64px. Was 44. The hero has to actually be the hero. */
   --text-anchor--line-height: 0.95;
 
@@ -254,31 +284,36 @@
    * remaining tell. Delete the class and let `.section-title` carry the job in
    * sentence case, at a size a person can actually read.
    * ---------------------------------------------------------------------- */
+  /* Fraunces at its defaults, which IS the dialled-back setting. SOFT and WONK
+     default to 0, so the production look needs neither axis in the file — we
+     ship the `opsz` subset instead of `full`, which is 54kB smaller on latin
+     for a pixel-identical result. Verified: setting SOFT or WONK on the
+     shipped face changes no metric, while opsz moves them by ~100px across
+     its range at 64px.
+
+     `font-optical-sizing: auto` is the part that earns the typeface: a 64px
+     hero and a 17px row amount are drawn with genuinely different stroke
+     contrast rather than one outline scaled. */
   .figure {
     font-family: var(--font-display);
-    font-weight: 600;
+    font-weight: 550;
+    font-optical-sizing: auto;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
-    font-variation-settings: 'SOFT' 20;
+    letter-spacing: -0.025em;
   }
 
   .headline {
     font-family: var(--font-display);
     font-size: var(--text-headline);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    font-variation-settings: 'SOFT' 20, 'WONK' 1;
+    line-height: var(--text-headline--line-height);
+    font-weight: 560;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
   }
 
-  /* One italic word in a headline is a generated-design cliché when it is used
-     for emphasis. It is legitimate here for one reason only: Fraunces' italic
-     changes the WONK axis, so it is a different letterform rather than a slant,
-     and it is used to mark the verb in a two-word screen title. Used once per
-     screen, never for emphasis inside a sentence. */
-  .headline em {
-    font-style: italic;
-    font-variation-settings: 'SOFT' 40, 'WONK' 1;
-  }
+  /* `.headline em` is deliberately absent. One italic word in a headline is a
+     cliché, and it was the single most decorative thing in the reference
+     sheet. Brief section 3 removes it. */
 
   .section-title {
     font-size: var(--text-body);

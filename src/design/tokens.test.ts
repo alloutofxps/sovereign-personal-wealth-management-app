@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { AA_LARGE, AA_TEXT, contrast } from './contrast';
 
 /* ===========================================================================
  * THE TOKEN GUARD
@@ -17,10 +18,10 @@ import { describe, expect, it } from 'vitest';
 
 const SRC = fileURLToPath(new URL('../', import.meta.url));
 const TOKENS_CSS = join(SRC, 'design', 'tokens.css');
+const CSS = readFileSync(TOKENS_CSS, 'utf8');
 
 function definedTokens(prefix: string): Set<string> {
-  const css = readFileSync(TOKENS_CSS, 'utf8');
-  const theme = css.slice(css.indexOf('@theme'), css.indexOf('@layer base'));
+  const theme = CSS.slice(CSS.indexOf('@theme'), CSS.indexOf('@layer base'));
   return new Set(
     [...theme.matchAll(new RegExp(`--${prefix}-([a-z0-9-]+):`, 'g'))].map((m) => m[1]!),
   );
@@ -55,7 +56,6 @@ describe('every design token a component asks for actually exists', () => {
   });
 
   it('has no colour utility pointing at a token that was removed', () => {
-    // bg-, text-, border-, from-, to- … followed by one of our token names.
     const pattern = /\b(?:bg|text|border|ring|fill|stroke|divide|decoration)-([a-z][a-z0-9-]*)/g;
     const offenders: string[] = [];
 
@@ -63,8 +63,12 @@ describe('every design token a component asks for actually exists', () => {
       const code = readFileSync(file, 'utf8');
       for (const match of code.matchAll(pattern)) {
         const name = match[1]!.replace(/\/\d+$/, '');
-        // Only judge names that look like ours: ink, liquid, caution, deficit…
-        if (!/^(ink|liquid|caution|deficit|line|base|surface|raised|overlay|sunken)/.test(name)) {
+        // Only judge names that look like ours.
+        if (
+          !/^(ink|liquid|caution|deficit|line|base|surface|raised|overlay|sunken|hot|housing|food|transport|obligation|leisure|health|vault)/.test(
+            name,
+          )
+        ) {
           continue;
         }
         if (BUILT_IN_COLOURS.has(name)) continue;
@@ -98,23 +102,22 @@ describe('every design token a component asks for actually exists', () => {
     // The guard has to be seen failing, or it is not worth having.
     expect(colours.has('ink-4')).toBe(true);
     expect(colours.has('ink-9')).toBe(false);
-    expect(radii.has('pill')).toBe(true);
+    expect(radii.has('hero')).toBe(true);
     expect(radii.has('enormous')).toBe(false);
   });
 });
 
 /* ===========================================================================
- * THE LIGHT PALETTE GUARD
+ * THE TWO PALETTES
  * ---------------------------------------------------------------------------
- * A token that is defined for dark and forgotten for light does not fail
- * anywhere either. It simply keeps its dark value, and one element on an
- * otherwise white screen renders near-black text on near-black ground, or
- * emerald at a chroma that is unreadable off obsidian. It is invisible in
+ * A token defined for Daylight and forgotten for Midnight fails nowhere. It
+ * simply keeps its Daylight value, and one element on an otherwise indigo
+ * screen renders near-black type on near-black ground. It is invisible in
  * review because review happens in whichever theme the reviewer is in.
  *
- * The light palette is also written out twice — once for a light system, once
- * for an explicit choice — because CSS has no way to share one declaration
- * list between a media query and an attribute selector. Two copies of anything
+ * Midnight is also written out twice — once for a dark system, once for an
+ * explicit choice — because CSS has no way to share one declaration list
+ * between a media query and an attribute selector. Two copies of anything
  * drift, so this checks they have not.
  * ======================================================================== */
 
@@ -122,7 +125,6 @@ describe('every design token a component asks for actually exists', () => {
 const MUST_INVERT = [
   'hairline',
   'hairline-strong',
-  'rim-top',
   'fill-subtle',
   'scrim',
   'shadow-card',
@@ -131,64 +133,144 @@ const MUST_INVERT = [
   'theme-color',
 ];
 
-function block(css: string, opener: string): Map<string, string> {
-  const start = css.indexOf(opener);
+function block(opener: string): Map<string, string> {
+  const start = CSS.indexOf(opener);
   expect(start, `${opener} is missing from tokens.css`).toBeGreaterThan(-1);
   const from = start + opener.length;
-  const end = css.indexOf('\n}', from);
-  const body = css.slice(from, end);
+  const end = CSS.indexOf('\n}', from);
   const declarations = new Map<string, string>();
-  for (const match of body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) {
+  for (const match of CSS.slice(from, end).matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) {
     declarations.set(match[1]!, match[2]!.trim());
   }
   return declarations;
 }
 
-describe('the light palette covers everything the dark one defines', () => {
-  const css = readFileSync(TOKENS_CSS, 'utf8');
-  // The first @theme block is the dark default. The P3 one that follows only
-  // widens colours that are already there, so it is not a source of names.
-  const dark = block(css, '@theme {');
-  const bySystem = block(css, ":root:not([data-theme='dark']) {");
-  const byChoice = block(css, ":root[data-theme='light'] {");
+const daylight = block('@theme {');
+const bySystem = block(":root:not([data-theme='daylight']) {");
+const byChoice = block(":root[data-theme='midnight'] {");
 
+describe('Midnight covers everything Daylight defines', () => {
   it('reads all three blocks', () => {
-    expect(dark.size).toBeGreaterThan(20);
-    expect(bySystem.size).toBeGreaterThan(20);
-    expect(byChoice.size).toBeGreaterThan(20);
+    expect(daylight.size).toBeGreaterThan(30);
+    expect(bySystem.size).toBeGreaterThan(30);
+    expect(byChoice.size).toBeGreaterThan(30);
   });
 
-  it('leaves no colour on its dark value', () => {
-    const missing = [...dark.keys()].filter(
+  it('leaves no colour on its Daylight value', () => {
+    const missing = [...daylight.keys()].filter(
       (name) => name.startsWith('--color-') && !bySystem.has(name),
     );
-    expect(missing, 'These would render at their dark value on a white screen').toEqual([]);
+    expect(missing, 'These would render at their Daylight value on an indigo screen').toEqual([]);
   });
 
-  it('inverts every overlay rather than reusing the dark one', () => {
+  it('inverts every overlay rather than reusing the Daylight one', () => {
     for (const name of MUST_INVERT) {
       const token = `--${name}`;
-      expect(bySystem.has(token), `${token} is not redefined for light`).toBe(true);
-      expect(bySystem.get(token), `${token} still holds its dark value`).not.toBe(dark.get(token));
+      expect(bySystem.has(token), `${token} is not redefined for Midnight`).toBe(true);
+      expect(bySystem.get(token), `${token} still holds its Daylight value`).not.toBe(
+        daylight.get(token),
+      );
     }
   });
 
-  it('keeps the two light blocks in step', () => {
+  it('keeps the two Midnight blocks in step', () => {
     expect([...byChoice.entries()].sort()).toEqual([...bySystem.entries()].sort());
   });
 
   it('gives each palette a plain-hex colour for the browser chrome', () => {
     // The meta tag takes a colour, not a colour function, so neither of these
     // may be answered with the P3 form.
-    expect(dark.get('--theme-color')).toMatch(/^#[0-9a-f]{6}$/);
+    expect(daylight.get('--theme-color')).toMatch(/^#[0-9a-f]{6}$/);
     expect(bySystem.get('--theme-color')).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
 
 /* ===========================================================================
+ * CONTRAST, COMPUTED
+ * ---------------------------------------------------------------------------
+ * The brief requires every category pair to clear AA at 14px for its ink on
+ * its own wash and on the ground, and says to compute it rather than eyeball
+ * it. This is that computation, run against the token file itself rather than
+ * against a copy of the values, so it cannot drift out of step with what ships.
+ *
+ * It has already earned its place. As first written the palette had
+ * `--color-ink-3` at 2.82:1 on base — carrying every row subtitle, chart axis
+ * and caption in the app — under a comment claiming it was AA at 12px and up.
+ * The food and obligation inks were 4.44:1 and 4.13:1 on their own washes.
+ * ======================================================================== */
+
+const FAMILIES = ['housing', 'food', 'transport', 'obligation', 'leisure', 'health'] as const;
+
+function hex(theme: Map<string, string>, token: string): string {
+  const raw = theme.get(token);
+  expect(raw, `${token} is not defined`).toBeDefined();
+  return raw!;
+}
+
+for (const [name, theme] of [
+  ['Daylight', daylight],
+  ['Midnight', bySystem],
+] as const) {
+  describe(`${name} clears WCAG AA at 14px`, () => {
+    const base = hex(theme, '--color-base');
+    const surface = hex(theme, '--color-surface');
+    const sunken = hex(theme, '--color-sunken');
+
+    for (const family of FAMILIES) {
+      it(`${family} ink reads on its own wash, on base and on surface`, () => {
+        const ink = hex(theme, `--color-${family}`);
+        const wash = hex(theme, `--color-${family}-wash`);
+        expect(contrast(ink, wash), `${family} ink on its wash`).toBeGreaterThanOrEqual(AA_TEXT);
+        expect(contrast(ink, base), `${family} ink on base`).toBeGreaterThanOrEqual(AA_TEXT);
+        expect(contrast(ink, surface), `${family} ink on surface`).toBeGreaterThanOrEqual(AA_TEXT);
+      });
+    }
+
+    it('every ink level that carries type reads on every ground', () => {
+      for (const token of ['--color-ink', '--color-ink-2', '--color-ink-3']) {
+        const ink = hex(theme, token);
+        for (const [groundName, ground] of [
+          ['base', base],
+          ['surface', surface],
+          ['sunken', sunken],
+        ] as const) {
+          expect(contrast(ink, ground), `${token} on ${groundName}`).toBeGreaterThanOrEqual(
+            AA_TEXT,
+          );
+        }
+      }
+    });
+
+    /*
+     * `ink-4` is the odd one out and stays that way on purpose. It is the
+     * muted half of a paired bar and the fill of a dim track — never type. So
+     * it is held to the non-text threshold, and this says which rule it is
+     * being judged by rather than quietly exempting it from the other one.
+     */
+    it('holds ink-4 to the non-text rule, because it never carries type', () => {
+      const ink4 = hex(theme, '--color-ink-4');
+      expect(contrast(ink4, base), 'ink-4 is a fill, not a text colour').toBeLessThan(AA_TEXT);
+    });
+
+    /*
+     * The hot accent is a fill and a marker: the record button, and the single
+     * dot marking the one thing needing a decision. WCAG asks 3:1 of a
+     * non-text mark that carries meaning and it clears that. It does not clear
+     * 4.5:1 as type on either ground, which is why nothing sets small text in
+     * it — an inline link takes ink or the screen's category ink instead.
+     */
+    it('keeps the hot accent legible as a mark, and admits it is not a text colour', () => {
+      const hot = hex(theme, '--color-hot');
+      expect(contrast(hot, base), 'hot as a mark on base').toBeGreaterThanOrEqual(AA_LARGE);
+      expect(contrast('#ffffff', hot), 'white glyph on hot').toBeGreaterThanOrEqual(AA_LARGE);
+    });
+  });
+}
+
+/* ===========================================================================
  * NO COMPONENT DECIDES WHAT COLOUR AN OVERLAY IS
  * ---------------------------------------------------------------------------
- * `white/8` is a hairline on a dark card and an invisible one on a white card.
+ * `white/8` is a hairline on a dark card and an invisible one on a light card.
  * `[color-scheme:dark]` on a date input forces the native picker dark on a
  * light screen. Both are how a theme leaks: each is locally reasonable and
  * only wrong once the ground underneath it can change.
@@ -232,22 +314,18 @@ describe('no component hard-codes a theme', () => {
  * carries `will-change: transform` for the sheet-recede effect, and that makes
  * it the containing block for every `position: fixed` descendant. So the
  * floating dock's `bottom: 0` stopped meaning "the bottom of the screen" and
- * started meaning "the bottom of a box that is 59px short", and the dock
- * floated 59px above the gap it was already meant to leave.
+ * started meaning "the bottom of a box that is 59px short".
  *
- * It is invisible everywhere `dvh` happens to be right, which is every
- * browser anybody develops in. So it is guarded here rather than by looking.
+ * It is invisible everywhere `dvh` happens to be right, which is every browser
+ * anybody develops in. So it is guarded here rather than by looking.
  * ======================================================================== */
 
 describe('the shell is pinned to the viewport by its edges', () => {
-  const css = readFileSync(TOKENS_CSS, 'utf8');
-
-  /** The declarations of one rule, found by its selector. */
   function rule(selector: string): string {
-    const at = css.indexOf(selector);
+    const at = CSS.indexOf(selector);
     expect(at, `${selector} is missing from tokens.css`).toBeGreaterThan(-1);
-    const open = css.indexOf('{', at);
-    return css.slice(open, css.indexOf('}', open));
+    const open = CSS.indexOf('{', at);
+    return CSS.slice(open, CSS.indexOf('}', open));
   }
 
   it('sizes html and body by inset, never in viewport units', () => {
@@ -261,9 +339,6 @@ describe('the shell is pinned to the viewport by its edges', () => {
     const shell = rule('#app-shell {');
     expect(shell).toMatch(/position:\s*fixed/);
     expect(shell).toMatch(/inset:\s*0/);
-    expect(shell, 'will-change is what makes this the containing block').toMatch(
-      /will-change:\s*transform/,
-    );
   });
 
   it('leaves no viewport-unit height on the shell element in the markup', () => {
