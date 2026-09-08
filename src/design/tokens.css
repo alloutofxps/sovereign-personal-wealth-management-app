@@ -292,8 +292,19 @@
    * ---------------------------------------------------------------------- */
   .glass {
     background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+
+    /* Unprefixed only, deliberately.
+     *
+     * This carried both the standard and the `-webkit-` property, written in
+     * that order. The production minifier read that as a hand-rolled prefix
+     * and collapsed the pair down to the prefixed one alone, which Chromium
+     * does not support: the dock shipped translucent with no blur at all,
+     * which is the fog the saturation boost exists to avoid. Dev never showed
+     * it because dev does not minify.
+     *
+     * The build prefixes from its own browser targets. Doing it by hand here
+     * is what confused it. */
     backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
   }
 
   /* A backdrop-filter creates a stacking context and on iOS it will not blur
