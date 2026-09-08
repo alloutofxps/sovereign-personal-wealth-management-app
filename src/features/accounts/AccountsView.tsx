@@ -228,7 +228,7 @@ export function AccountsView() {
             >
               <span className="flex items-baseline gap-2">
                 <Chevron open={!isCollapsed} />
-                <span className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+                <span className="section-title text-ink">
                   {GROUP_TITLES[group]}
                 </span>
               </span>
@@ -624,7 +624,7 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">{title}</h2>
+        <h2 className="section-title text-ink">{title}</h2>
         {action}
       </div>
       {hint && <p className="-mt-1 max-w-[46ch] text-caption text-ink-2">{hint}</p>}

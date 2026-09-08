@@ -276,7 +276,7 @@ export function Ledger({
       {books.map((book) => (
         <div key={book.book} className="overflow-hidden rounded-md border border-line">
           <div className="border-b border-line bg-raised px-3 py-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               {book.book}
             </span>
           </div>
@@ -298,7 +298,7 @@ export function Ledger({
             </tbody>
           </table>
           <div className="flex items-baseline justify-between gap-2 border-t border-line-strong bg-sunken px-3 py-2">
-            <span className="text-micro uppercase tracking-[0.1em] text-ink-3">Adds up to</span>
+            <span className="text-caption text-ink-3">Adds up to</span>
             <span
               className={clsx(
                 'tnum text-caption font-medium',

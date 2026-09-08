@@ -28,9 +28,19 @@ export interface MoneyProps extends MoneyDisplayOptions {
   className?: string;
 }
 
+/*
+ * Fraunces carries the two figure sizes and Space Grotesk the rest.
+ *
+ * `.figure` is where the optical-size axis earns its place: a 64px hero and a
+ * 17px row amount are drawn with genuinely different stroke contrast rather
+ * than one outline scaled up, which is what makes a number read as an amount
+ * of money instead of a readout. Below `figure` the difference stops being
+ * legible and the operational face is the better one — its digits are tabular
+ * and it sits with the rest of the row.
+ */
 const SIZE: Record<MoneySize, string> = {
-  anchor: 'text-anchor font-medium tracking-[-0.02em]',
-  figure: 'text-figure font-medium tracking-[-0.01em]',
+  anchor: 'figure text-anchor',
+  figure: 'figure text-figure',
   lead: 'text-lead font-medium',
   body: 'text-body',
   caption: 'text-caption',

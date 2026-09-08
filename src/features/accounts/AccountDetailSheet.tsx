@@ -289,7 +289,7 @@ export function AccountDetailSheet({
           {/* --- the marks ---------------------------------------------- */}
           {canRevalue && (
             <section className="flex flex-col gap-2">
-              <h3 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+              <h3 className="section-title text-ink">
                 What it has been worth
               </h3>
               {(marks.data ?? []).length === 0 ? (

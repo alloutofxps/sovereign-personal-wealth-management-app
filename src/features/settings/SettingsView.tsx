@@ -146,7 +146,7 @@ export function SettingsView() {
             it knows nothing about your circumstances.
           </p>
           <label className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               Where you are taxed
             </span>
             <select
@@ -163,7 +163,7 @@ export function SettingsView() {
           {taxRegime === 'flat_gains' && (
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1.5">
-                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">Rate</span>
+                <span className="text-caption text-ink-3">Rate</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -176,7 +176,7 @@ export function SettingsView() {
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+                <span className="text-caption text-ink-3">
                   Yearly allowance
                 </span>
                 <input

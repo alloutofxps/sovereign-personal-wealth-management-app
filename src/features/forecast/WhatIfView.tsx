@@ -229,7 +229,7 @@ export function WhatIfView() {
 function Figure({ label, value, imagined }: { label: string; value: Minor; imagined?: boolean }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-micro font-medium uppercase tracking-[0.1em] text-ink-3">{label}</span>
+      <span className="text-micro font-medium text-ink-3">{label}</span>
       <Money value={value} size="figure" tone={imagined ? 'liquid' : 'neutral'} />
     </div>
   );
@@ -479,7 +479,7 @@ function ChangeSheet({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       {children}
     </label>
   );

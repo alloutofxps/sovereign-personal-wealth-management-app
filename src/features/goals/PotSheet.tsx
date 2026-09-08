@@ -290,7 +290,7 @@ export function TopUpSheet({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       {children}
     </div>
   );

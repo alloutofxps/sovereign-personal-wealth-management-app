@@ -304,11 +304,7 @@ function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-base/85 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[42rem] items-baseline justify-between gap-4 px-4 pt-[calc(0.875rem+var(--safe-top))] pb-3.5">
-        <div className="flex items-baseline gap-2.5">
-          <h1 className="text-lead font-medium tracking-[-0.01em] text-ink">Sovereign</h1>
-          <span className="text-micro uppercase tracking-[0.14em] text-ink-3">Design system</span>
-        </div>
-        <span className="text-micro uppercase tracking-[0.14em] text-liquid">Phase 2</span>
+        <h1 className="text-lead font-medium tracking-[-0.01em] text-ink">Sovereign</h1>
       </div>
     </header>
   );
@@ -419,7 +415,7 @@ function TransactionRow({ tx }: { tx: DemoTransaction }) {
         <div className="flex items-center gap-2">
           <span className="truncate text-body text-ink">{tx.merchant}</span>
           {tx.pending && (
-            <span className="shrink-0 rounded-sm border border-line-strong px-1.5 py-px text-micro uppercase tracking-[0.1em] text-ink-3">
+            <span className="shrink-0 rounded-pill border border-line-strong px-2 py-px text-micro text-ink-3">
               Pending
             </span>
           )}
@@ -445,7 +441,7 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">{title}</h2>
+        <h2 className="section-title text-ink">{title}</h2>
         {note && <p className="max-w-[46ch] text-caption text-ink-2">{note}</p>}
       </div>
       {children}
@@ -465,7 +461,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       {children}
     </label>
   );

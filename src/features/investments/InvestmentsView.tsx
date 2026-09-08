@@ -167,12 +167,7 @@ export function InvestmentsView() {
             description={describeAllocation(data.allocation)}
           />
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
-              Everything you hold
-            </h2>
-            <HoldingsList holdings={data.holdings} onOpen={setViewing} />
-          </section>
+          <HoldingsList holdings={data.holdings} onOpen={setViewing} />
 
           <FeeDragCard drag={data.feeDrag} />
         </>

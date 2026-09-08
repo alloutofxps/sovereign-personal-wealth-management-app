@@ -62,7 +62,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="text-micro uppercase tracking-[0.1em] text-ink-3">A month costs</span>
+            <span className="text-caption text-ink-3">A month costs</span>
             <Money value={scenario.monthlyNeed} size="lead" />
           </div>
         </div>
@@ -72,7 +72,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
         </p>
 
         <div className="flex flex-col gap-2 border-t border-line pt-3">
-          <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+          <span className="text-caption text-ink-2">
             What could you go without?
           </span>
           <p className="max-w-[44ch] text-caption text-ink-3">

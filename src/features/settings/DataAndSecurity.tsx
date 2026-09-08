@@ -192,7 +192,7 @@ function YourDataCard() {
 
           {lockWith === 'passphrase' ? (
             <label className="flex flex-col gap-2">
-              <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+              <span className="text-caption text-ink-2">
                 Passphrase (optional)
               </span>
               <input
@@ -264,7 +264,7 @@ function YourDataCard() {
           <p className="text-caption text-ink">{restoring?.name}</p>
 
           <label className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               Passphrase
             </span>
             <input
@@ -441,7 +441,7 @@ function PasscodeField({
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       <input
         type="password"
         inputMode="numeric"

@@ -583,8 +583,9 @@
    * is the single biggest reason the screens read as generated: a hierarchy of
    * containers is information, a kit of identical ones is wallpaper.
    *
-   * The components that consume these arrive in phase 2. `.rim` and `.eyebrow`
-   * below are kept until then so the app stays coherent between commits.
+   * `.rim`, `.rim-flat`, `.eyebrow` and `.display` are gone. `Field`, `Card`
+   * and `Tile` in src/design/ui are what consume these, and `Row` is the
+   * shared list row that carries the category square.
    * ---------------------------------------------------------------------- */
 
   /* 1. The field. Large, flat, coloured, no border, no shadow. Exactly one per
@@ -683,39 +684,6 @@
     font-weight: 500;
     opacity: 0.55;
     letter-spacing: 0;
-  }
-
-  /* -------------------------------------------------------------------------
-   * KEPT UNTIL PHASE 2
-   * -------------------------------------------------------------------------
-   * `.rim` is worn by `Card` and `Toasts`, and `.eyebrow` by every `Card`
-   * label. Deleting them here would leave 115 containers unstyled for the
-   * length of one commit. They go when their call sites do.
-   * ---------------------------------------------------------------------- */
-  .rim {
-    border: 0.5px solid var(--hairline);
-    box-shadow:
-      inset 0 1px 0 0 var(--rim-top),
-      var(--shadow-card);
-  }
-
-  .rim-flat {
-    border: 0.5px solid var(--hairline);
-    box-shadow: inset 0 1px 0 0 var(--rim-top);
-  }
-
-  .eyebrow {
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  .display {
-    letter-spacing: -0.025em;
-    line-height: 1.1;
-    font-weight: 500;
   }
 
   /* -------------------------------------------------------------------------

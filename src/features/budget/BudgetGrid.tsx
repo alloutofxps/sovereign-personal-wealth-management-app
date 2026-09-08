@@ -167,14 +167,14 @@ export function BudgetGrid() {
             className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2"
             aria-hidden="true"
           >
-            <span className="text-micro uppercase tracking-[0.1em] text-ink-3">Pot</span>
-            <span className="text-right text-micro uppercase tracking-[0.1em] text-ink-3">
+            <span className="text-caption text-ink-3">Pot</span>
+            <span className="text-right text-caption text-ink-3">
               In
             </span>
-            <span className="text-right text-micro uppercase tracking-[0.1em] text-ink-3">
+            <span className="text-right text-caption text-ink-3">
               Out
             </span>
-            <span className="text-right text-micro uppercase tracking-[0.1em] text-ink-3">
+            <span className="text-right text-caption text-ink-3">
               Left
             </span>
           </div>
@@ -183,7 +183,7 @@ export function BudgetGrid() {
             {data.groups.map((group) => (
               <li key={group.groupId}>
                 <div className="grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-x-3 bg-sunken/60 px-4 py-2">
-                  <span className="truncate text-caption font-medium uppercase tracking-[0.08em] text-ink-2">
+                  <span className="truncate text-caption font-medium text-ink-2">
                     {group.groupName}
                   </span>
                   <Money value={group.assigned} size="caption" tone="muted" />

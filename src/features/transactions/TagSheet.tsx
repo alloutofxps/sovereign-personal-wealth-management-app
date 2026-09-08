@@ -80,7 +80,7 @@ export function TagSheet({
       ) : (
         <div className="flex flex-col gap-4 pb-2">
           <label className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               A new tag
             </span>
             <input
@@ -113,7 +113,7 @@ export function TagSheet({
 
           {tags.length > 0 && (
             <div className="flex flex-col gap-2 pt-1">
-              <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+              <span className="text-caption text-ink-2">
                 Or one you already use
               </span>
               <div className="flex flex-wrap gap-2">

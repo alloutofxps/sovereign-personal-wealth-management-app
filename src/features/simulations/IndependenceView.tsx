@@ -131,7 +131,7 @@ export function IndependenceView() {
       </Card>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+        <h2 className="section-title text-ink">
           The landmarks
         </h2>
         <div className="flex flex-col gap-2">

@@ -22,7 +22,7 @@ export function SafeToSpendCard({
         aria-label="See how this figure is worked out"
       >
         <div className="flex items-center justify-between gap-3">
-          <span className="text-micro font-medium uppercase tracking-[0.13em] text-ink-3">
+          <span className="text-caption text-ink-3">
             Safe to spend
           </span>
           <span className="flex items-center gap-1 text-caption text-ink-3">
@@ -112,7 +112,7 @@ function Figure({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-micro font-medium uppercase tracking-[0.1em] text-ink-3">
+      <span className="truncate text-caption text-ink-3">
         {label}
       </span>
       <span className="truncate">{value}</span>

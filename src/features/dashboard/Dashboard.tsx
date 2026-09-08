@@ -108,7 +108,7 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
       {recent.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+            <h2 className="section-title text-ink">
               What you have recorded
             </h2>
             <span className="flex gap-3">

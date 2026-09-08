@@ -104,7 +104,7 @@ export function WriteOffSheet({
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               What should it count as?
             </span>
             <CategoryPicker value={categoryId} onChange={setCategoryId} label="" />

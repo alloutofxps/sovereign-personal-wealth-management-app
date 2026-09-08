@@ -34,7 +34,7 @@ export function StepFrame({
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       {children}
     </label>
   );

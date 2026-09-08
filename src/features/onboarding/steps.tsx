@@ -361,7 +361,7 @@ export function StepSaving({ added, onAdded }: StepProps) {
       </Field>
 
       <div className="flex flex-col gap-2">
-        <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+        <span className="text-caption text-ink-2">
           How does this one work?
         </span>
         {POT_KINDS.map((option) => (

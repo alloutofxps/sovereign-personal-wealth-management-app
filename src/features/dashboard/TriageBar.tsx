@@ -24,7 +24,7 @@ export function TriageBar({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+      <h2 className="section-title text-ink">
         Anything needing you
       </h2>
 

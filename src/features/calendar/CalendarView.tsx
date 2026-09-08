@@ -113,7 +113,7 @@ export function CalendarView() {
 
         <div className="grid grid-cols-7 gap-1 pb-1" aria-hidden="true">
           {initials.map((initial, i) => (
-            <span key={i} className="text-center text-micro uppercase tracking-[0.08em] text-ink-3">
+            <span key={i} className="text-center text-micro uppercase text-ink-3">
               {initial}
             </span>
           ))}

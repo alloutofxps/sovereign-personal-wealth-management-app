@@ -112,7 +112,7 @@ export function ListItem({
 export function ListSectionHeader({ children }: { children: ReactNode }) {
   return (
     <li className="sticky top-0 z-10 border-b border-line-faint bg-surface/95 px-4 py-2 backdrop-blur-sm">
-      <span className="text-micro font-medium uppercase tracking-[0.13em] text-ink-3">
+      <span className="text-caption text-ink-3">
         {children}
       </span>
     </li>

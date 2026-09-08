@@ -53,14 +53,14 @@ export function PotsView() {
           <div className="flex flex-col gap-3">
             <div className="flex items-end justify-between gap-4">
               <div className="flex flex-col gap-0.5">
-                <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+                <span className="text-caption text-ink-2">
                   To put by each month
                 </span>
                 <Money value={monthlyTotal} size="figure" tone="neutral" />
               </div>
               {needThisMonth > 0 && (
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+                  <span className="text-caption text-ink-3">
                     Still to go this month
                   </span>
                   <Money value={needThisMonth} size="lead" tone="caution" />

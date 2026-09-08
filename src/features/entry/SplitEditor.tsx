@@ -92,10 +92,7 @@ export function SplitEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
-          Splitting
-        </span>
+      <div className="flex items-baseline justify-end gap-3">
         <Money value={total} size="lead" />
       </div>
 

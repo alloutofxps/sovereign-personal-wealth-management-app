@@ -180,18 +180,13 @@ export function ReconcileAccountSheet({
             hint="Everything up to and including this day is what gets checked."
           />
 
-          <div className="flex flex-col gap-2">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
-              Statement ending balance
-            </span>
-            <AmountInput
-              value={statementBalance}
-              onChange={setStatementBalance}
-              label="What your bank says the account came to"
-              hint="Copy the closing figure from the statement, exactly as it is printed."
-              allowNegative
-            />
-          </div>
+          <AmountInput
+            value={statementBalance}
+            onChange={setStatementBalance}
+            label="What your bank says the account came to"
+            hint="Copy the closing figure from the statement, exactly as it is printed."
+            allowNegative
+          />
 
           {view?.lastReconciliation && (
             <Card>

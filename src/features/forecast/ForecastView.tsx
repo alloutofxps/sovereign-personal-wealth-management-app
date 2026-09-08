@@ -86,7 +86,7 @@ export function ForecastView() {
           <div className="flex flex-col gap-4">
             <div className="flex items-end justify-between gap-4">
               <div className="flex flex-col gap-0.5">
-                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+                <span className="text-caption text-ink-3">
                   In {horizon} days
                 </span>
                 <Money
@@ -96,7 +96,7 @@ export function ForecastView() {
                 />
               </div>
               <div className="flex flex-col items-end gap-0.5">
-                <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+                <span className="text-caption text-ink-3">
                   Tightest point
                 </span>
                 <Money

@@ -64,7 +64,7 @@ export function Toasts() {
           key={t.id}
           className={clsx(
             'pointer-events-auto flex w-full max-w-[34rem] items-start gap-3',
-            'rim rounded-md px-3.5 py-3',
+            'card px-3.5 py-3',
             '[transition:opacity_200ms_ease,transform_260ms_var(--ease-snap)]',
             leaving.has(t.id)
               ? 'translate-y-2 scale-[0.98] opacity-0'

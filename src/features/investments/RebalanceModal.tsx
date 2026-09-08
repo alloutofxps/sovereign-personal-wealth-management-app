@@ -239,7 +239,7 @@ function PlanTab({
 
       {/* --- the full picture ------------------------------------------- */}
       <section className="flex flex-col gap-2">
-        <h3 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+        <h3 className="section-title text-ink">
           How each part stands
         </h3>
         <Card padding="none">

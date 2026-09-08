@@ -546,7 +546,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
           ) : (
             <>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+            <span className="text-caption text-ink-2">
               {splitting ? 'Split across categories' : 'What was it for?'}
             </span>
             {!fronted && (
@@ -683,7 +683,7 @@ async function undoJustSaved(id: Parameters<typeof voidEntry>[0]) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <span className="text-caption text-ink-2">{label}</span>
       {children}
     </div>
   );

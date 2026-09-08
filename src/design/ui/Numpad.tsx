@@ -391,7 +391,7 @@ export function AmountInput({ label, hint, className, ...numpad }: AmountInputPr
     <div className={clsx('flex flex-col gap-5', className)}>
       <div className="flex flex-col items-center gap-1.5 pt-1">
         {label && (
-          <span className="text-micro font-medium uppercase tracking-[0.13em] text-ink-3">
+          <span className="text-caption text-ink-3">
             {label}
           </span>
         )}

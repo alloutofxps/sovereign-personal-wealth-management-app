@@ -131,7 +131,7 @@ export function RecoveryPhrase({
   return (
     <div className="flex flex-col gap-3">
       <label className="flex flex-col gap-2">
-        <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+        <span className="text-caption text-ink-2">
           A recovery phrase you already have
         </span>
         <textarea

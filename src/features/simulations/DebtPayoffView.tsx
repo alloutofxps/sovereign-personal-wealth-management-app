@@ -74,7 +74,7 @@ export function DebtPayoffView() {
       </Card>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+        <h2 className="section-title text-ink">
           Two ways of going about it
         </h2>
 
@@ -102,7 +102,7 @@ export function DebtPayoffView() {
 
       {plan.clearedOrder.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+          <h2 className="section-title text-ink">
             The order things disappear
           </h2>
           <Card padding="none">
@@ -196,7 +196,7 @@ function PlanCard({
       >
         <span
           className={clsx(
-            'text-micro font-medium uppercase tracking-[0.12em]',
+            'text-caption font-medium',
             selected ? 'text-liquid' : 'text-ink-3',
           )}
         >

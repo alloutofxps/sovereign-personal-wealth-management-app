@@ -54,7 +54,7 @@ export function StatPill({ label, value, detail, tone = 'neutral', dot, classNam
     >
       <div className="flex items-center gap-1.5">
         {dot && <span className={clsx('size-1.5 shrink-0 rounded-full', t.dot)} aria-hidden="true" />}
-        <span className="truncate text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+        <span className="truncate text-caption text-ink-3">
           {label}
         </span>
       </div>

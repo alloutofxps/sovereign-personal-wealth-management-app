@@ -269,7 +269,7 @@ export function HoldingDetailSheet({
         {/* --- what it has been priced at ------------------------------ */}
         {(history.data ?? []).length > 1 && (
           <section className="flex flex-col gap-2">
-            <h3 className="text-micro font-medium uppercase tracking-[0.14em] text-ink-3">
+            <h3 className="section-title text-ink">
               What it has been priced at
             </h3>
             <Card padding="none">
@@ -328,7 +328,7 @@ function Split({
 }) {
   return (
     <div className="flex flex-col gap-1 rounded-md border border-line bg-raised px-3 py-2.5">
-      <span className="truncate text-micro uppercase tracking-[0.1em] text-ink-3">{label}</span>
+      <span className="truncate text-caption text-ink-3">{label}</span>
       <span
         className={`tnum text-caption ${emphasis ? 'font-medium text-ink' : 'text-ink-2'}`}
       >

@@ -51,7 +51,7 @@ export function FeeDragCard({ drag }: { drag: FeeDrag }) {
               key={projection.years}
               className="flex flex-col gap-1 rounded-md border border-line bg-raised px-3 py-2.5"
             >
-              <span className="text-micro uppercase tracking-[0.1em] text-ink-3">
+              <span className="text-caption text-ink-3">
                 {projection.years} years
               </span>
               <Money value={projection.versusBaseline} size="caption" tone="caution" />

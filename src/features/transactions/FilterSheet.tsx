@@ -293,7 +293,7 @@ function parseMajor(text: string): number | null {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-micro font-medium uppercase tracking-[0.12em] text-ink-3">
+      <span className="text-caption text-ink-2">
         {title}
       </span>
       {children}

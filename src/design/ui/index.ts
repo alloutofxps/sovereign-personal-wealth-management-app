@@ -1,6 +1,8 @@
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
+export { Field, QuietTile, Tile, type FieldProps, type TileProps } from './Surfaces';
+export { CategorySquare, Row, RowList, type RowProps } from './Row';
 export { Chip, type ChipProps } from './Chip';
 export { ClearButton, Input, SearchIcon, type InputProps } from './Input';
 export { List, ListItem, ListSectionHeader, type ListItemProps, type ListProps } from './List';

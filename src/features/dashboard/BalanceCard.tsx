@@ -69,7 +69,7 @@ function Legend({
 }) {
   return (
     <div className={clsx('flex flex-col gap-1', align === 'right' && 'items-end')}>
-      <span className="flex items-center gap-1.5 text-micro uppercase tracking-[0.1em] text-ink-3">
+      <span className="flex items-center gap-1.5 text-caption text-ink-3">
         <span className={clsx('size-1.5 rounded-full', swatch)} aria-hidden="true" />
         {label}
       </span>

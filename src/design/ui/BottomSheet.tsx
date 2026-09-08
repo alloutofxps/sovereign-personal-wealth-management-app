@@ -335,7 +335,7 @@ export function BottomSheet({
           )}
           {title && (
             <div className="pt-3">
-              <h2 id={labelId} className="display text-lead text-ink">
+              <h2 id={labelId} className="text-lead font-medium tracking-[-0.01em] text-ink">
                 {title}
               </h2>
               {description && (

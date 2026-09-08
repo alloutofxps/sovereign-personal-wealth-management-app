@@ -104,7 +104,7 @@ function Reader({ chapter }: { chapter: Chapter }) {
       </button>
 
       <header className="flex flex-col gap-2">
-        <span className="text-micro font-medium uppercase tracking-[0.13em] text-ink-3">
+        <span className="text-caption text-ink-3">
           Chapter {position + 1} · {chapter.engine}
         </span>
         <h1 className="max-w-[24ch] text-balance text-figure font-medium leading-tight text-ink">
