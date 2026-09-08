@@ -166,7 +166,7 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
               type="date"
               value={nextDue}
               onChange={(e) => e.target.value && setNextDue(e.target.value)}
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
             />
           </Field>
 

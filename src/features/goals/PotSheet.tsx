@@ -164,7 +164,7 @@ export function PotSheet({
                   type="date"
                   value={date}
                   onChange={(e) => e.target.value && setDate(e.target.value)}
-                  className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+                  className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
                 />
               )}
             </div>

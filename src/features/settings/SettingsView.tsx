@@ -2,11 +2,13 @@
  * system gallery so the primitives stay reviewable. */
 
 import { Suspense, lazy, useState } from 'react';
+import clsx from 'clsx';
 import { COMMON_CURRENCIES, currencyDisplayName } from '@/core/money';
 import { getStorageStatus, resetDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
+import { useTheme, type ThemeChoice } from '@/app/theme';
 import { toast } from '@/app/toast';
 import { Button, Card } from '@/design/ui';
 import { ProtectStorage } from '@/features/storage/ProtectStorage';
@@ -87,6 +89,8 @@ export function SettingsView() {
           </select>
         </label>
       </Card>
+
+      <Appearance />
 
       <ProtectStorage context="settings" />
 
@@ -270,5 +274,56 @@ export function SettingsView() {
         )}
       </Card>
     </div>
+  );
+}
+
+/* ===========================================================================
+ * APPEARANCE
+ * ---------------------------------------------------------------------------
+ * Three buttons and no preview swatch. The preview is the screen it is sitting
+ * on, which changes under the finger the moment the choice is made — a small
+ * square claiming to show what light looks like, next to an app that is
+ * already showing it, is a control explaining itself to nobody.
+ * ======================================================================== */
+
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: 'system', label: 'Match my phone' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+function Appearance() {
+  const choice = useTheme((s) => s.choice);
+  const resolved = useTheme((s) => s.resolved);
+  const setChoice = useTheme((s) => s.setChoice);
+
+  return (
+    <Card label="Appearance">
+      <div className="flex flex-col gap-3">
+        <p className="text-caption text-ink-2">
+          {choice === 'system'
+            ? `Following your phone, which is set to ${resolved} at the moment.`
+            : 'Staying this way whatever your phone is set to.'}
+        </p>
+        <div className="flex gap-1.5" role="group" aria-label="Appearance">
+          {THEMES.map((theme) => (
+            <button
+              key={theme.value}
+              type="button"
+              onClick={() => setChoice(theme.value)}
+              aria-pressed={choice === theme.value}
+              className={clsx(
+                'press rounded-md border px-3 py-2 text-caption transition-colors',
+                choice === theme.value
+                  ? 'border-liquid-dim bg-liquid-wash text-liquid'
+                  : 'border-line bg-raised text-ink-2',
+              )}
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }

@@ -44,7 +44,7 @@ export function Chip({
         'h-8',
         active
           ? 'border-liquid-dim bg-liquid-wash text-liquid'
-          : 'border-white/8 bg-raised text-ink-2',
+          : 'border-[var(--hairline)] bg-raised text-ink-2',
         interactive && !active && 'hover:border-line-strong hover:text-ink',
         disabled && 'opacity-50',
         className,

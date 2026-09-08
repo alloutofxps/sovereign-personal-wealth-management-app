@@ -297,7 +297,7 @@ export function BottomSheet({
         role="presentation"
         onClick={dismissible ? onClose : undefined}
         className={clsx(
-          'absolute inset-0 bg-black/60 transition-opacity duration-200',
+          'absolute inset-0 bg-[var(--scrim)] transition-opacity duration-200',
           entered ? 'opacity-100' : 'opacity-0',
         )}
       />
@@ -312,8 +312,8 @@ export function BottomSheet({
         className={clsx(
           'relative flex w-full max-w-[34rem] flex-col outline-none',
           'rounded-t-sheet bg-surface',
-          'shadow-[0_-16px_48px_-12px_rgb(0_0_0/0.7)]',
-          'border-t-[0.5px] border-x-[0.5px] border-white/10',
+          'shadow-[var(--shadow-sheet)]',
+          'border-t-[0.5px] border-x-[0.5px] border-[var(--hairline-strong)]',
           '[transition:transform_380ms_var(--ease-sheet)]',
           entered ? 'translate-y-0' : 'translate-y-full',
           size === 'tall' ? 'h-[calc(100dvh-3.5rem)]' : 'max-h-[calc(100dvh-3.5rem)]',
@@ -331,7 +331,7 @@ export function BottomSheet({
           )}
         >
           {dismissible && (
-            <div className="mx-auto h-1 w-9 rounded-full bg-white/20" aria-hidden="true" />
+            <div className="mx-auto h-1 w-9 rounded-full bg-ink-4" aria-hidden="true" />
           )}
           {title && (
             <div className="pt-3">
@@ -350,7 +350,7 @@ export function BottomSheet({
         <div className="scroll-y min-h-0 flex-1 px-5 pt-4 pb-2">{children}</div>
 
         {footer && (
-          <div className="shrink-0 border-t-[0.5px] border-white/8 bg-surface px-5 pt-3 pb-[calc(0.75rem+var(--safe-bottom))]">
+          <div className="shrink-0 border-t-[0.5px] border-[var(--hairline)] bg-surface px-5 pt-3 pb-[calc(0.75rem+var(--safe-bottom))]">
             {footer}
           </div>
         )}

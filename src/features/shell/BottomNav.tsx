@@ -90,23 +90,37 @@ export function BottomNav({
   return (
     <nav
       aria-label="Main"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[var(--safe-bottom)]"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pt-8 pb-[var(--dock-gap)]"
     >
+      {/*
+       * The scrim.
+       *
+       * Content is meant to scroll behind the dock, and it does. What it must
+       * not do is carry on *past* it into the gap above the home indicator,
+       * where a chart axis or a half row sits under a floating bar looking
+       * like a rendering fault. This fades the page out as it reaches the
+       * dock and fills the band below it, so the bottom of the screen reads
+       * as chrome rather than as leftover list.
+       */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 top-0 -z-10 bg-gradient-to-t from-base via-base to-transparent"
+      />
       <div
         ref={dockRef}
         className={clsx(
           'glass pointer-events-auto relative flex w-full max-w-[26rem] items-center gap-1 rounded-[1.75rem] p-1.5',
           // The rim reads as a chamfer catching the same light as everything
           // else, which is what stops a floating object looking pasted on.
-          'border-[0.5px] border-white/10',
-          'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.10),0_12px_32px_-8px_rgb(0_0_0/0.6)]',
+          'border-[0.5px] border-[var(--hairline-strong)]',
+          'shadow-[inset_0_1px_0_0_var(--rim-top),var(--shadow-dock)]',
         )}
       >
         {pill && (
           <span
             aria-hidden="true"
             className={clsx(
-              'absolute top-1.5 bottom-1.5 left-0 rounded-[1.4rem] bg-white/8',
+              'absolute top-1.5 bottom-1.5 left-0 rounded-[1.4rem] bg-[var(--fill-subtle)]',
               'motion-safe:[transition:transform_360ms_var(--ease-snap),width_360ms_var(--ease-snap)]',
             )}
             style={{ transform: `translate3d(${pill.x}px,0,0)`, width: pill.w }}

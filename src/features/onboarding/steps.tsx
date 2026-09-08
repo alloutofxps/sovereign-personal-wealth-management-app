@@ -253,7 +253,7 @@ export function StepRegulars({ added, onAdded }: StepProps) {
           type="date"
           value={due}
           onChange={(event) => event.target.value && setDue(event.target.value)}
-          className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+          className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
         />
       </Field>
 
@@ -378,7 +378,7 @@ export function StepSaving({ added, onAdded }: StepProps) {
             type="date"
             value={date}
             onChange={(event) => event.target.value && setDate(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
           />
         )}
       </div>

@@ -99,7 +99,7 @@ export function Tabs<T extends string = string>({
       aria-label={label}
       onKeyDown={onKeyDown}
       className={clsx(
-        'relative flex gap-1 rounded-pill border-[0.5px] border-white/6 bg-sunken p-1',
+        'relative flex gap-1 rounded-pill border-[0.5px] border-[var(--hairline)] bg-sunken p-1',
         className,
       )}
     >

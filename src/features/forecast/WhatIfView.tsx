@@ -293,7 +293,7 @@ function NameSheet({
             type="date"
             value={from}
             onChange={(event) => event.target.value && setFrom(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
           />
         </Field>
         <p className="text-caption text-ink-3">
@@ -457,7 +457,7 @@ function ChangeSheet({
             value={date}
             min={from}
             onChange={(event) => event.target.value && setDate(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink [color-scheme:dark]"
+            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
           />
         </Field>
 

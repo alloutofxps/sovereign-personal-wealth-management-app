@@ -88,6 +88,22 @@
   --radius-lg: 0.875rem;
   --radius-sheet: 1.5rem;
 
+  /* --- overlays --------------------------------------------------------
+   * The values that used to be written into components as `white/8` and
+   * `black/60`. They are the only things in the palette that have to invert
+   * between themes rather than merely change shade: a rim highlight lit from
+   * above is white on a dark card and white on a light one, but a hairline is
+   * white on dark and *black* on light. Naming them by job rather than by
+   * colour is what lets one component serve both. */
+  --hairline: rgb(255 255 255 / 0.07);
+  --hairline-strong: rgb(255 255 255 / 0.1);
+  --rim-top: rgb(255 255 255 / 0.08);
+  --fill-subtle: rgb(255 255 255 / 0.08);
+  --scrim: rgb(0 0 0 / 0.6);
+  --shadow-card: 0 8px 24px -4px rgb(0 0 0 / 0.45);
+  --shadow-dock: 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --shadow-sheet: 0 -16px 48px -12px rgb(0 0 0 / 0.7);
+
   /* --- motion ----------------------------------------------------------
    * One easing curve for anything that moves under a finger. It is the
    * standard iOS sheet curve: fast to leave, slow to settle, no bounce.
@@ -95,6 +111,14 @@
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-snap: cubic-bezier(0.175, 0.885, 0.32, 1.1);
   --ease-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* --- the browser's own chrome ----------------------------------------
+   * What the phone paints around the app: the iOS status bar, the Android
+   * system bars, the gutter an overscroll reveals. It lives here rather than
+   * as two hex strings in TypeScript so the palette stays the one source, and
+   * it stays out of the P3 block below because the meta tag takes a colour,
+   * not a colour function. */
+  --theme-color: #050607;
 }
 
 /* Wider gamut where the display has one. Same hues, more chroma. */
@@ -109,6 +133,121 @@
     --color-caution: color(display-p3 0.91 0.69 0.25);
     --color-deficit: color(display-p3 0.82 0.54 0.45);
   }
+}
+
+/* ===========================================================================
+ * LIGHT
+ * ---------------------------------------------------------------------------
+ * Dark is the default, so nothing changes for anybody already using the app
+ * and a failed media query cannot leave somebody on a half-applied theme.
+ * Light arrives two ways: because the system asked for it, or because the
+ * person did. An explicit choice always beats the system, in both directions.
+ *
+ * The palette is not the dark one inverted. Emerald at #34d8a0 is a beautiful
+ * accent on black and illegible on white, so the accents are darkened until
+ * they carry text at AA, and the grounds are warmed slightly off-white so a
+ * pure-white card still lifts off the page.
+ *
+ * The block is written twice on purpose. CSS cannot share one declaration
+ * list between a media query and an attribute selector, and the alternative
+ * (making light the default and duplicating dark instead) would change what
+ * every existing install renders on first paint.
+ * ======================================================================== */
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --color-base: #f6f7f8;
+    --color-sunken: #eceff0;
+    --color-surface: #ffffff;
+    --color-raised: #ffffff;
+    --color-overlay: #ffffff;
+
+    --color-line: #dfe3e4;
+    --color-line-strong: #c8ced0;
+    --color-line-faint: #edf0f0;
+
+    --color-ink: #0c1012;
+    --color-ink-2: #55605e;
+    --color-ink-3: #6f7a78;
+    --color-ink-4: #a9b2b0;
+
+    --color-liquid: #0b8f61;
+    --color-liquid-bright: #0a7d55;
+    --color-liquid-dim: #7fd9b8;
+    --color-liquid-wash: #e3f7ef;
+
+    --color-caution: #9a6b06;
+    --color-caution-dim: #e2c48a;
+    --color-caution-wash: #fdf4e3;
+
+    --color-deficit: #b4553a;
+    --color-deficit-dim: #e8b6a5;
+    --color-deficit-wash: #fceee9;
+
+    --hairline: rgb(0 0 0 / 0.08);
+    --hairline-strong: rgb(0 0 0 / 0.12);
+    --rim-top: rgb(255 255 255 / 0.9);
+    --fill-subtle: rgb(0 0 0 / 0.06);
+    --scrim: rgb(15 23 25 / 0.32);
+    --shadow-card: 0 6px 18px -6px rgb(15 23 25 / 0.1);
+    --shadow-dock: 0 10px 28px -8px rgb(15 23 25 / 0.16);
+    --shadow-sheet: 0 -16px 48px -12px rgb(15 23 25 / 0.18);
+
+    /* What the browser paints around the app. Plain hex on purpose: the meta
+       tag does not understand color(display-p3 ...). */
+    --theme-color: #f6f7f8;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-base: #f6f7f8;
+  --color-sunken: #eceff0;
+  --color-surface: #ffffff;
+  --color-raised: #ffffff;
+  --color-overlay: #ffffff;
+
+  --color-line: #dfe3e4;
+  --color-line-strong: #c8ced0;
+  --color-line-faint: #edf0f0;
+
+  --color-ink: #0c1012;
+  --color-ink-2: #55605e;
+  --color-ink-3: #6f7a78;
+  --color-ink-4: #a9b2b0;
+
+  --color-liquid: #0b8f61;
+  --color-liquid-bright: #0a7d55;
+  --color-liquid-dim: #7fd9b8;
+  --color-liquid-wash: #e3f7ef;
+
+  --color-caution: #9a6b06;
+  --color-caution-dim: #e2c48a;
+  --color-caution-wash: #fdf4e3;
+
+  --color-deficit: #b4553a;
+  --color-deficit-dim: #e8b6a5;
+  --color-deficit-wash: #fceee9;
+
+  --hairline: rgb(0 0 0 / 0.08);
+  --hairline-strong: rgb(0 0 0 / 0.12);
+  --rim-top: rgb(255 255 255 / 0.9);
+  --fill-subtle: rgb(0 0 0 / 0.06);
+  --scrim: rgb(15 23 25 / 0.32);
+  --shadow-card: 0 6px 18px -6px rgb(15 23 25 / 0.1);
+  --shadow-dock: 0 10px 28px -8px rgb(15 23 25 / 0.16);
+  --shadow-sheet: 0 -16px 48px -12px rgb(15 23 25 / 0.18);
+
+  /* See above: the meta tag takes a colour, not a colour function. */
+  --theme-color: #f6f7f8;
+}
+
+/* An explicit dark choice has to win back over a light system. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 /* ---------------------------------------------------------------------------
@@ -128,6 +267,19 @@
 
     /* Height of the floating dock, including its safe area. */
     --nav-height: calc(3.5rem + var(--safe-bottom));
+
+    /*
+     * How far the floating dock sits off the bottom edge.
+     *
+     * Not the full safe-area inset. That inset reserves room for the home
+     * indicator, and a bar that *ends* a full inset above it leaves a band of
+     * dead space with the page still scrolling through it. The indicator is a
+     * few pixels tall sitting near the bottom of its inset, so clearing it
+     * takes far less than clearing the whole thing.
+     *
+     * Ten pixels back off the inset, with a floor for devices that have none.
+     */
+    --dock-gap: max(calc(env(safe-area-inset-bottom, 0px) - 10px), 12px);
   }
 
   /* -------------------------------------------------------------------------
@@ -270,17 +422,17 @@
    * and a 1px line at 3x is visibly a rope.
    * ---------------------------------------------------------------------- */
   .rim {
-    border: 0.5px solid rgb(255 255 255 / 0.07);
+    border: 0.5px solid var(--hairline);
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
-      0 8px 24px -4px rgb(0 0 0 / 0.45);
+      inset 0 1px 0 0 var(--rim-top),
+      var(--shadow-card);
   }
 
   /* The same lighting without the drop shadow, for surfaces already sitting
      inside something raised. Stacked shadows read as mud. */
   .rim-flat {
-    border: 0.5px solid rgb(255 255 255 / 0.06);
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+    border: 0.5px solid var(--hairline);
+    box-shadow: inset 0 1px 0 0 var(--rim-top);
   }
 
   /* -------------------------------------------------------------------------

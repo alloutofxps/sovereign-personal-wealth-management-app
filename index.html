@@ -11,7 +11,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#050607" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="description" content="Autonomous precision, sovereign wealth." />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,6 +23,31 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 
     <title>Sovereign</title>
+
+    <!-- Stamp the chosen theme before the first paint.
+         This has to run here, in the head, ahead of the stylesheet and well
+         ahead of the bundle: an app that paints obsidian and then flips to
+         white a beat later has already shown the wrong thing. It reads a bare
+         string under one key on purpose, so it needs no parser and cannot be
+         broken by the shape of a persisted store changing.
+         The key matches THEME_STORAGE_KEY in src/app/theme.ts. -->
+    <script>
+      try {
+        var t = localStorage.getItem('sovereign.theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', t === 'light' ? '#f6f7f8' : '#050607');
+        } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', '#f6f7f8');
+        }
+      } catch (e) {
+        /* No storage, or none we are allowed to read. Dark stands. */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
