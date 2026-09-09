@@ -2,6 +2,15 @@ export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
 export { Field, QuietTile, Tile, type FieldProps, type TileProps } from './Surfaces';
+export {
+  MiniBar,
+  PillRow,
+  StatCell,
+  StatStrip,
+  type PillOption,
+  type StatCellProps,
+} from './FieldParts';
+export { Ring, type RingProps } from './Ring';
 export { CategorySquare, Row, RowList, type RowProps } from './Row';
 export { Chip, type ChipProps } from './Chip';
 export { Explain, type ExplainProps } from './Explain';

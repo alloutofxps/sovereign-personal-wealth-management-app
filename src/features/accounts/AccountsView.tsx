@@ -34,7 +34,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useFx } from '@/app/fx/useFx';
 import { useRoute } from '@/app/router';
-import { Button, Card, Money } from '@/design/ui';
+import { Button, Card, Field, Money } from '@/design/ui';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
 import { WriteOffSheet } from './WriteOffSheet';
 import { DebtTermsSheet } from './DebtTermsSheet';
@@ -158,10 +158,7 @@ export function AccountsView() {
     <div className="flex flex-col gap-6">
       <header className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="text-lead font-medium text-ink">Accounts</h1>
-          <p className="text-caption text-ink-2">
-            Everything you have, everything you owe, and everything that is put by.
-          </p>
+          <h1 className="headline text-ink">Net worth</h1>
         </div>
         <span className="flex shrink-0 gap-2">
           {fx.hasForeign && (
@@ -176,33 +173,45 @@ export function AccountsView() {
       </header>
 
       {/* --- the arithmetic, stated ---------------------------------------- */}
-      <Card label="What you are worth" accent="liquid">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-end justify-between gap-4">
-            <Money value={worth} size="figure" tone={worth < 0 ? 'deficit' : 'neutral'} />
-            {data && data.netWorthChange !== 0 && (
-              <span
-                className={clsx(
-                  'rounded-pill px-2.5 py-1 text-micro font-medium',
-                  data.netWorthChange > 0 ? 'bg-liquid-wash text-liquid' : 'bg-raised text-ink-2',
-                )}
-              >
-                {data.netWorthChange > 0 ? 'Up ' : 'Down '}
-                {money.format(minor(Math.abs(data.netWorthChange)), { decimals: 'hide' })} this
-                month
-              </span>
-            )}
+      {/*
+        * The one field on this screen.
+        *
+        * The sum used to be a sentence — "what you have X less what you owe Y
+        * is what you are worth Z" — with the answer already printed above it.
+        * It is a bar now: two segments in the two families, held against each
+        * other, which is the same arithmetic shown rather than narrated.
+        */}
+      <Field family="housing">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-caption opacity-75">Everything, net</div>
+            <div className="pt-1">
+              <Money value={worth} size="anchor" tone="neutral" className="text-[var(--tile-ink)]" />
+            </div>
           </div>
-
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-caption text-ink-2">
-            <span>What you have</span>
-            <Money value={have} size="caption" tone="neutral" />
-            <span className="text-ink-3">less what you owe</span>
-            <Money value={owe} size="caption" tone={owe > 0 ? 'caution' : 'muted'} />
-            <span className="text-ink-3">is what you are worth.</span>
-          </div>
+          {data && data.netWorthChange !== 0 && (
+            <span className="mt-1 shrink-0 rounded-pill bg-[color-mix(in_srgb,var(--color-surface)_62%,transparent)] px-2.5 py-1 text-micro font-medium">
+              {data.netWorthChange > 0 ? '↑ ' : '↓ '}
+              {money.format(minor(Math.abs(data.netWorthChange)), { decimals: 'hide' })} this month
+            </span>
+          )}
         </div>
-      </Card>
+
+        <div className="flex items-center gap-1.5 pt-5" aria-hidden="true">
+          <div
+            className="h-2.5 rounded-pill bg-[var(--color-housing)]"
+            style={{ flex: Math.max(1, have) }}
+          />
+          <div
+            className="h-2.5 rounded-pill bg-[var(--color-obligation)]"
+            style={{ flex: Math.max(1, owe) }}
+          />
+        </div>
+        <div className="flex justify-between pt-2 text-caption opacity-80">
+          <span>{money.format(have, { decimals: 'hide' })} held</span>
+          <span>{money.format(owe, { decimals: 'hide' })} owed</span>
+        </div>
+      </Field>
 
       {/* --- the line it got here along ------------------------------------ */}
       <NetWorthHistoryCard />

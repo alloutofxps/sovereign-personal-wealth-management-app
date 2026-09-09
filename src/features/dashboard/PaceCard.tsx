@@ -73,10 +73,30 @@ export function PaceCard({
               formatDate={(iso) => describeDate(iso, locale)}
               formatAxisDate={(iso) => shortDate(iso, locale)}
             />
-            <p className="pt-1 text-micro text-ink-3">
-              The solid line is what you have spent. The dotted one is where you would be
-              spending the same amount every day. Drag across to look at any day.
-            </p>
+            {/*
+              * A legend, not a paragraph.
+              *
+              * This was three sentences explaining what the two lines were and
+              * that the chart could be dragged. The first two are what the
+              * information button now says — and says better, with this
+              * household's own percentages in it — and the third was explaining
+              * the interface, which no explanation in this app is allowed to
+              * do. What is left is the one thing a legend is for: which line
+              * is which.
+              */}
+            <div className="flex gap-4 pt-2 text-micro text-ink-3">
+              <span className="flex items-center gap-1.5">
+                <i aria-hidden="true" className={clsx('h-[2.5px] w-3.5 rounded-pill', tone.bar)} />
+                Spent
+              </span>
+              <span className="flex items-center gap-1.5">
+                <i
+                  aria-hidden="true"
+                  className="w-3.5 border-t-2 border-dashed border-ink-4"
+                />
+                Even spread
+              </span>
+            </div>
           </div>
         )}
       </div>

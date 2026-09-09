@@ -109,7 +109,6 @@ function isEmptyState(text: string): boolean {
 
 const STILL_INLINE: readonly string[] = [
   'features/accounts/AccountDetailSheet.tsx',
-  'features/accounts/AccountsView.tsx',
   'features/accounts/ConvertCurrencySheet.tsx',
   'features/accounts/CreateAccountSheet.tsx',
   'features/accounts/LoanTermsSheet.tsx',
@@ -124,7 +123,6 @@ const STILL_INLINE: readonly string[] = [
   'features/categories/CategoryManagerView.tsx',
   'features/categories/CategoryPicker.tsx',
   'features/dashboard/GettingStarted.tsx',
-  'features/dashboard/PaceCard.tsx',
   'features/entry/AddPaymentSheet.tsx',
   'features/entry/PaymentDetailsSheet.tsx',
   'features/forecast/ForecastView.tsx',

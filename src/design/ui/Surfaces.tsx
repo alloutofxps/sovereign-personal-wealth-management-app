@@ -61,7 +61,9 @@ export interface TileProps {
 }
 
 export function Tile({ children, family = 'housing', onClick, className, ...rest }: TileProps) {
-  const classes = clsx('tile', familyClass(family), className);
+  // `relative` so a tile can carry a mark in its corner without the caller
+  // having to remember to add it.
+  const classes = clsx('tile relative', familyClass(family), className);
   if (!onClick) {
     return (
       <div className={classes} {...rest}>

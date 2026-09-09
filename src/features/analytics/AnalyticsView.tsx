@@ -22,7 +22,7 @@ import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { CategoryBars, MedianTickKey } from '@/charts/CategoryBars';
 import { SankeyFlow, SankeyLegend } from '@/charts/SankeyFlow';
-import { BottomSheet, Button, Card, Money, Tabs } from '@/design/ui';
+import { BottomSheet, Button, Card, Money, PillRow } from '@/design/ui';
 
 const HORIZONS: Horizon[] = ['this-month', 'last-month', 'trailing-90', 'year-to-date'];
 
@@ -40,18 +40,29 @@ export function AnalyticsView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">Where it went</h1>
-        <p className="text-caption text-ink-2">
-          What came in, what went out, and how that compares with your usual.
-        </p>
-      </header>
+      {/*
+        * A headline, not a heading with a caption under it.
+        *
+        * The sentence that used to sit here — "what came in, what went out,
+        * and how that compares with your usual" — described the three cards
+        * below it, which are perfectly capable of describing themselves. What
+        * is left is the screen's name, set in the display face.
+        */}
+      <h1 className="headline text-ink">Where it went</h1>
 
-      <Tabs
+      {/*
+        * Pills rather than the tab strip.
+        *
+        * A window of time is one choice, not a set of panels: nothing here is
+        * a tabpanel and announcing four tabs to a screen reader would be
+        * describing a structure that is not on the screen. `PillRow` is the
+        * lighter thing the reference uses for exactly this.
+        */}
+      <PillRow
         label="Which period to look at"
         value={horizon}
         onChange={setHorizon}
-        tabs={HORIZONS.map((value) => ({ value, label: HORIZON_LABELS[value] }))}
+        options={HORIZONS.map((value) => ({ value, label: HORIZON_LABELS[value] }))}
       />
 
       {data === undefined ? (

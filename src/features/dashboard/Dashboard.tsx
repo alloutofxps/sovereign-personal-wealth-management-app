@@ -19,7 +19,8 @@ import { useRecentEntries } from '@/app/ledger/useLedger';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
-import { Button, Card, Money } from '@/design/ui';
+import { familyFor } from '@/design/category';
+import { Button, Card, Money, Row, RowList } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 // Loaded when somebody taps a payment, not before. It is a sheet that only
 // appears on demand, and it brings the whole audit view and the statement-check
@@ -163,54 +164,53 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
               <button
                 type="button"
                 onClick={() => navigate('budget')}
-                className="text-caption text-liquid"
+                className="text-caption font-medium text-liquid"
               >
                 Budget
               </button>
               <button
                 type="button"
                 onClick={() => navigate('analytics')}
-                className="text-caption text-liquid"
+                className="text-caption font-medium text-liquid"
               >
                 Where it went
               </button>
               <button
                 type="button"
                 onClick={() => navigate('transactions')}
-                className="text-caption text-liquid"
+                className="text-caption font-medium text-liquid"
               >
                 See everything
               </button>
             </span>
           </div>
 
-          <Card padding="none">
-            <ul className="divide-y divide-line-faint">
+          {/*
+            * The category square is what lets these rows lose their captions.
+            * Its hue is the same one the category carries in the donut and on
+            * its own tile, so somebody scanning the list is reading colour
+            * before they read words.
+            */}
+          <Card padding="none" className="px-4">
+            <RowList>
               {recent.map((entry) => {
                 const spent = entry.postings.find(
                   (p) => p.book === 'FINANCIAL' && p.amount > 0 && p.accountId.startsWith('cat-'),
                 );
                 const undone = entry.kind === 'REVERSAL';
                 return (
-                  <li key={entry.id}>
-                    <button
-                      type="button"
-                      onClick={() => setLooking(entry)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors active:bg-raised"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-body text-ink">{entry.description}</p>
-                        <p className="truncate pt-0.5 text-caption text-ink-3">
-                          {describeDate(entry.date, locale)}
-                          {undone ? ' · a correction' : ''}
-                        </p>
-                      </div>
-                      {spent && <Money value={spent.amount} size="lead" />}
-                    </button>
-                  </li>
+                  <Row
+                    key={entry.id}
+                    family={familyFor(spent?.accountId)}
+                    name={entry.description}
+                    meta={`${describeDate(entry.date, locale)}${undone ? ' · a correction' : ''}`}
+                    muted={undone}
+                    onClick={() => setLooking(entry)}
+                    trailing={spent ? <Money value={spent.amount} size="lead" /> : undefined}
+                  />
                 );
               })}
-            </ul>
+            </RowList>
           </Card>
         </section>
       )}

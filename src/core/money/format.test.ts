@@ -189,7 +189,12 @@ describe('no hardcoded currency in the app', () => {
    * syntax and `$1` is a regex back-reference. A guard that flags ordinary
    * JavaScript gets switched off within a week, and then it guards nothing.
    */
-  const CURRENCY_LITERAL = /[€£¥₹₽₩₿]|\$\s?\d[\d.,]|[\d.,]\d\s?\$/;
+  /*
+   * A dollar sign immediately followed by `{` is a template interpolation, not
+   * money. Without the lookahead this reads `viewBox={\`0 0 ${size}...\`}` as a
+   * dollar amount and fails an SVG for having a width — which it did.
+   */
+  const CURRENCY_LITERAL = /[€£¥₹₽₩₿]|\$(?!\{)\s?\d[\d.,]|[\d.,]\d\s?\$(?!\{)/;
 
   it('has no currency symbol outside the money module', () => {
     // Test files are exempt from *this* rule only. A symbol in a test is
