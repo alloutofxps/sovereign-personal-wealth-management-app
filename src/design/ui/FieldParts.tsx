@@ -73,21 +73,37 @@ export function StatCell({ label, children, hint, className }: StatCellProps) {
 
 export function MiniBar({
   fraction,
+  mark,
   className,
 }: {
   /** 0 to 1 of the largest sibling, not of the total. */
   fraction: number;
+  /**
+   * A second position on the same track, drawn as a notch.
+   *
+   * The same mechanic `Ring` carries: the fill says where this is, the mark
+   * says where it usually is, and the gap between them is the whole point. A
+   * category past its own notch is running hot without anything having to
+   * change colour to say so.
+   */
+  mark?: number;
   className?: string;
 }) {
   return (
     <div
       aria-hidden="true"
-      className={clsx('mt-1.5 h-[5px] overflow-hidden rounded-pill bg-sunken', className)}
+      className={clsx('relative mt-1.5 h-[5px] overflow-hidden rounded-pill bg-sunken', className)}
     >
       <div
         className="h-full rounded-pill bg-[var(--tile-ink,var(--color-ink-3))]"
         style={{ width: `${Math.max(0, Math.min(1, fraction)) * 100}%` }}
       />
+      {mark !== undefined && mark > 0 && (
+        <span
+          className="absolute top-0 h-full w-px bg-ink-2"
+          style={{ left: `${Math.min(100, Math.max(0, mark) * 100)}%` }}
+        />
+      )}
     </div>
   );
 }

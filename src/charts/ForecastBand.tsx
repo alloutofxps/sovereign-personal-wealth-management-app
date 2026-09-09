@@ -16,9 +16,9 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { area, curveMonotoneX, line } from 'd3-shape';
 import type { Minor } from '@/core/money';
+import { useChartWidth } from './useChartWidth';
 import type { ProjectionPoint } from '@/core/forecast';
 
-const WIDTH = 320;
 const HEIGHT = 150;
 const PADDING = { top: 12, right: 6, bottom: 22, left: 6 };
 
@@ -37,13 +37,14 @@ export function ForecastBand({
   formatDate,
   formatAxisDate,
 }: ForecastBandProps) {
+  const [chartRef, width] = useChartWidth();
   const svgRef = useRef<SVGSVGElement>(null);
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
 
   const geometry = useMemo(() => {
     if (points.length === 0) return null;
 
-    const innerWidth = WIDTH - PADDING.left - PADDING.right;
+    const innerWidth = width - PADDING.left - PADDING.right;
     const innerHeight = HEIGHT - PADDING.top - PADDING.bottom;
 
     const values = points.map((p) => p.balance);
@@ -119,15 +120,15 @@ export function ForecastBand({
       }),
       showsZero: low < 0,
     };
-  }, [points, buffer]);
+  }, [points, buffer, width]);
 
   const handleScrub = useCallback(
     (event: React.PointerEvent<SVGSVGElement>) => {
       const svg = svgRef.current;
       if (!svg || points.length === 0) return;
       const bounds = svg.getBoundingClientRect();
-      const localX = ((event.clientX - bounds.left) / bounds.width) * WIDTH;
-      const ratio = (localX - PADDING.left) / (WIDTH - PADDING.left - PADDING.right);
+      const localX = ((event.clientX - bounds.left) / bounds.width) * width;
+      const ratio = (localX - PADDING.left) / (width - PADDING.left - PADDING.right);
       const index = Math.round(ratio * (points.length - 1));
       setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
     },
@@ -162,11 +163,11 @@ export function ForecastBand({
       ? 0
       : Math.min(
           Math.max(deepestSqueeze.deepestX, PADDING.left + SQUEEZE_LABEL_HALF_WIDTH),
-          WIDTH - PADDING.right - SQUEEZE_LABEL_HALF_WIDTH,
+          width - PADDING.right - SQUEEZE_LABEL_HALF_WIDTH,
         );
 
   return (
-    <figure className="m-0 flex flex-col gap-2">
+    <figure ref={chartRef} className="m-0 flex flex-col gap-2">
       <figcaption className="flex items-baseline justify-between gap-3">
         <span className="text-caption text-ink-2">{formatDate(active.date)}</span>
         <span className="tnum text-caption text-ink">
@@ -177,7 +178,7 @@ export function ForecastBand({
 
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         className="h-auto w-full touch-none select-none"
         role="img"
         aria-label={`Your projected balance over the next ${points.length - 1} days, ending at ${format(points.at(-1)!.balance)}.`}
@@ -216,6 +217,7 @@ export function ForecastBand({
               y1="0"
               x2="0"
               y2="7"
+              vectorEffect="non-scaling-stroke"
               stroke="var(--color-obligation)"
               strokeWidth="2.6"
               opacity="0.3"
@@ -244,9 +246,10 @@ export function ForecastBand({
         {geometry.showsZero && (
           <line
             x1={PADDING.left}
-            x2={WIDTH - PADDING.right}
+            x2={width - PADDING.right}
             y1={geometry.zeroY}
             y2={geometry.zeroY}
+            vectorEffect="non-scaling-stroke"
             stroke="var(--color-deficit-dim)"
             strokeWidth="1"
           />
@@ -277,15 +280,16 @@ export function ForecastBand({
         {/* The cushion. */}
         <line
           x1={PADDING.left}
-          x2={WIDTH - PADDING.right}
+          x2={width - PADDING.right}
           y1={geometry.bufferY}
           y2={geometry.bufferY}
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-caution-dim)"
           strokeWidth="1"
           strokeDasharray="3 4"
         />
         <text
-          x={WIDTH - PADDING.right}
+          x={width - PADDING.right}
           y={geometry.bufferY - 4}
           textAnchor="end"
           fill="var(--color-caution-dim)"
@@ -298,6 +302,7 @@ export function ForecastBand({
         <path
           d={geometry.linePath}
           fill="none"
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-liquid)"
           strokeWidth="2"
           strokeLinecap="round"
@@ -310,6 +315,7 @@ export function ForecastBand({
             key={index}
             d={d}
             fill="none"
+            vectorEffect="non-scaling-stroke"
             stroke="var(--color-caution)"
             strokeWidth="2.5"
             strokeLinecap="round"
@@ -321,6 +327,7 @@ export function ForecastBand({
           x2={activeX}
           y1={PADDING.top}
           y2={geometry.floor}
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-line-strong)"
           strokeWidth="1"
         />
@@ -329,6 +336,7 @@ export function ForecastBand({
           cy={geometry.y(active.balance)}
           r="3.5"
           fill="var(--color-base)"
+          vectorEffect="non-scaling-stroke"
           stroke={active.belowBuffer ? 'var(--color-caution)' : 'var(--color-liquid)'}
           strokeWidth="2"
         />
@@ -337,7 +345,7 @@ export function ForecastBand({
           {formatAxisDate(points[0]!.date)}
         </text>
         <text
-          x={WIDTH - PADDING.right}
+          x={width - PADDING.right}
           y={HEIGHT - 6}
           textAnchor="end"
           className="tnum"

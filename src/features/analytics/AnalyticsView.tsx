@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { toIsoDate } from '@/core/liquidity';
-import { describePace, describeShare } from '@/core/analytics';
+import { describePace } from '@/core/analytics';
 import {
   HORIZON_LABELS,
   useAnalytics,
@@ -21,6 +21,7 @@ import {
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { CategoryBars, MedianTickKey } from '@/charts/CategoryBars';
+import { SpendDonut } from '@/charts/SpendDonut';
 import { SankeyFlow, SankeyLegend } from '@/charts/SankeyFlow';
 import { BottomSheet, Button, Card, Money, PillRow } from '@/design/ui';
 
@@ -36,6 +37,17 @@ export function AnalyticsView() {
 
   const analytics = useAnalytics(horizon);
   const data = analytics.data;
+  /*
+   * The one comparison in the middle of the ring.
+   *
+   * The biggest group and its share -- a fact about the total that the total
+   * cannot state on its own. Not a second total: two figures in the centre of
+   * a donut means neither is read.
+   */
+  const biggest = data?.distribution.groups[0]
+    ? `${data.distribution.groups[0].groupName} ${Math.round(data.distribution.groups[0].shareBp / 100)}%`
+    : null;
+
   const medians = useMedianMarks(data);
 
   return (
@@ -130,6 +142,17 @@ export function AnalyticsView() {
             )}
           </Card>
 
+          {/* --- the shape of it ------------------------------------------ */}
+          {!data.distribution.empty && (
+            <section className="flex flex-col gap-2">
+              <SpendDonut
+                distribution={data.distribution}
+                format={(amount) => money.format(amount, { compact: true })}
+                {...(biggest ? { comparison: biggest } : {})}
+              />
+            </section>
+          )}
+
           {/* --- the ranking ---------------------------------------------- */}
           <Card label="Spending by group and category">
             {data.distribution.empty ? (
@@ -138,13 +161,6 @@ export function AnalyticsView() {
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <p className="text-caption text-ink-2">
-                  {data.distribution.groups[0]
-                    ? `${data.distribution.groups[0].groupName} was the biggest, at ` +
-                      `${describeShare(data.distribution.groups[0].shareBp)}.`
-                    : 'Tap a group to see what is underneath it.'}
-                </p>
-
                 <CategoryBars
                   distribution={data.distribution}
                   format={(amount) => money.format(amount)}

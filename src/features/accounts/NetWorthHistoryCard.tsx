@@ -114,7 +114,12 @@ export function NetWorthHistoryCard() {
           <NetWorthTimeline
             points={view.points}
             milestones={view.milestones}
-            format={money.format}
+            /*
+             * Compact, because these are 8px labels on a chart about the shape
+             * of a line. `EUR10,000.00` put two decimal places on an axis tick
+             * and made every label wide enough to need stepping aside.
+             */
+            format={(amount) => money.format(amount, { compact: true })}
             formatMonth={formatMonth}
           />
 

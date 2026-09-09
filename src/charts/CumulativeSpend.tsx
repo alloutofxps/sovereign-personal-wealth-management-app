@@ -19,10 +19,10 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { area, curveMonotoneX, line } from 'd3-shape';
 import type { PacingPoint } from '@/core/liquidity';
+import { useChartWidth } from './useChartWidth';
 import type { Minor } from '@/core/money';
 
 /** A fixed drawing space; the SVG scales itself through its viewBox. */
-const WIDTH = 320;
 const HEIGHT = 148;
 const PADDING = { top: 10, right: 6, bottom: 20, left: 6 };
 
@@ -45,13 +45,14 @@ export function CumulativeSpend({
   formatAxisDate,
   today,
 }: CumulativeSpendProps) {
+  const [chartRef, width] = useChartWidth();
   const svgRef = useRef<SVGSVGElement>(null);
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
 
   const geometry = useMemo(() => {
     if (points.length === 0) return null;
 
-    const innerWidth = WIDTH - PADDING.left - PADDING.right;
+    const innerWidth = width - PADDING.left - PADDING.right;
     const innerHeight = HEIGHT - PADDING.top - PADDING.bottom;
 
     const peak = Math.max(
@@ -90,7 +91,7 @@ export function CumulativeSpend({
       baseline: y(0),
       top: y(y.domain()[1] ?? peak),
     };
-  }, [points]);
+  }, [points, width]);
 
   /** Map a pointer position to the nearest day. */
   const handleScrub = useCallback(
@@ -100,8 +101,8 @@ export function CumulativeSpend({
 
       const bounds = svg.getBoundingClientRect();
       // The SVG scales via viewBox, so convert the pointer into its own units.
-      const localX = ((event.clientX - bounds.left) / bounds.width) * WIDTH;
-      const ratio = (localX - PADDING.left) / (WIDTH - PADDING.left - PADDING.right);
+      const localX = ((event.clientX - bounds.left) / bounds.width) * width;
+      const ratio = (localX - PADDING.left) / (width - PADDING.left - PADDING.right);
       const index = Math.round(ratio * (points.length - 1));
       setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
     },
@@ -116,7 +117,7 @@ export function CumulativeSpend({
   const activeX = geometry.x(activeIndex);
 
   return (
-    <figure className="m-0 flex flex-col gap-2">
+    <figure ref={chartRef} className="m-0 flex flex-col gap-2">
       <figcaption className="flex items-baseline justify-between gap-3">
         <span className="text-caption text-ink-2">
           {active ? formatDate(active.date) : formatDate(today)}
@@ -129,7 +130,7 @@ export function CumulativeSpend({
 
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         className="h-auto w-full touch-none select-none"
         role="img"
         aria-label={
@@ -159,17 +160,19 @@ export function CumulativeSpend({
             grid would compete with the two lines that carry the meaning. */}
         <line
           x1={PADDING.left}
-          x2={WIDTH - PADDING.right}
+          x2={width - PADDING.right}
           y1={geometry.baseline}
           y2={geometry.baseline}
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-line)"
           strokeWidth="1"
         />
         <line
           x1={PADDING.left}
-          x2={WIDTH - PADDING.right}
+          x2={width - PADDING.right}
           y1={geometry.top}
           y2={geometry.top}
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-line)"
           strokeWidth="1"
           strokeDasharray="2 4"
@@ -179,6 +182,7 @@ export function CumulativeSpend({
         <path
           d={geometry.targetPath}
           fill="none"
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-ink-3)"
           strokeWidth="1.25"
           strokeDasharray="3 4"
@@ -190,6 +194,7 @@ export function CumulativeSpend({
         <path
           d={geometry.actualPath}
           fill="none"
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-liquid)"
           strokeWidth="2"
           strokeLinecap="round"
@@ -204,6 +209,7 @@ export function CumulativeSpend({
               x2={activeX}
               y1={PADDING.top}
               y2={geometry.baseline}
+              vectorEffect="non-scaling-stroke"
               stroke="var(--color-line-strong)"
               strokeWidth="1"
             />
@@ -212,6 +218,7 @@ export function CumulativeSpend({
               cy={geometry.y(active.cumulative)}
               r="3.5"
               fill="var(--color-base)"
+              vectorEffect="non-scaling-stroke"
               stroke="var(--color-liquid)"
               strokeWidth="2"
             />
@@ -228,7 +235,7 @@ export function CumulativeSpend({
           {formatAxisDate(points[0]?.date ?? today)}
         </text>
         <text
-          x={WIDTH - PADDING.right}
+          x={width - PADDING.right}
           y={HEIGHT - 6}
           textAnchor="end"
           className="tnum"

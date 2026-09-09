@@ -15,6 +15,8 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import type { Minor } from '@/core/money';
 import type { Distribution, DistributionLeaf } from '@/core/analytics';
+import { familyClassFor } from '@/design/category';
+import { MiniBar } from '@/design/ui';
 
 export interface MedianMark {
   /** Category id to its trailing median. */
@@ -68,6 +70,7 @@ export function CategoryBars({
               shareBp={group.shareBp}
               fraction={group.amount / widest}
               format={format}
+              familyKey={group.groupId}
               emphasis
               expandable
               expanded={open}
@@ -84,6 +87,7 @@ export function CategoryBars({
                       shareBp={category.shareBp}
                       fraction={category.amount / widest}
                       format={format}
+                      familyKey={category.categoryId}
                       {...(medians?.get(category.categoryId)
                         ? {
                             median: medians.get(category.categoryId)!,
@@ -111,6 +115,7 @@ export function CategoryBars({
             shareBp={category.shareBp}
             fraction={category.amount / widest}
             format={format}
+            familyKey={category.categoryId}
             {...(medians?.get(category.categoryId)
               ? {
                   median: medians.get(category.categoryId)!,
@@ -133,8 +138,8 @@ function Row({
   shareBp,
   fraction,
   format,
-  median,
   medianFraction,
+  familyKey,
   emphasis,
   expandable,
   expanded,
@@ -147,12 +152,13 @@ function Row({
   format: (amount: Minor) => string;
   median?: MedianMark;
   medianFraction?: number;
+  /** The id whose family colours this row's bar. */
+  familyKey?: string;
   emphasis?: boolean;
   expandable?: boolean;
   expanded?: boolean;
   onClick?: () => void;
 }) {
-  const width = `${Math.max(1.5, Math.min(100, fraction * 100))}%`;
   const percent = Math.round(shareBp / 100);
 
   const body = (
@@ -173,6 +179,7 @@ function Row({
             >
               <path
                 d="m9 6 6 6-6 6"
+                vectorEffect="non-scaling-stroke"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
@@ -198,25 +205,20 @@ function Row({
         </span>
       </div>
 
-      <div className="relative mt-1.5 h-1.5 w-full overflow-hidden rounded-pill bg-sunken">
-        <div
-          className={clsx(
-            'h-full rounded-pill',
-            median?.runningHot ? 'bg-caution' : emphasis ? 'bg-liquid-dim' : 'bg-line-strong',
-          )}
-          style={{ width }}
-        />
-
-        {/* The notch: where this category usually lands. Absent when the
-            ledger has not been running long enough to know. */}
-        {medianFraction !== undefined && medianFraction > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute top-0 h-full w-px bg-ink-2"
-            style={{ left: `${Math.min(100, medianFraction * 100)}%` }}
-          />
-        )}
-      </div>
+      {/*
+        * The category's own hue, so a row and its arc in the donut above are
+        * visibly the same thing. It used to be emerald for everything and
+        * amber when the category was running hot, which is colour standing in
+        * for sentiment — the one thing this palette does not do. The notch
+        * carries that information positionally instead.
+        */}
+      <MiniBar
+        fraction={fraction}
+        className={clsx('w-full', familyClassFor(familyKey))}
+        {...(medianFraction !== undefined && medianFraction > 0
+          ? { mark: medianFraction }
+          : {})}
+      />
     </>
   );
 

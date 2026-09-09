@@ -206,6 +206,219 @@ function looksLikeProse(text: string): boolean {
   return wordish > 0.85;
 }
 
+/* ===========================================================================
+ * ONE JUDGEMENT, TWO EXTRACTORS
+ * ---------------------------------------------------------------------------
+ * Three separate bugs in this guard have had the same shape: a check that
+ * lived on one arm and not the other.
+ *
+ *   - `looksLikeProse` guarded JSX text and not string literals, so the dock's
+ *     sun icon -- 103 characters of SVG path -- counted as a paragraph.
+ *   - Length was measured on raw inner text for JSX and on the string itself
+ *     for literals, so the same sentence counted or did not depending on how
+ *     deeply its element was nested.
+ *   - The `className` exemption tested the line a string sat on, which a
+ *     multi-line `clsx(` call puts out of reach.
+ *
+ * Each fix was correct. None addressed the cause: the arms were two copies of
+ * one judgement rather than two callers of it. So the judgement is now one
+ * function, and an arm is responsible only for finding candidate text -- the
+ * single thing the two genuinely do differently.
+ *
+ * `sameVerdict` below asserts they cannot drift again.
+ * ======================================================================== */
+
+/**
+ * Is this string a paragraph somebody would read under a figure?
+ *
+ * The only place that question is answered. Whitespace is collapsed first, so
+ * a sentence is judged as the reader sees it rather than as the source happens
+ * to have wrapped it.
+ */
+function isProseParagraph(text: string): boolean {
+  const sentence = text.replace(/\s+/g, ' ').trim();
+  if (sentence.length < LONG) return false;
+  if ((sentence.match(/ /g) ?? []).length < 8) return false;
+  if (!looksLikeProse(sentence)) return false;
+  if (isEmptyState(sentence)) return false;
+  return true;
+}
+
+/** Every quoted string in the source that reads as a paragraph. */
+function paragraphsInStrings(source: string): { line: number; text: string }[] {
+  const found: { line: number; text: string }[] = [];
+
+  blankClassExpressions(source)
+    .split('\n')
+    .forEach((line, index) => {
+      for (const match of line.matchAll(/(['"])((?:(?!\1)[^\\])*)\1/g)) {
+        const value = match[2] ?? '';
+        if (!isProseParagraph(value)) continue;
+        /*
+         * The one thing only this arm can ask.
+         *
+         * A toast, an aria-label, a hint and an error are all sentences by any
+         * reading, and all of them are fine where they are. What tells them
+         * apart from copy is the attribute or call they sit in, which is
+         * context a JSX text node simply does not have -- so this is the one
+         * check that cannot move into the shared predicate.
+         */
+        if (isAllowed(line, value)) continue;
+        found.push({ line: index + 1, text: value });
+      }
+    });
+
+  return found;
+}
+
+/** Every JSX text node in the source that reads as a paragraph. */
+function paragraphsInJsx(source: string): string[] {
+  // Comments first, so a block explaining why something works is not copy.
+  const jsx = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+  const found: string[] = [];
+
+  /*
+   * The `{90,}` here counts RAW inner text -- newlines and indentation
+   * included -- and is only a cheap floor to keep the scan fast. It is NOT the
+   * length test. `isProseParagraph` measures the collapsed sentence, which is
+   * what a reader sees; leaving the decision to this pattern is what once made
+   * the gate satisfiable by reflowing JSX.
+   */
+  for (const match of jsx.matchAll(/>\s*([^<>{}]{90,}?)\s*</g)) {
+    const text = match[1]!.replace(/\s+/g, ' ').trim();
+    if (!isProseParagraph(text)) continue;
+    found.push(text);
+  }
+
+  return found;
+}
+
+/* ===========================================================================
+ * THE ARMS AGREE
+ * ---------------------------------------------------------------------------
+ * The same text, written as a string literal and as a JSX text node, has to be
+ * judged the same way. That is the property all three past bugs broke, and the
+ * shared predicate does not guarantee it on its own: an extractor can still
+ * lose or mangle text before the predicate ever sees it.
+ *
+ * So this builds both shapes from one corpus and compares. The JSX form is
+ * indented four levels deliberately, because indentation is what the
+ * raw-length bug fed on.
+ * ======================================================================== */
+
+interface Sample {
+  text: string;
+  /** What both arms must say about it. */
+  caught: boolean;
+  why: string;
+}
+
+const CORPUS: Sample[] = [
+  {
+    text: 'Comparing this against your bank statement is the only way to know the figures here are right.',
+    caught: true,
+    why: 'a paragraph by any reading',
+  },
+  {
+    text: 'Your data stays on this device. No servers, no accounts, no tracking, and nothing is ever sent.',
+    caught: true,
+    why: 'a paragraph by any reading',
+  },
+  {
+    text: 'A tag is a label you put across payments that otherwise have nothing at all in common with each other.',
+    caught: true,
+    why: 'a paragraph by any reading',
+  },
+  {
+    text: 'M12 3.5v2m0 13v2M20.5 12h-2m-13 0h-2M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4M17.7 17.7l-1.4-1.4',
+    caught: false,
+    why: 'an SVG path: long, spaced, and not one word in it',
+  },
+  {
+    text: 'Short enough to be a caption, not a paragraph.',
+    caught: false,
+    why: 'under the length floor',
+  },
+  {
+    text: 'Nothing set up yet. Car insurance, a holiday, Christmas are the ones that catch people out.',
+    caught: false,
+    why: 'an empty state, which is the screen\'s only content',
+  },
+  {
+    /*
+     * A Tailwind class list, which reads as prose at 0.857 against a 0.85
+     * threshold -- it is almost all letters and spaces, and hyphens are the
+     * only thing holding the ratio down.
+     *
+     * It is marked `caught` because that is what the predicate honestly says
+     * about it, and pretending otherwise would make this test a wish rather
+     * than a description. It does not matter in practice: a class list is
+     * always inside `className` or `clsx(`, which `blankClassExpressions`
+     * erases before the string arm runs, and it is never a JSX text node. The
+     * case below proves the part that does matter.
+     */
+    text: 'flex items-center justify-between rounded-md border px-3.5 py-3 text-body transition-colors',
+    caught: true,
+    why: 'the prose heuristic cannot tell it apart; the class-expression blanking is what does',
+  },
+];
+
+const asString = (text: string) => `const copy = [\n  '${text.replace(/'/g, "\\'")}',\n];\n`;
+const asJsx = (text: string) => `<p>\n        ${text}\n      </p>\n`;
+
+describe('both arms judge the same text the same way', () => {
+  it('agrees on every sample', () => {
+    const disagreed: string[] = [];
+
+    for (const sample of CORPUS) {
+      const fromStrings = paragraphsInStrings(asString(sample.text)).length > 0;
+      const fromJsx = paragraphsInJsx(asJsx(sample.text)).length > 0;
+
+      if (fromStrings !== fromJsx) {
+        disagreed.push(
+          `"${sample.text.slice(0, 45)}…" — strings ${fromStrings ? 'caught' : 'passed'}, ` +
+            `JSX ${fromJsx ? 'caught' : 'passed'}`,
+        );
+      }
+    }
+
+    expect(
+      disagreed,
+      'The two arms have drifted again. Whatever check one has, the other needs',
+    ).toEqual([]);
+  });
+
+  /*
+   * Agreement is worthless if both arms agree on nothing, so the verdicts are
+   * pinned one by one. A change that makes the guard stop catching sentences
+   * fails here rather than quietly passing the parity check above.
+   */
+  it('reaches the verdict each sample was chosen for', () => {
+    for (const sample of CORPUS) {
+      const verdict = paragraphsInJsx(asJsx(sample.text)).length > 0;
+      expect(verdict, `${sample.why}: "${sample.text.slice(0, 45)}…"`).toBe(sample.caught);
+    }
+  });
+
+  /*
+   * The class list, in the shape it actually occurs in.
+   *
+   * The predicate cannot tell it from a sentence and does not have to: on the
+   * arm where a class list is real, the expression it lives in is blanked
+   * before the scan reaches it.
+   */
+  it('never counts a class list that sits where class lists sit', () => {
+    const source = [
+      'const cls = clsx(',
+      "  'flex items-center justify-between rounded-md border px-3.5 py-3 text-body transition-colors',",
+      ');',
+      '',
+    ].join('\n');
+
+    expect(paragraphsInStrings(source)).toEqual([]);
+  });
+});
+
 describe('no explanatory prose lives in a component', () => {
   const files = featureFiles(join(SRC, 'features')).filter(
     (file) => !file.includes(MANUAL_CHAPTERS) && !file.includes(GALLERY),
@@ -220,66 +433,11 @@ describe('no explanatory prose lives in a component', () => {
 
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      const lines = blankClassExpressions(source).split('\n');
 
-      lines.forEach((line, index) => {
-        // Quoted strings.
-        for (const match of line.matchAll(/(['"])((?:(?!\1)[^\\])*)\1/g)) {
-          const value = match[2] ?? '';
-          if (value.length < LONG) continue;
-          if (!/\s/.test(value)) continue;
-          if ((value.match(/ /g) ?? []).length < 8) continue;
-          if (isAllowed(line, value)) continue;
-          /*
-           * The same prose test the JSX arm runs.
-           *
-           * Without it an SVG path counted: the sun icon in the dock is 103
-           * characters with eight spaces in it and not one word. Length and
-           * spacing alone cannot tell a `d` attribute from a sentence, and
-           * every other arm of this guard already knew that.
-           */
-          if (!looksLikeProse(value)) continue;
-          if (isEmptyState(value)) continue;
-          offenders.push(`${relative(file)}:${index + 1}  ${value.slice(0, 60)}…`);
-        }
-      });
-
-      // JSX text nodes, which span lines. Comments are stripped first so a
-      // block explaining why something works does not read as copy.
-      const jsx = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
-      for (const match of jsx.matchAll(/>\s*([^<>{}]{90,}?)\s*</g)) {
-        const text = match[1]!.replace(/\s+/g, ' ').trim();
-        /* -------------------------------------------------------------------
-         * DO NOT DELETE THIS AS A DUPLICATE OF THE 90 IN THE PATTERN ABOVE
-         * -------------------------------------------------------------------
-         * They measure different strings, and the difference was a real bug
-         * for three phases.
-         *
-         * `{90,}` in the pattern counts RAW inner text — every newline and
-         * every space of indentation between the `>` and the `<`. This counts
-         * the sentence after `\s+` has been collapsed. So a caption nested
-         * four levels deep matched on its whitespace alone:
-         *
-         *     <p className="text-caption text-ink-2">
-         *       What matches gets locked, so it cannot change by accident.
-         *     </p>
-         *
-         * Fifty-eight characters of copy, ninety-plus characters of raw match.
-         * Fifteen of the fifty-seven JSX hits were that, and the quoted-string
-         * arm above never had the problem because a string literal has no
-         * indentation in it — so the same sentence counted or did not counting
-         * on whether it was written as a string or as a text node.
-         *
-         * That made this list, which is a gate that has to read zero,
-         * satisfiable by reflowing JSX and failable by indenting one level
-         * deeper. The regex keeps its floor to stay cheap; this is the one
-         * that decides, and it uses the same LONG the string arm uses so both
-         * arms judge the same thing.
-         * ---------------------------------------------------------------- */
-        if (text.length < LONG) continue;
-        if ((text.match(/ /g) ?? []).length < 8) continue;
-        if (!looksLikeProse(text)) continue;
-        if (isEmptyState(text)) continue;
+      for (const hit of paragraphsInStrings(source)) {
+        offenders.push(`${relative(file)}:${hit.line}  ${hit.text.slice(0, 60)}…`);
+      }
+      for (const text of paragraphsInJsx(source)) {
         offenders.push(`${relative(file)}  ${text.slice(0, 60)}…`);
       }
     }

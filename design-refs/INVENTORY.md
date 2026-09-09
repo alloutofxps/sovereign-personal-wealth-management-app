@@ -423,17 +423,38 @@ purpose, because `Input` models a text field and none of these is one:
 
 ## Charts
 
-| Component | Used by | Mechanic today |
+| Component | Used by | Mechanic |
 | --- | --- | --- |
-| `CumulativeSpend` | `PaceCard` | Cumulative spend against an even-spread line, scrubber, `WIDTH = 320` |
-| `ForecastBand` | `ForecastView` | Projected balance with a cushion line, scrubber, `WIDTH = 320` |
-| `GrowthBand` | `IndependenceView` | Growth projection band, `WIDTH = 320` |
-| `NetWorthTimeline` | `NetWorthHistoryCard` | Actual net worth only — **never projected forward** — with milestones, `WIDTH = 320` |
-| `SankeyFlow` | `AnalyticsView` | Income → categories flow ribbons |
-| `CategoryBars` | `AnalyticsView` | Ranked category bars |
+| `CumulativeSpend` | `PaceCard` | Cumulative spend against a dashed even-spread line, scrubber |
+| `ForecastBand` | `ForecastView` | Projected balance, cushion line, hatched squeeze bands with one "tight" label, scrubber |
+| `GrowthBand` | `IndependenceView` | Growth projection band — the band's width is the point |
+| `NetWorthTimeline` | `NetWorthHistoryCard` | Actual net worth against a dashed steady-average comparison, scrubber, milestones that step left rather than collide. **Never projected forward** |
+| `SankeyFlow` | `AnalyticsView` | Income → categories, ribbons in the six families at opacity 0.55 |
+| `SpendDonut` | `AnalyticsView` | One ring in the families, values on external tinted pills with leader lines, total plus one comparison in the middle |
+| `CategoryBars` | `AnalyticsView` | Ranked rows repeating the donut's hues, each with its own median notch |
+| `Sparkline` | `HoldingsList` | The shape of a series at the size of a word. A `src/design/ui` primitive, not a chart |
 
-None of them sets `vector-effect`, so strokes render heavier than designed on
-anything wider than 320pt.
+Phase 5 closed the two structural defects in this list.
+
+**`WIDTH = 320` is gone.** All four charts that hard-coded it measure their
+container through `useChartWidth`. On a 390pt phone the drawing used to be
+scaled by 1.22 and on a 430pt one by 1.34, so a 1px hairline rendered at 1.34px
+and an 8px label at 10.7px. Verified in the browser: the viewBox now reports the
+container's real width and the scale factor is 1.
+
+**Every stroked element sets `vector-effect="non-scaling-stroke"`**, which
+keeps stroke weight right even on the first frame before the container has been
+measured. Audited: zero stroked elements without it.
+
+### The three refusals
+
+Unchanged, and each is stated in the file that would break it:
+
+- Net worth is **never projected forward**. The dashed line is a comparison
+  drawn between two measured months, and stops at the last real one.
+- **No unreached milestone is drawn.** `NetWorthTimeline` filters on
+  `reachedMonth !== null`; `GrowthBand` draws only landmarks that fit the scale.
+- **Zero stays on the scale** when the line has been below it.
 
 ---
 

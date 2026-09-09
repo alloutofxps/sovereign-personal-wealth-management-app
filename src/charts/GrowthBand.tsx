@@ -13,9 +13,9 @@ import { useMemo } from 'react';
 import { scaleLinear } from 'd3-scale';
 import { area, curveMonotoneX, line } from 'd3-shape';
 import type { Minor } from '@/core/money';
+import { useChartWidth } from './useChartWidth';
 import type { Milestone, TrajectoryPoint } from '@/core/simulate';
 
-const WIDTH = 320;
 const HEIGHT = 140;
 const PADDING = { top: 10, right: 6, bottom: 20, left: 6 };
 
@@ -29,12 +29,13 @@ export interface GrowthBandProps {
 }
 
 export function GrowthBand({ points, milestones, format, years }: GrowthBandProps) {
+  const [chartRef, width] = useChartWidth();
   const shown = useMemo(() => points.slice(0, years + 1), [points, years]);
 
   const geometry = useMemo(() => {
     if (shown.length < 2) return null;
 
-    const innerWidth = WIDTH - PADDING.left - PADDING.right;
+    const innerWidth = width - PADDING.left - PADDING.right;
     const innerHeight = HEIGHT - PADDING.top - PADDING.bottom;
 
     const highest = Math.max(...shown.map((p) => p.high), 1);
@@ -66,14 +67,14 @@ export function GrowthBand({ points, milestones, format, years }: GrowthBandProp
       bandPath: band([...shown]) ?? '',
       baseline: y(0),
     };
-  }, [shown]);
+  }, [shown, width]);
 
   if (!geometry) return null;
 
   return (
-    <figure className="m-0 flex flex-col gap-2">
+    <figure ref={chartRef} className="m-0 flex flex-col gap-2">
       <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         className="h-auto w-full"
         role="img"
         aria-label={
@@ -84,9 +85,10 @@ export function GrowthBand({ points, milestones, format, years }: GrowthBandProp
       >
         <line
           x1={PADDING.left}
-          x2={WIDTH - PADDING.right}
+          x2={width - PADDING.right}
           y1={geometry.baseline}
           y2={geometry.baseline}
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-line)"
           strokeWidth="1"
         />
@@ -98,9 +100,10 @@ export function GrowthBand({ points, milestones, format, years }: GrowthBandProp
             <g key={milestone.kind}>
               <line
                 x1={PADDING.left}
-                x2={WIDTH - PADDING.right}
+                x2={width - PADDING.right}
                 y1={geometry.y(milestone.target)}
                 y2={geometry.y(milestone.target)}
+                vectorEffect="non-scaling-stroke"
                 stroke="var(--color-line-strong)"
                 strokeWidth="1"
                 strokeDasharray="2 5"
@@ -120,6 +123,7 @@ export function GrowthBand({ points, milestones, format, years }: GrowthBandProp
         <path
           d={geometry.middlePath}
           fill="none"
+          vectorEffect="non-scaling-stroke"
           stroke="var(--color-liquid)"
           strokeWidth="2"
           strokeLinecap="round"
@@ -129,7 +133,7 @@ export function GrowthBand({ points, milestones, format, years }: GrowthBandProp
           now
         </text>
         <text
-          x={WIDTH - PADDING.right}
+          x={width - PADDING.right}
           y={HEIGHT - 6}
           textAnchor="end"
           className="tnum"

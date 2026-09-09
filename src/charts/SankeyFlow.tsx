@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import type { Minor } from '@/core/money';
 import type { FlowLink, FlowNode, SankeyGraph } from '@/core/analytics';
+import { familyFor } from '@/design/category';
 
 export interface SankeyFlowProps {
   graph: SankeyGraph;
@@ -67,17 +68,71 @@ const PADDING = { top: 8, bottom: 8 };
  *   0.45         9.5               14.0
  *   0.55        11.5               17.2   <- both clear of 10
  *
- * dE below 10 reads as the same colour at a glance. So phase 5 moves these to
- * the six families AND raises the opacity to at least 0.55. Doing the first
- * without the second is a regression on top of a regression.
+ * dE below 10 reads as the same colour at a glance.
+ *
+ * ---------------------------------------------------------------------------
+ * DONE IN PHASE 5. BOTH HALVES, TOGETHER.
+ *
+ * Every ribbon reaching a category now takes that category's family, and the
+ * opacity is 0.55. Doing the first without the second would have been a
+ * regression on top of a regression, which is why the two numbers below are
+ * one decision and not two:
+ *
+ * Re-measured against the tokens as they stand after phase 1's AA corrections,
+ * CIE76 on the composited result, all fifteen pairs:
+ *
+ *   alpha   daylight (on #edf0ea)        midnight (on #0b0f22)
+ *   0.34    dE  6.8   2 of 15 under 10   dE 11.2   0 under 10
+ *   0.45    dE  9.2   1 of 15 under 10   dE 14.6   0 under 10
+ *   0.55    dE 11.4   0 of 15 under 10   dE 17.5   0 under 10   <- shipped
+ *
+ * Daylight is the binding case and housing/health is the closest pair in it:
+ * a verdigris and a slate teal, both dark and both low-chroma, which is
+ * exactly the pair compositing hurts most. Midnight was never in trouble.
+ *
+ * If somebody ever softens these ribbons again, the opacity is the thing that
+ * cannot move. Measure before changing it: the numbers above are CIE76 dE on
+ * the composited result, not on the token values, and the two are not the same
+ * because compositing is where the separation is lost.
  * ======================================================================== */
-const RIBBON_TONE: Record<FlowLink['tone'], string> = {
+
+/**
+ * Ribbons that never reach a category, and so have no family to take.
+ *
+ * The first column is income arriving and, when spending outran it, reserves
+ * being drawn on. Neither is a kind of spending, so neither has a hue in the
+ * category index -- and giving them one would put a category colour on
+ * something that is not a category, which is the one thing that index cannot
+ * survive.
+ */
+const FLOW_TONE: Record<FlowLink['tone'], string> = {
   income: 'var(--color-liquid)',
-  fixed: 'var(--color-ink-3)',
-  discretionary: 'var(--color-line-strong)',
-  saving: 'var(--color-caution)',
   deficit: 'var(--color-deficit)',
+  fixed: 'var(--color-obligation)',
+  discretionary: 'var(--color-leisure)',
+  saving: 'var(--color-health)',
 };
+
+/**
+ * The colour of one ribbon.
+ *
+ * A leaf node's id is `category-<id>`, so the family is resolvable here without
+ * `core/analytics/sankeyFlow.ts` having to know that families exist. That file
+ * computes a graph; which hue a graph is drawn in is this file's business.
+ */
+function ribbonTone(link: FlowLink): string {
+  const leaf = link.target.startsWith('category-') ? link.target.slice('category-'.length) : null;
+  return leaf ? `var(--color-${familyFor(leaf)})` : FLOW_TONE[link.tone];
+}
+
+/**
+ * The floor, and the reason it is a named constant rather than a literal.
+ *
+ * It is the measured half of a measured pair. A literal in the JSX is a number
+ * somebody nudges; a constant with the working above it is a decision.
+ */
+const RIBBON_OPACITY = 0.55;
+
 
 const NODE_TONE: Record<FlowNode['kind'], string> = {
   income: 'var(--color-liquid)',
@@ -214,9 +269,10 @@ export function SankeyFlow({ graph, format, height = 320, onSelectNode }: Sankey
                 key={`${link.source}-${link.target}-${index}`}
                 d={link.path}
                 fill="none"
-                stroke={RIBBON_TONE[link.tone]}
+                vectorEffect="non-scaling-stroke"
+                stroke={ribbonTone(link)}
                 strokeWidth={link.thickness}
-                strokeOpacity={dimmed ? 0.07 : 0.34}
+                strokeOpacity={dimmed ? 0.07 : RIBBON_OPACITY}
                 className="transition-[stroke-opacity] duration-150"
               />
             );
@@ -295,7 +351,7 @@ export function SankeyLegend({ graph }: { graph: SankeyGraph }) {
           <span key={entry.tone} className="flex items-center gap-1.5 text-caption text-ink-3">
             <span
               className={clsx('size-2 rounded-full')}
-              style={{ backgroundColor: RIBBON_TONE[entry.tone] }}
+              style={{ backgroundColor: FLOW_TONE[entry.tone] }}
               aria-hidden="true"
             />
             {entry.label}
