@@ -15,21 +15,35 @@
  *      are a kind of thing, not because they are a problem.
  *
  * ---------------------------------------------------------------------------
+ * WHY THE SEEDS ARE MAPPED BY HAND AND ONLY THE REST IS HASHED
+ *
+ * A hash gives stability but not meaning. Stability alone is not the claim:
+ * the claim is that somebody can learn "verdigris is where I live, ochre is
+ * what I eat" and then read a donut without a legend. That only holds if the
+ * mapping says something true about the category, so every category the app
+ * ships with is assigned below by hand.
+ *
+ * The strongest, most distinctive hues go to the categories a person sees
+ * most often, because those are the ones that have to become recognisable
+ * first. Home is the largest line in most households and takes the verdigris
+ * the whole app is built around; food shopping is the most frequent and takes
+ * the ochre.
+ *
+ * Two families carry two seeded categories each, and both pairs are honest
+ * about it: eating out is food, and shopping sits with fun as discretionary
+ * personal spending. Splitting either one across two hues to fill the grid
+ * would be inventing a distinction the money does not have.
+ *
+ * Categories somebody makes themselves cannot be mapped by hand, so those
+ * hash — over the id and never the name, so renaming "Fun" to "Going out"
+ * does not repaint it.
+ *
+ * ---------------------------------------------------------------------------
  * WHY THIS TAKES A STRING AND NOT A LEDGER TYPE
  *
- * Categories are created by the person using the app, so there is no fixed
- * table that could cover them. Anything with a stable identity — an account
- * id, a category id, an account class — hashes to a family and keeps it
- * forever, because the hash is over the id rather than over the name. Renaming
- * "Fun" to "Going out" does not change its colour.
- *
- * The seeded categories and the account classes are pinned by hand, because
- * those are the ones somebody would notice being wrong: groceries should be
- * the food ochre and a mortgage should not be the leisure purple.
- *
- * Taking a plain string also keeps `src/design` from having to know what a
- * ledger account is, so the charts and the features can both read this
- * without either of them importing the other's types.
+ * Taking a plain string keeps `src/design` from having to know what a ledger
+ * account is, so the charts and the features can both read this without
+ * either of them importing the other's types.
  * ======================================================================== */
 
 export const FAMILIES = [
@@ -48,55 +62,95 @@ export function familyClass(family: Family): string {
   return `cat-${family}`;
 }
 
-/**
- * The ones worth pinning.
- *
- * Keys are the stable ids from `src/data/seed.ts` and the account classes from
- * `src/core/ledger/accountClasses.ts`, written as plain strings so this module
- * stays free of either. A key that is not here falls through to the hash,
- * which is the normal case for anything somebody made themselves.
- */
-const PINNED: Record<string, Family> = {
-  // Seeded spending categories.
+/* ---------------------------------------------------------------------------
+ * THE SEEDED TAXONOMY
+ * ---------------------------------------------------------------------------
+ * Keys are the stable ids from `src/data/seed.ts`, written as plain strings so
+ * this module does not import it. They are seed data: every one of these can
+ * be renamed or archived by the person using the app, and the colour follows
+ * the id rather than the name through all of that.
+ * ------------------------------------------------------------------------ */
+
+const SEEDED_CATEGORIES: Record<string, Family> = {
+  // Home is rent or a mortgage — the largest single line in most households —
+  // and takes the verdigris the rest of the app is built around.
   'cat-home': 'housing',
+  // The most frequent category of all: several entries in a normal week.
   'cat-groceries': 'food',
+  // Eating out is food. Sharing the ochre with the weekly shop is true to
+  // what it is, and truer than splitting it off to fill a slot.
   'cat-eating-out': 'food',
+  // Contractual and recurring. Clay is the obligation hue, not a warning.
+  'cat-bills': 'obligation',
   'cat-transport': 'transport',
   'cat-health': 'health',
   'cat-fun': 'leisure',
+  // Discretionary personal spending, which is what fun is too.
   'cat-shopping': 'leisure',
-  'cat-bills-and-subs': 'obligation',
+};
 
-  // Seeded groups.
+/** Each starter group takes the family of the spending it mostly holds. */
+const SEEDED_GROUPS: Record<string, Family> = {
   'grp-essential': 'housing',
   'grp-lifestyle': 'leisure',
   'grp-transit': 'transport',
+};
 
-  // Where money sits. These follow the reference sheet: cash and property are
-  // the spine, anything invested is the blue, anything owed is the clay.
-  cash: 'housing',
-  savings: 'health',
-  current: 'housing',
-  foreign: 'transport',
-  investments: 'transport',
-  brokerage: 'transport',
-  pension: 'transport',
-  property: 'housing',
-  debts: 'obligation',
-  credit_card: 'obligation',
-  loan: 'obligation',
-  mortgage: 'obligation',
-  income: 'leisure',
-  reserve: 'health',
+/** The pot that funds a category is the same colour as the category. */
+const SEEDED_POTS: Record<string, Family> = {
+  'pot-home': 'housing',
+  'pot-groceries': 'food',
+  'pot-eating-out': 'food',
+  'pot-bills': 'obligation',
+  'pot-transport': 'transport',
+  'pot-health': 'health',
+  'pot-fun': 'leisure',
+  'pot-shopping': 'leisure',
+  'grp-pot-essential': 'housing',
+  'grp-pot-lifestyle': 'leisure',
+  'grp-pot-transit': 'transport',
 };
 
 /**
- * A small, stable, well-spread hash.
+ * Where money sits, rather than what it was spent on.
  *
- * FNV-1a, because it needs to be deterministic across sessions and devices —
+ * These follow the reference sheet: everyday money is the spine, anything
+ * invested is the blue, anything owed is the clay, and anything at rest is
+ * the teal.
+ */
+const ACCOUNT_KINDS: Record<string, Family> = {
+  // Account classes.
+  checking: 'housing',
+  cash: 'housing',
+  savings: 'health',
+  credit_card: 'obligation',
+  loan: 'obligation',
+  mortgage: 'obligation',
+  brokerage: 'transport',
+  retirement: 'transport',
+  real_estate: 'housing',
+  vehicle: 'transport',
+  other_asset: 'leisure',
+  // Account groups, as used by the balance sheet.
+  foreign: 'health',
+  investments: 'transport',
+  property: 'housing',
+  debts: 'obligation',
+};
+
+const PINNED: Record<string, Family> = {
+  ...SEEDED_CATEGORIES,
+  ...SEEDED_GROUPS,
+  ...SEEDED_POTS,
+  ...ACCOUNT_KINDS,
+};
+
+/**
+ * A small, stable, well-spread hash, for categories somebody made themselves.
+ *
+ * FNV-1a, because it has to be deterministic across sessions and devices —
  * two phones showing the same household must colour it identically — and
- * because anything with a random seed would repaint the whole app on every
- * launch.
+ * because anything with a random seed would repaint the app on every launch.
  */
 function hash(key: string): number {
   let h = 0x811c9dc5;
@@ -110,14 +164,20 @@ function hash(key: string): number {
 /**
  * The family for anything with a stable id.
  *
- * Pass an account id, a category id or an account class. The same string
- * always gives the same family, on every device, for as long as the id lives.
+ * Pass an account id, a category id, a pot id or an account class. Everything
+ * the app seeds is mapped by hand above; anything else is hashed, which is
+ * stable but arbitrary.
  */
 export function familyFor(key: string | null | undefined): Family {
   if (!key) return 'housing';
   const pinned = PINNED[key];
   if (pinned) return pinned;
   return FAMILIES[hash(key) % FAMILIES.length]!;
+}
+
+/** Whether this id is one the app ships with, and so mapped by meaning. */
+export function isSeededKey(key: string): boolean {
+  return key in PINNED;
 }
 
 /** The binding class for anything with a stable id. */
