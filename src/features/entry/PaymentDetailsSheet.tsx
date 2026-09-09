@@ -22,7 +22,7 @@ import { describeLocked } from '@/core/reconciliation/reconciliationMath';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
 import { minor } from '@/core/money';
-import { BottomSheet, Button, Explain, Money } from '@/design/ui';
+import { BottomSheet, Button, Explain, Money, Textarea } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
 export function PaymentDetailsSheet({
@@ -193,13 +193,13 @@ export function PaymentDetailsSheet({
           <Detail label="Your note">
             {editingNote ? (
               <div className="flex flex-col gap-2">
-                <textarea
+                <Textarea
+                  aria-label="Your note about this payment"
                   value={draftNote}
                   onChange={(event) => setDraftNote(event.target.value)}
                   rows={3}
                   autoFocus
                   placeholder="Which trip, whose half, what it was really for…"
-                  className="w-full resize-none rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
                 />
                 <div className="flex gap-2">
                   <Button

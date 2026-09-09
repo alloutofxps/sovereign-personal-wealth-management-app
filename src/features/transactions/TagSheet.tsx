@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { MAX_TAG_LENGTH, normaliseTagName, sameTag } from '@/core/taxonomy/tags';
 import type { TagRecord } from '@/data/repositories/tagsRepo';
-import { BottomSheet, Button } from '@/design/ui';
+import { BottomSheet, Button, Input } from '@/design/ui';
 
 export function TagSheet({
   mode,
@@ -79,22 +79,17 @@ export function TagSheet({
         </div>
       ) : (
         <div className="flex flex-col gap-4 pb-2">
-          <label className="flex flex-col gap-2">
-            <span className="text-caption text-ink-2">
-              A new tag
-            </span>
-            <input
-              type="text"
-              value={typed}
-              maxLength={MAX_TAG_LENGTH}
-              onChange={(event) => setTyped(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && name !== '' && !busy) onApply(name);
-              }}
-              placeholder="Italy 2026, kitchen, Sam owes half…"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </label>
+          <Input
+            label="A new tag"
+            type="text"
+            value={typed}
+            maxLength={MAX_TAG_LENGTH}
+            onChange={(event) => setTyped(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && name !== '' && !busy) onApply(name);
+            }}
+            placeholder="Italy 2026, kitchen, Sam owes half…"
+          />
 
           {existing && (
             <p className="text-caption text-ink-2">

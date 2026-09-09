@@ -29,7 +29,7 @@ import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Card, Input } from '@/design/ui';
+import { BottomSheet, Button, Card, Input, Textarea } from '@/design/ui';
 
 export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const baseCurrency = useAppConfig((s) => s.currencyCode);
@@ -199,13 +199,14 @@ export function FxRatesSheet({ open, onClose }: { open: boolean; onClose: () => 
                   <span className="font-mono">date,currency,rate</span> to backfill a day you
                   missed. It stays on this device.
                 </p>
-                <textarea
+                <Textarea
+                  aria-label="Rates to paste in"
                   value={pasted}
                   onChange={(e) => setPasted(e.target.value)}
                   rows={4}
                   spellCheck={false}
                   placeholder={'USD,1.085215\n2026-08-01,GBP,0.842100'}
-                  className="w-full rounded-sm border border-line bg-sunken px-3 py-2 font-mono text-caption text-ink outline-none focus:border-line-strong"
+                  className="bg-sunken px-3 py-2 font-mono text-caption"
                 />
                 {pasted.trim() !== '' && (
                   <p className="text-caption text-ink-2">

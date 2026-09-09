@@ -12,7 +12,7 @@ import { savePot } from '@/data/repositories/potsRepo';
 import { putIntoPot } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Input, Money } from '@/design/ui';
 
 /* --- creating or editing a pot ------------------------------------------- */
 
@@ -138,15 +138,13 @@ export function PotSheet({
         />
       ) : (
         <div className="flex flex-col gap-5 pb-2">
-          <Field label="What is it for?">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Car insurance, holiday, new laptop…"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </Field>
+          <Input
+            label="What is it for?"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Car insurance, holiday, new laptop…"
+          />
 
           <Field label="How does this one work?">
             <div className="flex flex-col gap-2">
@@ -160,11 +158,11 @@ export function PotSheet({
                 No rush. I put in what I can
               </Choice>
               {kind === 'by_date' && (
-                <input
+                <Input
+                  aria-label="The date you need it by"
                   type="date"
                   value={date}
                   onChange={(e) => e.target.value && setDate(e.target.value)}
-                  className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
                 />
               )}
             </div>

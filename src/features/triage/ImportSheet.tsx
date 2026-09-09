@@ -26,7 +26,8 @@ import { stageRows } from '@/data/repositories/stagingRepo';
 import { ACCOUNT_IDS } from '@/data/seed';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Money } from '@/design/ui';
+import { BottomSheet, Button, Explain, Money, Outcome } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 type Step = 'choose' | 'map' | 'done';
 
@@ -38,6 +39,7 @@ const ACCOUNT_CHOICES: { id: AccountId; label: string }[] = [
 
 export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const currency = useAppConfig((s) => s.currencyCode);
+  const explain = useExplain();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('choose');
@@ -186,10 +188,10 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
             <Button variant="primary" block onClick={() => fileInput.current?.click()}>
               {busy ? 'Reading…' : 'Choose a file'}
             </Button>
-            <p className="text-caption text-ink-3">
-              Most banks offer a CSV download somewhere in their statements section. Sovereign
-              reads it here in this tab. Nothing is uploaded and no account details are needed.
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption text-ink-3">Read on this device, sent nowhere.</p>
+              <Explain topic="importing" label="reading a statement" onOpen={explain.open} />
+            </div>
             {problem && (
               <p className="text-caption text-caution" role="alert">
                 {problem}
@@ -207,11 +209,9 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
             </p>
 
             {parsed.dateIsAmbiguous && (
-              <div className="flex flex-col gap-2 rounded-md border border-caution-dim/50 bg-caution-wash px-3.5 py-3">
-                <p className="text-caption text-caution">
-                  Sovereign cannot tell from this file whether the dates are day-first or
-                  month-first. Getting it wrong would spread your statement across two months, so
-                  please check the dates below look right.
+              <Outcome tone="caution">
+                <p className="text-caption text-ink">
+                  This file does not say whether its dates are day-first. Check they look right.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {(['dmy', 'mdy', 'ymd'] as const).map((order) => (
@@ -224,7 +224,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
                     </Choice>
                   ))}
                 </div>
-              </div>
+              </Outcome>
             )}
 
             <Field label="What Sovereign will bring in">
@@ -281,6 +281,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
           </div>
         )
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }

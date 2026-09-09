@@ -264,6 +264,19 @@ same thing beside one control on one screen:
 | `corrections` | That nothing is deleted — an undo is a second entry that cancels the first | `PaymentDetailsSheet` |
 | `rules` | What "always file this shop here" does, and that it never touches the past | `CategoryPicker`'s always-file toggle |
 
+Four more in 4d, for the screens that model something rather than record it:
+
+| Topic | Answers | Reached from |
+| --- | --- | --- |
+| `tags` | That a tag is a label across unrelated payments, and never changes a figure | `CategoryManagerView` |
+| `what-if` | That a sketch is drawn from real figures and recorded nowhere | `WhatIfView` |
+| `independence` | What the number means, and that the band's width is the honest part | `IndependenceView` |
+| `importing` | That a statement is read on the device and sent nowhere | `ImportSheet` |
+
+Onboarding reaches `recovery-phrase`, `safe-to-spend` and `cards` rather than
+restating them: four of its asides were paragraphs saying what a topic already
+says on every other screen that touches the same figure.
+
 ---
 
 ## Investments (`#/investments`) — `InvestmentsView`
@@ -387,6 +400,24 @@ Every primitive in the states it is used in: Money at anchor / figure / lead /
 body / caption sizes, adaptive decimals, StatPills, SwipeRow, Chips, Buttons in
 four variants and three sizes plus disabled, BottomSheet, Tabs, Input, Select,
 Numpad. Reached from Settings.
+
+---
+
+## Text entry
+
+Every text field in the app goes through `Input` or `Textarea`. Before 4d there
+were twenty-five hand-written ones, each inside a wrapper that rendered its
+label as a `<span>` with no `htmlFor` — so tapping the label did not focus the
+field and a screen reader announced an unnamed edit box.
+
+`noBareInputs.test.ts` holds the line. Nine controls stay hand-written on
+purpose, because `Input` models a text field and none of these is one:
+
+| Control | Where |
+| --- | --- |
+| `range` | `DebtTermsSheet` (due day), `LoanScheduleSheet` (extra principal), `IndependenceView` (return rate), `manual/parts` (lab sliders) |
+| `checkbox` | `CategoryPicker` (always file), `CreateAccountSheet` (off budget), `RecoveryPhrase` (written it down) |
+| `file` | `DataAndSecurity` (restore), `ImportSheet` (choose a statement) |
 
 ---
 

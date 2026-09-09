@@ -250,8 +250,7 @@ export function SellHoldingSheet({
             </>
           ) : (
             <p className="text-caption text-ink-2">
-              Enter how many shares you sold and this will say exactly what it will record,
-              including which of your shares go and what that means for tax.
+              Type how many shares went.
             </p>
           )}
         </div>

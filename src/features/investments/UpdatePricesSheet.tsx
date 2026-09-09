@@ -15,7 +15,7 @@ import { minor, type Minor } from '@/core/money';
 import type { Security } from '@/core/investments';
 import { updatePrices, type PriceUpdate } from '@/data/repositories/investmentsRepo';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Input } from '@/design/ui';
+import { BottomSheet, Button, Input, Textarea } from '@/design/ui';
 
 export function UpdatePricesSheet({
   open,
@@ -144,13 +144,14 @@ export function UpdatePricesSheet({
                   One line per holding, as <span className="font-mono">symbol,price</span>. Copying
                   two columns out of your broker works. It stays on this device.
                 </p>
-                <textarea
+                <Textarea
+                  aria-label="Prices to paste in"
                   value={pasted}
                   onChange={(e) => setPasted(e.target.value)}
                   rows={4}
                   spellCheck={false}
                   placeholder={'VWCE,118.50\nVUSA,92.00'}
-                  className="w-full rounded-sm border border-line bg-sunken px-3 py-2 font-mono text-caption text-ink outline-none focus:border-line-strong"
+                  className="bg-sunken px-3 py-2 font-mono text-caption"
                 />
                 {pasted.trim() !== '' && (
                   <p className="text-caption text-ink-2">

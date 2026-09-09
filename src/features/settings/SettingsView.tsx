@@ -10,7 +10,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { useTheme, type ThemeChoice } from '@/app/theme';
 import { toast } from '@/app/toast';
-import { Button, Card, Explain } from '@/design/ui';
+import { Button, Card, Explain, Input } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { DataAndSecurity } from './DataAndSecurity';
@@ -167,37 +167,36 @@ export function SettingsView() {
 
           {taxRegime === 'flat_gains' && (
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-1.5">
-                <span className="flex items-center gap-1 text-caption text-ink-3">
-                  Rate
-                  <Explain topic="cgt" label="your rate and allowance" onOpen={explain.open} />
-                </span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  defaultValue={(cgtRateBp / 100).toString()}
-                  onBlur={(e) => {
-                    const rate = Number(e.target.value.replace(',', '.'));
-                    if (Number.isFinite(rate)) setCgt(Math.round(rate * 100), cgtExemptionMinor);
-                  }}
-                  className="tnum w-full rounded-md border border-line bg-raised px-3 py-2.5 text-body text-ink"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-caption text-ink-3">
-                  Yearly allowance
-                </span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  defaultValue={(cgtExemptionMinor / 100).toString()}
-                  onBlur={(e) => {
-                    const amount = Number(e.target.value.replace(',', '.'));
-                    if (Number.isFinite(amount)) setCgt(cgtRateBp, Math.round(amount * 100));
-                  }}
-                  className="tnum w-full rounded-md border border-line bg-raised px-3 py-2.5 text-body text-ink"
-                />
-              </label>
+              <Input
+                label="Rate"
+                type="text"
+                inputMode="decimal"
+                defaultValue={(cgtRateBp / 100).toString()}
+                onBlur={(e) => {
+                  const rate = Number(e.target.value.replace(',', '.'));
+                  if (Number.isFinite(rate)) setCgt(Math.round(rate * 100), cgtExemptionMinor);
+                }}
+                className="tnum"
+              />
+              <Input
+                label="Yearly allowance"
+                type="text"
+                inputMode="decimal"
+                defaultValue={(cgtExemptionMinor / 100).toString()}
+                onBlur={(e) => {
+                  const amount = Number(e.target.value.replace(',', '.'));
+                  if (Number.isFinite(amount)) setCgt(cgtRateBp, Math.round(amount * 100));
+                }}
+                className="tnum"
+              />
+            </div>
+          )}
+
+          {/* The explanation covers the pair, so it sits under them rather
+              than inside one field's label. */}
+          {taxRegime === 'flat_gains' && (
+            <div className="flex justify-end">
+              <Explain topic="cgt" label="your rate and allowance" onOpen={explain.open} />
             </div>
           )}
 

@@ -9,6 +9,7 @@
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import { fromDecimalString, type Minor } from '@/core/money';
+import { Input } from '@/design/ui';
 
 /** A step's heading, its one explanatory line, and its body. */
 export function StepFrame({
@@ -44,29 +45,27 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function TextBox({
   value,
   onChange,
+  label,
   placeholder,
   inputMode,
   autoFocus,
 }: {
   value: string;
   onChange: (value: string) => void;
+  label?: string;
   placeholder?: string;
   inputMode?: 'text' | 'decimal';
   autoFocus?: boolean;
 }) {
   return (
-    <input
+    <Input
+      {...(label ? { label } : {})}
       type="text"
       value={value}
       inputMode={inputMode ?? 'text'}
       autoFocus={autoFocus ?? false}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder ?? ''}
-      className={clsx(
-        'w-full rounded-md border border-line bg-raised px-3.5 py-3',
-        'text-body text-ink placeholder:text-ink-3',
-        'focus:border-line-strong focus:outline-none',
-      )}
     />
   );
 }
@@ -86,40 +85,37 @@ export function MoneyBox({
   value,
   onChange,
   exponent,
+  label,
   placeholder,
   autoFocus,
 }: {
   value: string;
   onChange: (typed: string) => void;
   exponent: number;
+  label?: string;
   placeholder?: string;
   autoFocus?: boolean;
 }) {
   const problem = readAmount(value, exponent) === null && value.trim() !== '';
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <input
-        type="text"
-        value={value}
-        inputMode="decimal"
-        autoFocus={autoFocus ?? false}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder ?? '0.00'}
-        aria-invalid={problem}
-        className={clsx(
-          'tnum w-full rounded-md border bg-raised px-3.5 py-3',
-          'text-body text-ink placeholder:text-ink-3 focus:outline-none',
-          problem ? 'border-caution-dim' : 'border-line focus:border-line-strong',
-        )}
-      />
-      {problem && (
-        <span className="text-caption text-caution" role="alert">
-          That is not an amount Sovereign can read. Digits, and at most{' '}
-          {exponent === 0 ? 'no' : exponent} decimal places.
-        </span>
-      )}
-    </div>
+    <Input
+      {...(label ? { label } : {})}
+      type="text"
+      value={value}
+      inputMode="decimal"
+      autoFocus={autoFocus ?? false}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder ?? '0.00'}
+      className="tnum"
+      {...(problem
+        ? {
+            error:
+              'That is not an amount Sovereign can read. Digits, and at most ' +
+              `${exponent === 0 ? 'no' : exponent} decimal places.`,
+          }
+        : {})}
+    />
   );
 }
 

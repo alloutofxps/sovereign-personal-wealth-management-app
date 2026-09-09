@@ -214,6 +214,69 @@ Commits: `docs: post-redesign audit`, then `fix: audit severity 1–2`
 
 ---
 
+# Decisions taken during the work
+
+The section below is the questions asked before any of this was built. This one
+is the choices made while building it — the ones that outlive the commit that
+made them, and that a reader will not find by reading the code alone.
+
+A decision belongs here when the code can only carry *what* was chosen and not
+*what else was on the table*. The file gets the reasoning; this gets the fact
+that a choice existed at all.
+
+## The drift tile names the class that is behind, never the one that is ahead
+
+Phase 4b. `core/investments/rebalance.ts` computes two routes back to a chosen
+mix and recommends neither — but it *orders* them, and says so in its own
+header: the next deposit into whatever is furthest behind costs nothing, and
+selling the side that grew realises a gain with a tax bill on it.
+
+The first version of the tile picked the line with the largest absolute drift.
+On an all-equity portfolio against a 60/30/10 target that is Shares at forty
+points over, and the sentence closing an overweight gap is a sale — so a tile
+added by a redesign put a taxable disposal on screen as the recommended next
+action of a screen whose engine refuses to recommend one.
+
+Selecting on `driftBp < 0` always finds a line when the mix is off, because
+shares of one portfolio sum to 100. What it yields is a buy.
+
+The reasoning is in `InvestmentsView.tsx` at the selector. **If this is ever
+rewritten to rank by magnitude again, that is the bug.**
+
+## `src/core` may be corrected for a false sentence, never refactored for a look
+
+Phase 4c, approved. The brief puts `src/core/**` out of scope, and it should
+stay that way for anything visual. `describeFeeDrag` was telling everybody whose
+funds were cheaper than the comparison that their charges added up to "−€174.44
+*less*" than a tracker — the figure correct to the cent, the word in front of it
+wrong, and 879 tests green over it.
+
+The line: a two-line fix to a sentence that is false is a correction, and comes
+with a test per branch written to fail against the old wording first. Anything
+that changes how an engine computes, or moves code for a visual change, is the
+refactor the brief forbids.
+
+## The debt gate was miscounting, twice, and both fixes lowered the number
+
+Phase 4c, approved. Recorded because the count is a gate and its history has to
+be legible: 89 at the end of 4b became 70 on the same commit once the gate was
+right.
+
+- Five entries were Tailwind class lists. A multi-line `clsx(` puts its opener a
+  line above its arguments, and the exemption only looked at the string's own
+  line.
+- Fourteen were whitespace. The JSX arm matched 90 characters of raw inner text,
+  indentation included, while the string arm measured 90 characters of copy — so
+  the same sentence counted or did not depending on how deeply nested it was.
+
+The second is the one that mattered beyond the count: a gate satisfiable by
+reflowing JSX and failable by indenting deeper is not measuring prose. Both arms
+now judge the trimmed sentence. `noProseInFeatures.test.ts` carries a do-not-
+delete note at the check, because it looks like a duplicate of the regex above
+it and is not.
+
+---
+
 # Decisions I need from you
 
 ## 1. `motion` would put the bundle over budget — I recommend not using it

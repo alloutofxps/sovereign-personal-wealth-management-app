@@ -108,25 +108,11 @@ function isEmptyState(text: string): boolean {
  * ======================================================================== */
 
 const STILL_INLINE: readonly string[] = [
-  'features/categories/CategoryManagerView.tsx',
-  'features/forecast/WhatIfView.tsx',
-  'features/goals/PotsView.tsx',
-  'features/investments/AddHoldingSheet.tsx',
-  'features/investments/InvestSheet.tsx',
-  'features/investments/RebalanceModal.tsx',
-  'features/investments/SellHoldingSheet.tsx',
   'features/manual/ManualView.tsx',
-  'features/manual/parts.tsx',
-  'features/onboarding/steps.tsx',
   'features/settings/DataAndSecurity.tsx',
   'features/settings/RecoveryPhrase.tsx',
   'features/settings/SettingsView.tsx',
-  'features/shell/BottomNav.tsx',
-  'features/simulations/DebtPayoffView.tsx',
-  'features/simulations/IndependenceView.tsx',
   'features/storage/ProtectStorage.tsx',
-  'features/triage/ImportSheet.tsx',
-  'features/triage/TriageView.tsx',
 ];
 
 /** Windows separators, normalised, so the list above matches on any machine. */
@@ -244,6 +230,15 @@ describe('no explanatory prose lives in a component', () => {
           if (!/\s/.test(value)) continue;
           if ((value.match(/ /g) ?? []).length < 8) continue;
           if (isAllowed(line, value)) continue;
+          /*
+           * The same prose test the JSX arm runs.
+           *
+           * Without it an SVG path counted: the sun icon in the dock is 103
+           * characters with eight spaces in it and not one word. Length and
+           * spacing alone cannot tell a `d` attribute from a sentence, and
+           * every other arm of this guard already knew that.
+           */
+          if (!looksLikeProse(value)) continue;
           if (isEmptyState(value)) continue;
           offenders.push(`${relative(file)}:${index + 1}  ${value.slice(0, 60)}…`);
         }
@@ -254,16 +249,33 @@ describe('no explanatory prose lives in a component', () => {
       const jsx = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
       for (const match of jsx.matchAll(/>\s*([^<>{}]{90,}?)\s*</g)) {
         const text = match[1]!.replace(/\s+/g, ' ').trim();
-        /*
-         * The sentence, not the indentation.
+        /* -------------------------------------------------------------------
+         * DO NOT DELETE THIS AS A DUPLICATE OF THE 90 IN THE PATTERN ABOVE
+         * -------------------------------------------------------------------
+         * They measure different strings, and the difference was a real bug
+         * for three phases.
          *
-         * The 90 in the pattern above counts raw inner text, so a caption
-         * nested four levels deep matched on whitespace alone -- fifteen of
-         * them did. The floor stays in the pattern to keep the scan cheap and
-         * is re-applied here against the trimmed copy, which is the same
-         * measure the quoted-string arm above uses. A gate that could be
-         * satisfied by reflowing JSX was not measuring copy.
-         */
+         * `{90,}` in the pattern counts RAW inner text — every newline and
+         * every space of indentation between the `>` and the `<`. This counts
+         * the sentence after `\s+` has been collapsed. So a caption nested
+         * four levels deep matched on its whitespace alone:
+         *
+         *     <p className="text-caption text-ink-2">
+         *       What matches gets locked, so it cannot change by accident.
+         *     </p>
+         *
+         * Fifty-eight characters of copy, ninety-plus characters of raw match.
+         * Fifteen of the fifty-seven JSX hits were that, and the quoted-string
+         * arm above never had the problem because a string literal has no
+         * indentation in it — so the same sentence counted or did not counting
+         * on whether it was written as a string or as a text node.
+         *
+         * That made this list, which is a gate that has to read zero,
+         * satisfiable by reflowing JSX and failable by indenting one level
+         * deeper. The regex keeps its floor to stay cheap; this is the one
+         * that decides, and it uses the same LONG the string arm uses so both
+         * arms judge the same thing.
+         * ---------------------------------------------------------------- */
         if (text.length < LONG) continue;
         if ((text.match(/ /g) ?? []).length < 8) continue;
         if (!looksLikeProse(text)) continue;

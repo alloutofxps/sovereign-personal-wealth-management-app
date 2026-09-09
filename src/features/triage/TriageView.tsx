@@ -567,8 +567,7 @@ function CardCreditChoice({
     return (
       <div className="flex flex-col gap-3 pb-2">
         <p className="text-caption text-ink-2">
-          Which category was the original purchase in? The refund will take the money back off
-          that, rather than counting as something you earned.
+          It comes off that category rather than counting as income.
         </p>
         <CategoryPicker
           value={refundCategory}

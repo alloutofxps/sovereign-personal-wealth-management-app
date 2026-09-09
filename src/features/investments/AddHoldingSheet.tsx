@@ -210,7 +210,7 @@ export function AddHoldingSheet({
                   ? ` It cost ${money.format(minor(cost))}, so it is currently ` +
                     `${value >= cost ? 'up' : 'down'} ${money.format(minor(Math.abs(value - cost)))}.`
                   : '')
-              : 'Fill in the account, the symbol, the name and the number of shares, and this will say exactly what it is about to record.'}
+              : 'Fill the fields above in.'}
           </p>
         </div>
       </div>

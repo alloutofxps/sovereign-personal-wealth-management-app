@@ -25,12 +25,16 @@ import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
 import { createBranch, deleteBranch } from '@/data/repositories/branchesRepo';
-import { BottomSheet, Button, Card, Money } from '@/design/ui';
+import { BottomSheet, Button, Card, Explain, Input, Money, Select } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 const HORIZON_DAYS = 90;
 
 export function WhatIfView() {
   const money = useMoney();
+  // No figures: a what-if is about a future that has not happened, so there is
+  // nothing of the person's own for the example to be worked in.
+  const explain = useExplain();
   const locale = useAppConfig((s) => s.locale);
   const forecast = useForecast();
   const branches = useBranches();
@@ -66,12 +70,9 @@ export function WhatIfView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-lead font-medium text-ink">What if</h2>
-        <p className="max-w-[48ch] text-caption text-ink-2">
-          Sketch a change and see what the next ninety days look like with it. Nothing here is
-          recorded. It never touches what you are actually worth.
-        </p>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="headline text-ink">What if</h1>
+        <Explain topic="what-if" label="sketching a change" onOpen={explain.open} />
       </header>
 
       {list.length === 0 ? (
@@ -79,8 +80,7 @@ export function WhatIfView() {
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <p className="text-lead text-ink">No what-ifs yet</p>
             <p className="max-w-[40ch] text-caption text-ink-2">
-              A raise, a move, a car. Sketch the money side of it and see where the line goes,
-              without changing a single thing you have recorded.
+              A raise, a move, a car. Nothing you sketch here is recorded.
             </p>
             <Button variant="primary" onClick={() => setNaming(true)}>
               Start one
@@ -222,6 +222,7 @@ export function WhatIfView() {
           from={data?.branch.divergesOn ?? isoDate(toIsoDate(new Date()))}
         />
       )}
+      {explain.sheet}
     </div>
   );
 }
@@ -279,23 +280,19 @@ function NameSheet({
       }
     >
       <div className="flex flex-col gap-4 pb-2">
-        <Field label="What are you wondering about?">
-          <input
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="If I took the Rotterdam job"
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-          />
-        </Field>
-        <Field label="Starting from">
-          <input
-            type="date"
-            value={from}
-            onChange={(event) => event.target.value && setFrom(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-          />
-        </Field>
+        <Input
+          label="What are you wondering about?"
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="If I took the Rotterdam job"
+        />
+        <Input
+          label="Starting from"
+          type="date"
+          value={from}
+          onChange={(event) => event.target.value && setFrom(event.target.value)}
+        />
         <p className="text-caption text-ink-3">
           Nothing before that date changes. A what-if is a different future, never a different
           past. Everything up to then is what actually happened.
@@ -399,26 +396,23 @@ function ChangeSheet({
           </Choice>
         </div>
 
-        <Field label="What is it?">
-          <input
-            type="text"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            placeholder={direction === 'in' ? 'The new salary' : 'Rent on the new place'}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-          />
-        </Field>
+        <Input
+          label="What is it?"
+          type="text"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder={direction === 'in' ? 'The new salary' : 'Rent on the new place'}
+        />
 
-        <Field label="How much">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={typed}
-            onChange={(event) => setTyped(event.target.value)}
-            placeholder="0.00"
-            className="tnum w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-          />
-        </Field>
+        <Input
+          label="How much"
+          type="text"
+          inputMode="decimal"
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          placeholder="0.00"
+          className="tnum"
+        />
 
         {direction === 'out' && (
           <Field label="What kind of spending">
@@ -437,29 +431,20 @@ function ChangeSheet({
           </Field>
         )}
 
-        <Field label={direction === 'in' ? 'Landing in' : 'Paid from'}>
-          <select
-            value={target}
-            onChange={(event) => setAccount(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-          >
-            {cash.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <Select
+          label={direction === 'in' ? 'Landing in' : 'Paid from'}
+          value={target}
+          onChange={(event) => setAccount(event.target.value)}
+          options={cash.map((option) => ({ value: option.id, label: option.name }))}
+        />
 
-        <Field label="Starting">
-          <input
-            type="date"
-            value={date}
-            min={from}
-            onChange={(event) => event.target.value && setDate(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-          />
-        </Field>
+        <Input
+          label="Starting"
+          type="date"
+          value={date}
+          min={from}
+          onChange={(event) => event.target.value && setDate(event.target.value)}
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <Choice selected={repeats} onClick={() => setRepeats(true)}>

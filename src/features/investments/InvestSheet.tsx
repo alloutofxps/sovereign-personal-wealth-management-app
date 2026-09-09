@@ -14,7 +14,8 @@ import { recordInvestmentBuy } from '@/app/investments/actions';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Select } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Explain, Select } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function InvestSheet({
   open,
@@ -26,6 +27,7 @@ export function InvestSheet({
   accounts: readonly LedgerAccount[];
 }) {
   const money = useMoney();
+  const explain = useExplain();
   const all = useAccounts();
 
   const [amount, setAmount] = useState<Minor>(minor(0));
@@ -119,15 +121,17 @@ export function InvestSheet({
           <p className="text-caption text-ink-2">
             {amount > 0 && from && to
               ? `${money.format(amount)} will leave ${from.name} and arrive in ${to.name}.`
-              : 'Choose an amount and the two accounts, and this will say what it is about to record.'}
+              : 'Pick an amount and the two accounts.'}
           </p>
-          <p className="text-caption text-ink-3">
-            This is not spending, so it will not appear in what you have spent this month or
-            change how fast you are going. It does come out of what is safe to spend, because
-            the money is no longer sitting in your current account.
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-caption text-ink-3">
+              Not spending, but no longer safe to spend either.
+            </p>
+            <Explain topic="transfers" label="moving money about" onOpen={explain.open} />
+          </div>
         </div>
       </div>
+      {explain.sheet}
     </BottomSheet>
   );
 }

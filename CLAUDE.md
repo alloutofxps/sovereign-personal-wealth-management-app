@@ -143,6 +143,46 @@ that carries both a `tone` prop and a colour utility in `className`.
 Radii are hierarchical: the bigger the object, the rounder it is. One radius on
 everything is what makes a screen read as a kit of identical boxes.
 
+### The kit, and when each piece applies
+
+Everything in `src/design/ui` is here. Reach for one of these before writing a
+`className` that draws a box, and if none of them fits, **add one and add it to
+this list in the same commit** — four of these arrived a phase or more after
+the primitives phase, each because a class string had been copied into five
+files before anybody named it.
+
+| | What it is for | Not for |
+| --- | --- | --- |
+| `Field` | The one panel a screen is built around, holding its hero figure | Anything below the fold |
+| `Card` | A list, a chart, a group of controls | A consequence — that is `Outcome` |
+| `Tile` | One of a grid of category-coloured siblings | A single object with no siblings |
+| `QuietTile` | The one slot that is about everything rather than a category | Anything with a family |
+| `Outcome` | What the button below it will do, previewed before it is pressed | Anything pressable |
+| `OutcomeRow` | One label-and-amount line of that arithmetic | A transaction — that is `Row` |
+| `Row` | A transaction, with its category square | A form field |
+| `StatStrip` / `StatCell` | The two to four figures that qualify a field's hero number | Anything on a card: the cell lifts off a *coloured* ground and is invisible on a surface |
+| `MiniBar` | One proportion, under the thing it is a proportion of | A chart |
+| `PillRow` | A window of time, where the whole strip is one choice | Switching panes — that is `Tabs` |
+| `Ring` | A proportion, with an optional second mark for pace | A count |
+| `Sparkline` | The shape of a series, at the size of a word | Anything that needs an axis |
+| `Input` / `Textarea` | **All** text entry | A checkbox, radio, range or file picker |
+| `Money` | **All** amounts | — |
+
+Two rules with teeth behind them:
+
+- **`Outcome` is sunken and has no border.** A sheet is already a surface;
+  drawing a hairline box inside one is a second edge two inches from the first.
+  The exception is a **selectable option**, which keeps its border — a border is
+  what says *pressable* in a run of flat text, and a sunken fill on a control
+  makes it read as inert. Getting that distinction wrong in either direction is
+  how a system turns back into a kit.
+- **No bare `<input>` or `<textarea>` in a feature.** The label beside a
+  hand-written field is a `<span>` with no `htmlFor`, so a screen reader
+  announces an unnamed edit box — WCAG 3.3.2 and 4.1.2. It was twenty-five
+  places. `noBareInputs.test.ts` holds the line. Checkboxes, radios, ranges and
+  file pickers stay bare on purpose: `Input` models a text field and none of
+  that shape fits a slider or a tick.
+
 ### No prose in components
 
 No explanatory paragraph may live in a `src/features` component. Explanations

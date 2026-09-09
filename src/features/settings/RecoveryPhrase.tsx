@@ -19,7 +19,7 @@
  * ======================================================================== */
 
 import { useState } from 'react';
-import { Button, Explain } from '@/design/ui';
+import { Button, Explain, Textarea } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
 export function RecoveryPhrase({
@@ -136,20 +136,16 @@ export function RecoveryPhrase({
         <span className="text-caption text-ink-2">
           A recovery phrase you already have
         </span>
-        <textarea
+        <Textarea
+          aria-label="Your twelve words"
           value={value}
           onChange={(event) => void check(event.target.value)}
           rows={2}
           placeholder="Twelve words, separated by spaces"
-          className="w-full resize-none rounded-md border border-line bg-raised px-3.5 py-3 font-mono text-body text-ink placeholder:font-sans placeholder:text-ink-3"
+          className="font-mono placeholder:font-sans"
+          {...(problem ? { error: problem } : {})}
         />
       </label>
-
-      {problem && (
-        <p className="text-caption text-caution" role="alert">
-          {problem}
-        </p>
-      )}
 
       <Explain topic="recovery-phrase" label="your recovery phrase" onOpen={explain.open} />
       {explain.sheet}

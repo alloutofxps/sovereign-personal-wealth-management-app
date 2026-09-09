@@ -73,7 +73,7 @@ export function PotsView() {
             </div>
             <p className="text-caption text-ink-2">
               {needThisMonth > 0
-                ? 'This is already held back from what is safe to spend, so you will not spend it by accident.'
+                ? 'Already held back from what is safe to spend.'
                 : 'Everything for this month is put by. Nothing else needs doing.'}
             </p>
           </div>
@@ -85,9 +85,7 @@ export function PotsView() {
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <p className="text-lead text-ink">Nothing set up yet</p>
             <p className="max-w-[36ch] text-caption text-ink-2">
-              Car insurance, a holiday, Christmas. The costs that only come round now and then
-              are the ones that catch people out. Tell Sovereign about one and it will put a bit
-              by each month so it is there when you need it.
+              Car insurance, a holiday, Christmas.
             </p>
             <Button variant="primary" onClick={() => setCreating(true)}>
               Start saving for something

@@ -7,7 +7,6 @@
  * ======================================================================== */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import clsx from 'clsx';
 import {
   downloadExport,
   listBackups,
@@ -28,7 +27,7 @@ import {
 } from '@/app/security/lock';
 import { toast } from '@/app/toast';
 import { lockNow } from '@/features/shell/LockGate';
-import { BottomSheet, Button, Card } from '@/design/ui';
+import { BottomSheet, Button, Card, Input } from '@/design/ui';
 import { RecoveryPhrase, phraseIsUsable } from './RecoveryPhrase';
 
 export function DataAndSecurity() {
@@ -191,18 +190,13 @@ function YourDataCard() {
           </div>
 
           {lockWith === 'passphrase' ? (
-            <label className="flex flex-col gap-2">
-              <span className="text-caption text-ink-2">
-                Passphrase (optional)
-              </span>
-              <input
-                type="password"
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="Leave blank for a plain file"
-                className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-              />
-            </label>
+            <Input
+              label="Passphrase (optional)"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              placeholder="Leave blank for a plain file"
+            />
           ) : (
             <RecoveryPhrase
               value={phrase}
@@ -263,18 +257,13 @@ function YourDataCard() {
         <div className="flex flex-col gap-4 pb-2">
           <p className="text-caption text-ink">{restoring?.name}</p>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-caption text-ink-2">
-              Passphrase
-            </span>
-            <input
-              type="password"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Only if the file was locked"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </label>
+          <Input
+            label="Passphrase"
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="Only if the file was locked"
+          />
 
           <p className="text-caption text-caution">
             Everything currently recorded on this device will be replaced by what is in this
@@ -440,20 +429,15 @@ function PasscodeField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex flex-col gap-2">
-      <span className="text-caption text-ink-2">{label}</span>
-      <input
-        type="password"
-        inputMode="numeric"
-        maxLength={6}
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
-        className={clsx(
-          'w-full rounded-md border border-line bg-raised px-3.5 py-3 text-lead text-ink tnum',
-          'tracking-[0.4em]',
-        )}
-      />
-    </label>
+    <Input
+      label={label}
+      type="password"
+      inputMode="numeric"
+      maxLength={6}
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+      className="tnum text-lead tracking-[0.4em]"
+    />
   );
 }
 

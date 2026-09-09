@@ -8,13 +8,15 @@ import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useIndependenceAssumptions, type IndependenceAssumptions } from '@/app/config/store';
 import { GrowthBand } from '@/charts/GrowthBand';
-import { AmountInput, BottomSheet, Button, Card, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 /** 3.0% to 4.5%, in quarter-point steps. */
 const RATES = [300, 325, 350, 375, 400, 425, 450] as const;
 
 export function IndependenceView() {
   const money = useMoney();
+  const explain = useExplain();
   const forecast = useForecast();
   const assumptions = useIndependenceAssumptions();
   // The store keeps plain numbers because it is persisted as JSON; branding
@@ -50,12 +52,9 @@ export function IndependenceView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">When you could stop</h1>
-        <p className="text-caption text-ink-2">
-          How much you would need invested to live off it, and roughly how long that takes at
-          what you are putting away now.
-        </p>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="headline text-ink">When you could stop</h1>
+        <Explain topic="independence" label="when you could stop" onOpen={explain.open} />
       </header>
 
       <Card label="What you are working with">
@@ -123,9 +122,7 @@ export function IndependenceView() {
             format={(amount) => money.format(amount, { compact: true })}
           />
           <p className="max-w-[46ch] text-caption text-ink-2">
-            The solid line is what steady returns would give you. The shaded band is the range a
-            good or a bad run of markets could put you in. Real markets do not move in a
-            straight line, and the width of that band is the honest part of this page.
+            The band is where a good or a bad run of markets could put you.
           </p>
         </div>
       </Card>
@@ -154,6 +151,7 @@ export function IndependenceView() {
         assumptions={assumptions}
         suggestedSpending={suggestedSpending}
       />
+      {explain.sheet}
     </div>
   );
 }

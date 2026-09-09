@@ -44,14 +44,17 @@ import {
   List,
   ListItem,
   ListSectionHeader,
+  Explain,
   Select,
   Tabs,
 } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 type TabValue = 'taxonomy' | 'rules' | 'tags';
 
 export function CategoryManagerView() {
   const [, navigate] = useRoute();
+  const explain = useExplain();
   const [tab, setTab] = useState<TabValue>('taxonomy');
   const taxonomy = useTaxonomy(true);
   const rules = useRules();
@@ -63,12 +66,9 @@ export function CategoryManagerView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">Categories, rules and tags</h1>
-        <p className="text-caption text-ink-2">
-          How your spending is divided up, anything you have asked Sovereign to file for you, and
-          the labels you put across it all.
-        </p>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="headline text-ink">Categories and tags</h1>
+        <Explain topic="tags" label="tags" onOpen={explain.open} />
       </header>
 
       <Tabs
@@ -89,6 +89,7 @@ export function CategoryManagerView() {
           Back to settings
         </Button>
       </div>
+      {explain.sheet}
     </div>
   );
 }
@@ -150,9 +151,7 @@ function TagsTab() {
         <div className="flex flex-col items-center gap-2 py-8 text-center">
           <p className="text-lead text-ink">No tags yet</p>
           <p className="max-w-[38ch] text-caption text-ink-2">
-            A tag is a label you put across payments that have nothing else in common: a trip, a
-            room, everything somebody owes you half of. Choose several payments on the
-            transactions screen and tag them there.
+            Choose several payments on the transactions screen and tag them there.
           </p>
         </div>
       </Card>
@@ -194,8 +193,7 @@ function TagsTab() {
       </Card>
 
       <p className="text-caption text-ink-3">
-        Tags never change a figure. Nothing that is safe to spend, no envelope and no total reads
-        one. They are only how you find things again.
+        A tag never changes a figure. It is only how you find things again.
       </p>
 
       <BottomSheet
@@ -214,12 +212,12 @@ function TagsTab() {
           </Button>
         }
       >
-        <input
+        <Input
+          aria-label="The new name"
           type="text"
           value={draft}
           maxLength={MAX_TAG_LENGTH}
           onChange={(event) => setDraft(event.target.value)}
-          className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
         />
       </BottomSheet>
 
@@ -278,8 +276,7 @@ function TaxonomyTab() {
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <p className="text-lead text-ink">Nothing set up yet</p>
             <p className="max-w-[36ch] text-caption text-ink-2">
-              Categories are how your spending gets divided up. Add the first one and it will be
-              offered whenever you record a payment.
+              Add the first one and it will be offered whenever you record a payment.
             </p>
           </div>
         </Card>
@@ -395,8 +392,7 @@ function ArchivedList() {
   return (
     <Card label="No longer used">
       <p className="pb-3 text-caption text-ink-2">
-        These are kept so your past months still add up. They are not offered when you record
-        something new.
+        Kept so your past months still add up. Not offered for anything new.
       </p>
       <div className="flex flex-wrap gap-2">
         {archived.map((category) => (

@@ -13,7 +13,7 @@ import type { AccountId } from '@/core/ledger';
 import { saveDebtTerms, type DebtTermsRow } from '@/data/repositories/ledgerRepo';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Money, Outcome } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Input, Money, Outcome } from '@/design/ui';
 
 export interface DebtTermsSheetProps {
   open: boolean;
@@ -117,31 +117,21 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
             <Money value={balance} size="lead" />
           </Outcome>
 
-          <Field
+          {/* The unit sits in the trailing slot rather than beside the box:
+              a "%" outside the field is a word next to a control, and inside
+              it is part of the same object. */}
+          <Input
             label="Interest rate"
-            hint="The yearly rate, as it appears on your statement. Leave it blank if there is none."
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={aprText}
-                onChange={(e) => setAprText(e.target.value)}
-                placeholder="19.99"
-                aria-label="Interest rate as a percentage"
-                className={clsx(
-                  'w-full rounded-md border bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3',
-                  parsedApr.ok ? 'border-line' : 'border-caution',
-                )}
-              />
-              <span className="text-lead text-ink-2">%</span>
-            </div>
-            {!parsedApr.ok && (
-              <p className="text-caption text-caution" role="alert">
-                {parsedApr.why}
-              </p>
-            )}
-          </Field>
+            type="text"
+            inputMode="decimal"
+            value={aprText}
+            onChange={(e) => setAprText(e.target.value)}
+            placeholder="19.99"
+            trailingIcon={<span className="text-body text-ink-2">%</span>}
+            {...(parsedApr.ok
+              ? { hint: 'The yearly rate, as your statement gives it. Blank if there is none.' }
+              : { error: parsedApr.why })}
+          />
 
           <Field
             label="Smallest payment they accept"

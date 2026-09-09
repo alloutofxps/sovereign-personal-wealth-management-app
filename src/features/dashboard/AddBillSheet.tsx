@@ -13,7 +13,7 @@ import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Select } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Input, Select } from '@/design/ui';
 
 type Kind = 'bill' | 'income';
 
@@ -141,15 +141,13 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           </Field>
 
-          <Field label="What is it called?">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={kind === 'bill' ? 'Rent, phone, energy…' : 'Pay from work'}
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </Field>
+          <Input
+            label="What is it called?"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={kind === 'bill' ? 'Rent, phone, energy…' : 'Pay from work'}
+          />
 
           <Select
             label="How often?"
@@ -161,14 +159,12 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
             }))}
           />
 
-          <Field label={kind === 'bill' ? 'When is it next due?' : 'When are you next paid?'}>
-            <input
-              type="date"
-              value={nextDue}
-              onChange={(e) => e.target.value && setNextDue(e.target.value)}
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-            />
-          </Field>
+          <Input
+            label={kind === 'bill' ? 'When is it next due?' : 'When are you next paid?'}
+            type="date"
+            value={nextDue}
+            onChange={(e) => e.target.value && setNextDue(e.target.value)}
+          />
 
           <Select
             label={kind === 'bill' ? 'Which account pays it?' : 'Where does it land?'}

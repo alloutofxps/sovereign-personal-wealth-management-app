@@ -603,6 +603,75 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
     ],
   },
 
+  /* ---------------------------------------------------------------------
+   * CHECKED against tagsRepo and every selector that reads a tag: nothing
+   * does. No total, no envelope figure and nothing in safe-to-spend touches
+   * one. That is the fact worth stating, because a label that quietly changed
+   * a figure would be the worst kind of surprise, and people reasonably assume
+   * it might.
+   * ------------------------------------------------------------------ */
+  tags: {
+    id: 'tags',
+    title: 'Tags',
+    short: 'A label you put across payments that have nothing else in common.',
+    how: [
+      'A trip, a room, everything somebody owes you half of.',
+      'Choose several payments on the transactions screen and tag them together.',
+      'A tag never changes a figure. It is only how you find things again.',
+    ],
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against core/ledger/branching: a what-if lives in its own branch
+   * and no selector outside that branch reads it. The projection it draws is
+   * the ordinary one run against the branch, which is why it can be trusted
+   * to be the same arithmetic and why it cannot leak into the real figures.
+   * ------------------------------------------------------------------ */
+  'what-if': {
+    id: 'what-if',
+    title: 'Sketching a change',
+    short: 'A different future, drawn from what you already have, and recorded nowhere.',
+    how: [
+      'A raise, a move, a car. Say what money would arrive or leave, and when.',
+      'The line is worked out the same way the ordinary one is, from your real figures plus the change.',
+      'None of it is saved. What you are worth and what is safe to spend do not move.',
+    ],
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against core/simulate/fire: the band is a range of outcomes at
+   * different return assumptions, not a confidence interval. The copy says
+   * "a good or a bad run" rather than any figure that would imply a
+   * probability the engine does not compute.
+   * ------------------------------------------------------------------ */
+  independence: {
+    id: 'independence',
+    title: 'When you could stop',
+    short: 'How much you would need invested to live off it, and roughly how long that takes.',
+    how: [
+      'What a year costs you, multiplied by the number of years the money has to last.',
+      'The solid line is what steady returns would give. The band is where a good or a bad run of markets could put you.',
+      'The width of that band is the honest part. Real markets do not move in a straight line.',
+    ],
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against the ingest pipeline: parsing happens in this tab and
+   * nothing is sent anywhere, which is the claim people most need before
+   * handing over a statement. The day-first question is genuinely undecidable
+   * from some files, so the copy asks rather than guessing.
+   * ------------------------------------------------------------------ */
+  importing: {
+    id: 'importing',
+    title: 'Reading a statement',
+    short: 'A CSV from your bank, read on this device and sent nowhere.',
+    how: [
+      'Most banks offer one somewhere in their statements section.',
+      'It is read here in this tab. Nothing is uploaded and no bank details are needed.',
+      'Some files do not say whether a date is day-first or month-first, so Sovereign asks rather than guessing.',
+    ],
+  },
+
   'recovery-phrase': {
     id: 'recovery-phrase',
     title: 'Your recovery phrase',

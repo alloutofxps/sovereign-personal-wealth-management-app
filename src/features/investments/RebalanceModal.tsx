@@ -159,8 +159,7 @@ export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () =
         {tab === 'targets' ? (
           <>
             <p className="text-caption text-ink-2">
-              What share of your investments you want in each kind of thing. They have to add
-              up to 100%, because together they are the whole portfolio.
+              They have to add up to 100%.
             </p>
 
             <ul className="flex flex-col gap-2.5">
@@ -226,8 +225,7 @@ function PlanTab({
   if (!plan) {
     return (
       <p className="py-2 text-caption text-ink-2">
-        Set what you want your portfolio to look like first, and this will show what would move
-        you towards it.
+        Set your targets first.
       </p>
     );
   }

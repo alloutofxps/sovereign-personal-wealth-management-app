@@ -66,7 +66,12 @@ export type ExplainTopic =
   | 'transfers'
   | 'valuations'
   | 'corrections'
-  | 'rules';
+  | 'rules'
+  /* The four screens that model something rather than record it. */
+  | 'tags'
+  | 'what-if'
+  | 'independence'
+  | 'importing';
 
 /**
  * The six chapter slugs, repeated rather than imported.

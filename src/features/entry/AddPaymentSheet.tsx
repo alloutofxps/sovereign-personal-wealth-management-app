@@ -580,10 +580,12 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </>
           ) : (
             <>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-caption text-ink-2">
-              {splitting ? 'Split across categories' : 'What was it for?'}
-            </span>
+          {/* No label on this row.
+              Not splitting, it read "What was it for?" — which the sheet's own
+              title already asks two inches above. Splitting, it read "Split
+              across categories" — the same words as the button beside it. Both
+              states duplicated something, so the row is just the toggle. */}
+          <div className="flex items-center justify-end gap-3">
             {!fronted && (
               <button
                 type="button"

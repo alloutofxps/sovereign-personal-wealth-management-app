@@ -129,8 +129,7 @@ export function DebtPayoffView() {
       )}
 
       <p className="max-w-[46ch] text-caption text-ink-3">
-        This assumes you keep paying the same amount every month and add nothing new to the
-        balances. Rates are what Sovereign has on file for each account.
+        Assumes the same payment each month and nothing new added.
       </p>
 
       <BottomSheet

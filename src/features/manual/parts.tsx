@@ -109,8 +109,7 @@ export function Lab({
       </header>
       <div className="flex flex-col gap-5 p-4">{children}</div>
       <p className="border-t border-line-faint bg-sunken px-4 py-2.5 text-caption text-ink-3">
-        Made-up figures, worked out by the same code that works out yours. Nothing you change here
-        touches your own records.
+        Made-up figures. Nothing here touches your records.
       </p>
     </section>
   );

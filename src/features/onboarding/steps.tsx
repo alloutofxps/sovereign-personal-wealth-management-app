@@ -29,7 +29,8 @@ import { useDashboard } from '@/app/dashboard/useDashboard';
 import { createAccount } from '@/data/repositories/accountsRepo';
 import { saveScheduled, type Cadence } from '@/data/repositories/scheduleRepo';
 import { savePot } from '@/data/repositories/potsRepo';
-import { Button } from '@/design/ui';
+import { Button, Explain, Input } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { AddedList, Aside, Choice, Field, MoneyBox, StepFrame, Term, TextBox, readAmount } from './parts';
 
 /** What a step has put into the ledger, for the list under its form. */
@@ -49,6 +50,7 @@ interface StepProps {
  * ======================================================================== */
 
 export function StepPromise() {
+  const explain = useExplain();
   const currency = useAppConfig((s) => s.currencyCode);
   const setCurrency = useAppConfig((s) => s.setCurrency);
   const locale = useAppConfig((s) => s.locale);
@@ -56,13 +58,12 @@ export function StepPromise() {
   return (
     <StepFrame
       title="Your money, on your phone, and nowhere else."
-      lede="Your data stays on this device. No servers, no accounts, no tracking. Nothing is ever sent to us, to your bank, or to anyone else."
+      lede="Your data stays on this device. No servers, no accounts, no tracking."
     >
-      <Aside>
-        That also means nobody can get it back for you. Before you have much in here, go to
-        Settings and save a copy somewhere you trust. It takes about ten seconds and it is the
-        one thing this app cannot do on your behalf.
-      </Aside>
+      <div className="flex items-center justify-between gap-2">
+        <Aside>Which also means nobody can get it back for you.</Aside>
+        <Explain topic="recovery-phrase" label="your recovery phrase" onOpen={explain.open} />
+      </div>
 
       <Field label="What do you count in?">
         <select
@@ -79,9 +80,9 @@ export function StepPromise() {
       </Field>
 
       <p className="text-caption text-ink-3">
-        Everything in Sovereign is counted in this. You can change it later in Settings, though
-        it is easier to get right now than after a year of records.
+        Changeable later, but easier to get right now than after a year of records.
       </p>
+      {explain.sheet}
     </StepFrame>
   );
 }
@@ -97,10 +98,11 @@ const CASH_KINDS: { value: AccountClass; title: string; detail: string }[] = [
 ];
 
 export function StepWhereItIs({ added, onAdded }: StepProps) {
+  const explain = useExplain();
   return (
     <StepFrame
       title="Where is your money right now?"
-      lede="Add the accounts you actually spend from. Type the balance as it stands today, not what you started with."
+      lede="The accounts you actually spend from, at today's balance."
     >
       <AccountAdder
         kinds={CASH_KINDS}
@@ -109,10 +111,11 @@ export function StepWhereItIs({ added, onAdded }: StepProps) {
         onAdded={onAdded}
       />
       <AddedList items={added} empty="Nothing added yet. One account is enough to begin with." />
-      <Aside>
-        Sovereign works out what is safe to spend from these balances, so a rough figure gives a
-        rough answer. If you are unsure, open your banking app and copy the number across.
-      </Aside>
+      <div className="flex items-center justify-between gap-2">
+        <Aside>A rough figure here gives a rough answer.</Aside>
+        <Explain topic="safe-to-spend" label="what is safe to spend" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
     </StepFrame>
   );
 }
@@ -128,6 +131,7 @@ const DEBT_KINDS: { value: AccountClass; title: string; detail: string }[] = [
 ];
 
 export function StepWhatYouOwe({ added, onAdded }: StepProps) {
+  const explain = useExplain();
   return (
     <StepFrame
       title="Anything you owe?"
@@ -140,11 +144,11 @@ export function StepWhatYouOwe({ added, onAdded }: StepProps) {
         onAdded={onAdded}
       />
       <AddedList items={added} empty="Nothing owed, or nothing added yet. Both are fine." />
-      <Aside>
-        A card balance comes straight off what is safe to spend, because it has to be paid from
-        the same money. A mortgage does not. Nobody has to find the whole thing this month, only
-        the payment, and that is budgeted like any other bill.
-      </Aside>
+      <div className="flex items-center justify-between gap-2">
+        <Aside>A card comes off what is safe to spend. A mortgage does not.</Aside>
+        <Explain topic="cards" label="cards and mortgages" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
     </StepFrame>
   );
 }
@@ -161,6 +165,7 @@ const CADENCES: { value: Cadence; label: string }[] = [
 ];
 
 export function StepRegulars({ added, onAdded }: StepProps) {
+  const explain = useExplain();
   const money = useMoney();
   const [kind, setKind] = useState<'income' | 'bill'>('income');
   const [name, setName] = useState('');
@@ -215,24 +220,21 @@ export function StepRegulars({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="What lands, and what leaves?"
-      lede="Your pay, your rent, the phone bill. The things that arrive whether you think about them or not."
+      lede="Your pay, your rent, the phone bill. The things that arrive anyway."
     >
       <div className="grid grid-cols-2 gap-2">
         <Choice selected={kind === 'income'} onClick={() => setKind('income')} title="Money in" />
         <Choice selected={kind === 'bill'} onClick={() => setKind('bill')} title="Money out" />
       </div>
 
-      <Field label="What is it called?">
-        <TextBox
-          value={name}
-          onChange={setName}
-          placeholder={kind === 'income' ? 'Pay from work' : 'Rent'}
-        />
-      </Field>
+      <TextBox
+        label="What is it called?"
+        value={name}
+        onChange={setName}
+        placeholder={kind === 'income' ? 'Pay from work' : 'Rent'}
+      />
 
-      <Field label="How much">
-        <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
-      </Field>
+      <MoneyBox label="How much" value={typed} onChange={setTyped} exponent={money.exponent} />
 
       <Field label="How often">
         <select
@@ -248,14 +250,12 @@ export function StepRegulars({ added, onAdded }: StepProps) {
         </select>
       </Field>
 
-      <Field label="Next one due">
-        <input
-          type="date"
-          value={due}
-          onChange={(event) => event.target.value && setDue(event.target.value)}
-          className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-        />
-      </Field>
+      <Input
+        label="Next one due"
+        type="date"
+        value={due}
+        onChange={(event) => event.target.value && setDue(event.target.value)}
+      />
 
       {problem && (
         <p className="text-caption text-caution" role="alert">
@@ -268,10 +268,11 @@ export function StepRegulars({ added, onAdded }: StepProps) {
       </Button>
 
       <AddedList items={added} empty="Nothing added yet. Rent and pay are the two worth having." />
-      <Aside>
-        Anything due in the next month is held back from what is safe to spend, so a bill can
-        never sneak up on you.
-      </Aside>
+      <div className="flex items-center justify-between gap-2">
+        <Aside>Anything due next month is held back, so a bill cannot sneak up.</Aside>
+        <Explain topic="safe-to-spend" label="what is safe to spend" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
     </StepFrame>
   );
 }
@@ -350,11 +351,9 @@ export function StepSaving({ added, onAdded }: StepProps) {
   return (
     <StepFrame
       title="What are you putting money by for?"
-      lede="A pot is money that stays in your account but stops counting as spare. Car insurance, a holiday, a new boiler. Anything that tends to arrive as a shock."
+      lede="Money that stays in your account but stops counting as spare."
     >
-      <Field label="What is it for?">
-        <TextBox value={name} onChange={setName} placeholder="Car insurance" />
-      </Field>
+      <TextBox label="What is it for?" value={name} onChange={setName} placeholder="Car insurance" />
 
       <Field label={kind === 'monthly' ? 'How much each month' : 'How much you need'}>
         <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
@@ -374,11 +373,11 @@ export function StepSaving({ added, onAdded }: StepProps) {
           />
         ))}
         {kind === 'by_date' && (
-          <input
+          <Input
+            aria-label="The date you need it by"
             type="date"
             value={date}
             onChange={(event) => event.target.value && setDate(event.target.value)}
-            className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
           />
         )}
       </div>
@@ -414,7 +413,7 @@ export function StepTheNumber() {
     return (
       <StepFrame
         title="One number, and where it comes from"
-        lede="Sovereign could not work your figure out just now. Nothing you have entered is lost. The home screen will show it as soon as it can."
+        lede="Nothing you have entered is lost. The home screen will show it shortly."
       >
         <Aside>You can finish here and go straight to it.</Aside>
       </StepFrame>
@@ -438,7 +437,7 @@ export function StepTheNumber() {
   return (
     <StepFrame
       title="One number, and where it comes from"
-      lede="Sovereign shows you one figure. Not your balance: what is left once everything already spoken for is out of the way."
+      lede="Not your balance. What is left once everything spoken for is out of the way."
     >
       <div className="rounded-lg border border-line bg-surface px-4 py-2">
         <Term label="What you have" value={money.format(liquidity.liquidCash)} tone="plain" />

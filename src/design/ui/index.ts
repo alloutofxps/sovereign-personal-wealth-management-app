@@ -16,6 +16,7 @@ export { CategorySquare, Row, RowList, type RowProps } from './Row';
 export { Chip, type ChipProps } from './Chip';
 export { Explain, type ExplainProps } from './Explain';
 export { ClearButton, Input, SearchIcon, type InputProps } from './Input';
+export { Textarea, type TextareaProps } from './Textarea';
 export { List, ListItem, ListSectionHeader, type ListItemProps, type ListProps } from './List';
 export { Money, type MoneyProps, type MoneySize, type MoneyTone } from './Money';
 export {
