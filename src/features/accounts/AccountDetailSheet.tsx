@@ -33,7 +33,8 @@ import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Card, Input, Money } from '@/design/ui';
+import { BottomSheet, Button, Card, Explain, Input, Money, Outcome } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function AccountDetailSheet({
   account,
@@ -54,6 +55,13 @@ export function AccountDetailSheet({
 }) {
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
+  /*
+   * One host, three topics: how this account is treated, what a statement
+   * check does, and -- reached from the archive line -- nothing, because
+   * putting an account away is a fact about the interface rather than about
+   * the money, and the app does not explain its own controls.
+   */
+  const explain = useExplain();
 
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -159,7 +167,14 @@ export function AccountDetailSheet({
           <Card>
             <div className="flex flex-col gap-2">
               <Money value={balance} size="figure" tone={owed && balance > 0 ? 'caution' : 'neutral'} />
-              <p className="text-caption text-ink-2">{describeStanding(account, owed)}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-caption text-ink-2">{describeStanding(account, owed)}</p>
+                <Explain
+                  topic="safe-to-spend"
+                  label="what is safe to spend"
+                  onOpen={explain.open}
+                />
+              </div>
               {account.institution && (
                 <p className="text-caption text-ink-3">Held with {account.institution}.</p>
               )}
@@ -318,16 +333,21 @@ export function AccountDetailSheet({
 
           {/* --- checking it against the bank --------------------------- */}
           {canReconcile && (
-            <div className="flex flex-col items-start gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
-              <p className="text-caption text-ink-2">
-                Comparing this against your bank statement is the only way to know the figures
-                here are right. It takes a couple of minutes, and what matches gets locked so it
-                cannot be changed by accident.
-              </p>
+            <Outcome className="items-start">
+              <div className="flex w-full items-center justify-between gap-2">
+                <p className="text-caption text-ink-2">
+                  What matches gets locked, so it cannot change by accident.
+                </p>
+                <Explain
+                  topic="checking"
+                  label="checking against your bank"
+                  onOpen={explain.open}
+                />
+              </div>
               <Button variant="secondary" size="sm" onClick={onReconcile}>
                 Check against a statement
               </Button>
-            </div>
+            </Outcome>
           )}
 
           {/* --- putting it away ---------------------------------------- */}
@@ -336,12 +356,12 @@ export function AccountDetailSheet({
               {busy ? 'Putting away…' : 'Put this account away'}
             </Button>
             <p className="pt-1.5 text-caption text-ink-3">
-              It stops being offered, and everything it ever recorded stays exactly where it
-              is. It has to be empty first.
+              It has to be empty first. Nothing it recorded moves.
             </p>
           </div>
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }
@@ -354,7 +374,7 @@ function describeStanding(account: LedgerAccount, owed: boolean): string {
   if (account.onBudget && account.liquid) {
     return 'Money you could spend today. It counts towards what is safe to spend.';
   }
-  return 'A tracking account. It counts towards what you are worth, but never towards what is safe to spend.';
+  return 'Counts towards what you are worth, never towards what is safe to spend.';
 }
 
 function MarkRow({

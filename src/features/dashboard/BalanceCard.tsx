@@ -67,9 +67,8 @@ export function BalanceCard({
               <Money
                 value={absolute(data.netWorthChange)}
                 size="caption"
-                tone="neutral"
+                tone="inherit"
                 decimals="hide"
-                className="text-inherit"
               />
               <span className="pl-1">this month</span>
             </span>

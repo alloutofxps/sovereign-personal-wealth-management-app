@@ -96,16 +96,13 @@ export function SplitEditor({
         <Money value={total} size="lead" />
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col divide-y divide-line-faint">
         {lines.map((line, index) => {
           const lineAmount = parseAmountText(line.amountText);
           const rest = minor(total - given + lineAmount);
 
           return (
-            <div
-              key={line.key}
-              className="flex flex-col gap-2 rounded-md border border-line bg-raised p-3"
-            >
+            <div key={line.key} className="flex flex-col gap-2 py-3 first:pt-0">
               <div className="flex items-start gap-2">
                 <Select
                   aria-label={`What part ${index + 1} was for`}

@@ -103,7 +103,7 @@ Router behaviour that must survive:
 
 - `SafeToSpendSheet` — the full breakdown, "In your everyday accounts and savings", links into the manual.
 - `AddBillSheet` — money out or in, name, how often, next due, what it counts as.
-- `PaymentDetailsSheet` — what it moved, your note, "Undo this payment", empty note state.
+- `PaymentDetailsSheet` — what it moved, your note, "Undo this payment", empty note state. The "what it moved" lines carry the `two-books` explanation, now with a worked example built from that entry's own two totals (4c).
 
 ---
 
@@ -183,7 +183,7 @@ Router behaviour that must survive:
 ### Sheets reachable from Accounts
 
 - `CreateAccountSheet` — name, currency, who holds it.
-- `AccountDetailSheet` — rename ("What to call it"), "Checked against your bank", "The terms", "What it has been worth" history, "Update value", "Check against a statement", tracking-account explanation, archive (must be empty first), reopen a locked check.
+- `AccountDetailSheet` — rename ("What to call it"), "Checked against your bank", "The terms", "What it has been worth" history, "Update value", "Check against a statement", how this account is treated (with the `safe-to-spend` explanation beside it), archive (must be empty first), reopen a locked check.
 - `ConvertCurrencySheet` — From / Into.
 - `ReconcileAccountSheet` — statement ending date, closing balance, tick off entries, Locked / Ticked off / Not ticked off states.
 - `RecordValuationSheet` — new estimated value, as-at date, why.
@@ -248,6 +248,21 @@ Router behaviour that must survive:
 - `TopUpSheet` — amount to set aside.
 - "Change it" action.
 - "Nothing set up yet" empty state.
+
+---
+
+## Recording, and what each entry does to the figures
+
+Five explanations added in 4c, each replacing an inline paragraph that said the
+same thing beside one control on one screen:
+
+| Topic | Answers | Reached from |
+| --- | --- | --- |
+| `fronted` | Money you paid on somebody else's behalf, and why it is never your spending | `AddPaymentSheet`, `PaybackSheet`, `WriteOffSheet` |
+| `transfers` | Why moving money between your own accounts is neither earning nor spending | `AddPaymentSheet`, `ConvertCurrencySheet` |
+| `valuations` | Why a house going up is not income and a car going down is not spending | `RecordValuationSheet` |
+| `corrections` | That nothing is deleted — an undo is a second entry that cancels the first | `PaymentDetailsSheet` |
+| `rules` | What "always file this shop here" does, and that it never touches the past | `CategoryPicker`'s always-file toggle |
 
 ---
 

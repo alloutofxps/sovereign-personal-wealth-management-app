@@ -172,6 +172,20 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
   },
 
   /* Calibration copy from the brief, kept as written. */
+  /* ---------------------------------------------------------------------
+   * The last of the three unwired examples, filled in phase 4c.
+   *
+   * The two totals are equal by construction: invariants I1-I10 refuse a write
+   * where they are not, so no entry that reached the database can print a pair
+   * that differs. Saying both out loud anyway is the whole demonstration --
+   * "these two agree" is a claim somebody can check against the figure they
+   * just typed, where "the app keeps two sets of books" is a claim they have to
+   * take on faith.
+   *
+   * Deliberately no branch for the unequal case. There is no honest sentence
+   * for it: an entry whose books disagree could not have been saved, so copy
+   * for that state would be copy for something that cannot happen.
+   * ------------------------------------------------------------------ */
   'two-books': {
     id: 'two-books',
     title: 'Why every payment is stored twice',
@@ -181,6 +195,20 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'The two have to add up to the same number.',
       'That is how the app notices a mistake instead of quietly losing 42.',
     ],
+    worked: (c) => {
+      if (!need(c, ['entryFinancialTotal', 'entryBudgetTotal'])) return null;
+      const f = c.figures;
+      const lines = f.entryPostingCount;
+      const counted =
+        lines === undefined
+          ? ''
+          : ` This one is stored as ${lines} ${lines === 1 ? 'line' : 'lines'}.`;
+      return (
+        `Here, the money side adds up to ${c.money(f.entryFinancialTotal!)} and the ` +
+        `category side adds up to ${c.money(f.entryBudgetTotal!)}. They agree, which is ` +
+        `what lets Sovereign tell a typo from a payment.${counted}`
+      );
+    },
     manual: 'two-books',
   },
 
@@ -440,6 +468,141 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
    * CHECKED: generateMnemonic defaults to 12 words, and the phrase is turned
    * into the key that encrypts an export. There is no recovery path.
    * ------------------------------------------------------------------ */
+  /* ---------------------------------------------------------------------
+   * RECORDING, AND WHAT EACH KIND OF ENTRY DOES TO THE FIGURES
+   * ---------------------------------------------------------------------
+   * Five topics that were all inline paragraphs in the record and account
+   * sheets. Each one answers the same underlying question in a different
+   * place: *this thing I am about to do -- which of my numbers does it move?*
+   *
+   * That question is exactly why they could not stay as captions. A caption
+   * says it once, beside one control, to somebody who is mid-task and skipping
+   * it; a topic says it in one place and can be reached from every screen that
+   * does the same thing to the same figures.
+   * ------------------------------------------------------------------ */
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against claimsRepo and recordFronted: a fronted payment posts to a
+   * receivable rather than to a category, so it is out of spending from the
+   * moment it is recorded, and settling it credits the receivable rather than
+   * income. Writing one off is the only route by which it becomes spending,
+   * and it lands in the month of the write-off, not the month of the payment.
+   * ------------------------------------------------------------------ */
+  fronted: {
+    id: 'fronted',
+    title: 'Money you fronted',
+    short: 'Something you paid for that somebody else owes you back. It is not your spending.',
+    how: [
+      'It comes out of your account, so what you can reach today goes down.',
+      'It never counts as yours, so your spending and what is safe to spend do not move at all.',
+      'When the money comes back it is not income either. It is your own money returning.',
+    ],
+    worked: (c) => {
+      if (!need(c, ['claimOutstanding'])) return null;
+      const f = c.figures;
+      if (f.claimOutstanding === 0) return null;
+      const settling = f.claimSettling;
+      if (settling === undefined) {
+        return (
+          `${c.money(f.claimOutstanding!)} is out with other people. None of it is counted ` +
+          `as money you have spent.`
+        );
+      }
+      const left = minor(f.claimOutstanding! - settling);
+      return left <= 0
+        ? `Taking ${c.money(settling)} back settles this one, and nothing you appear to earn changes.`
+        : `Taking ${c.money(settling)} back leaves ${c.money(left)} still out with somebody, ` +
+          `and nothing you appear to earn changes.`;
+    },
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against recordTransfer and recordCrossCurrencyTransfer: both
+   * postings are asset-side, so no category and no income account is touched.
+   * Across a currency the two amounts differ and the difference is booked as a
+   * cost, which is the one part of a transfer that does move what you are
+   * worth -- so the copy says that rather than claiming nothing changes.
+   * ------------------------------------------------------------------ */
+  transfers: {
+    id: 'transfers',
+    title: 'Moving money about',
+    short: 'Money going from one of your accounts to another is not spending or earning.',
+    how: [
+      'Both sides are yours, so nothing was earned and nothing was spent.',
+      'Your spending, your categories and how fast you are going all stay where they were.',
+      'Across currencies the two amounts differ. What the bank kept is the one part that is a real cost.',
+    ],
+    worked: (c) => {
+      if (!need(c, ['transferOut', 'transferIn'])) return null;
+      const f = c.figures;
+      const kept = minor(f.transferOut! - f.transferIn!);
+      return kept === 0
+        ? `${c.money(f.transferOut!)} moves across and arrives whole. What you are worth is unchanged.`
+        : `${c.money(f.transferOut!)} leaves and ${c.money(f.transferIn!)} arrives, so ` +
+          `${c.money(kept)} stayed with the bank. That much is a real cost; the rest just moved.`;
+    },
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against the valuation entry builder: it posts the change against
+   * an equity revaluation account, never against income or a category, so a
+   * car losing value does not show up as a month of spending.
+   * ------------------------------------------------------------------ */
+  valuations: {
+    id: 'valuations',
+    title: 'What a thing is worth now',
+    short: 'Saying what a car, a flat or a pension is worth today, without calling it income.',
+    how: [
+      'A house going up is not money you earned, and a car going down is not money you spent.',
+      'So the new figure changes what you are worth, and changes nothing else.',
+      'Your spending, your income and what is safe to spend all stay exactly as they were.',
+    ],
+    worked: (c) => {
+      if (!need(c, ['valuationWas', 'valuationNow'])) return null;
+      const f = c.figures;
+      const move = minor(f.valuationNow! - f.valuationWas!);
+      if (move === 0) return 'That is what it was already down as, so nothing moves at all.';
+      return (
+        `${c.money(f.valuationWas!)} to ${c.money(f.valuationNow!)} is ` +
+        `${c.money(minor(Math.abs(move)))} ${move > 0 ? 'on' : 'off'} what you are worth, and ` +
+        `nothing at all off what is safe to spend.`
+      );
+    },
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against voidEntry: it writes a reversing entry and leaves the
+   * original in place. Nothing is deleted, ever, which is what makes a history
+   * explainable -- and it is also why undoing an undo is a new entry rather
+   * than a deletion of the correction.
+   * ------------------------------------------------------------------ */
+  corrections: {
+    id: 'corrections',
+    title: 'Undoing something',
+    short: 'Nothing is deleted. A correction is a second entry that cancels the first.',
+    how: [
+      'Every balance goes back to where it was before you recorded the thing.',
+      'Both the payment and the correction stay in your history, so the change is always explainable.',
+      'That is also why undoing a correction means recording the payment again, rather than deleting anything.',
+    ],
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against rulesRepo: a rule matches on the merchant string and sets
+   * a category on new entries only. It never rewrites anything already
+   * recorded, which is the fact people most need before agreeing to one.
+   * ------------------------------------------------------------------ */
+  rules: {
+    id: 'rules',
+    title: 'Filing things for you',
+    short: 'Telling Sovereign that everything from one shop belongs in one category.',
+    how: [
+      'From then on, anything from that shop arrives already filed.',
+      'It never touches anything you have already recorded. Your past months do not move.',
+      'You can change it or drop it in Settings whenever you like.',
+    ],
+  },
+
   'recovery-phrase': {
     id: 'recovery-phrase',
     title: 'Your recovery phrase',

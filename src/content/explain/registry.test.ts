@@ -53,8 +53,8 @@ describe('every topic is complete and consistent', () => {
     }
   });
 
-  it('covers all nineteen', () => {
-    expect(TOPICS).toHaveLength(19);
+  it('covers all twenty-four', () => {
+    expect(TOPICS).toHaveLength(24);
   });
 
   it('points every manual link at a real chapter', () => {

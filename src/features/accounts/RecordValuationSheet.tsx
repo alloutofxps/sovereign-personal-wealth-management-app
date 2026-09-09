@@ -15,7 +15,8 @@ import { toIsoDate } from '@/core/liquidity';
 import { recordValuation } from '@/data/repositories/accountsRepo';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Input } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Explain, Input, Outcome } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function RecordValuationSheet({
   account,
@@ -45,6 +46,10 @@ export function RecordValuationSheet({
 
   const delta = minor(value - currentValue);
   const unchanged = delta === 0;
+
+  // Both figures, so the worked example can state the move and then say what
+  // it leaves alone — which is the half of this sheet that surprises people.
+  const explain = useExplain({ valuationWas: currentValue, valuationNow: value });
 
   async function save() {
     if (!account) return;
@@ -113,7 +118,7 @@ export function RecordValuationSheet({
           />
 
           {/* What this will and will not do. The second half matters more. */}
-          <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+          <Outcome>
             <p className="text-caption text-ink-2">
               {unchanged
                 ? `${account.name} is already recorded at this value, so there is nothing to change yet.`
@@ -121,13 +126,18 @@ export function RecordValuationSheet({
                   ? `What you are worth will go up by ${money.format(minor(delta))}.`
                   : `What you are worth will come down by ${money.format(minor(-delta))}.`}
             </p>
-            <p className="text-caption text-ink-3">
-              This is not money coming in or going out, so your spending, your income and
-              what is safe to spend will all stay exactly as they are.
-            </p>
-          </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption text-ink-3">Nothing else moves.</p>
+              <Explain
+                topic="valuations"
+                label="what a thing is worth now"
+                onOpen={explain.open}
+              />
+            </div>
+          </Outcome>
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }

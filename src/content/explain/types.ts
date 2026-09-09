@@ -60,7 +60,13 @@ export type ExplainTopic =
   | 'recovery-phrase'
   | 'storage'
   | 'tax-regime'
-  | 'cgt';
+  | 'cgt'
+  /* Recording, and what each kind of entry does to the figures. */
+  | 'fronted'
+  | 'transfers'
+  | 'valuations'
+  | 'corrections'
+  | 'rules';
 
 /**
  * The six chapter slugs, repeated rather than imported.
@@ -152,6 +158,36 @@ export interface ExplainFigures {
   saleCostRelieved: Minor;
   saleProceeds: Minor;
   saleGain: Minor;
+
+  /*
+   * Money you paid on somebody else's behalf.
+   *
+   * `claimOutstanding` is what is still owed across every open claim;
+   * `claimSettling` is what this one settlement is about to return, which the
+   * settle sheet knows and the add sheet does not.
+   */
+  claimOutstanding: Minor;
+  claimSettling: Minor;
+
+  /* Moving money between two accounts, including across a currency. */
+  transferOut: Minor;
+  transferIn: Minor;
+
+  /* Telling Sovereign what something is worth now. */
+  valuationWas: Minor;
+  valuationNow: Minor;
+
+  /*
+   * One entry, both books.
+   *
+   * The two totals a `two-books` example needs: what the money side of an
+   * entry adds to and what the category side adds to. They are equal by
+   * construction, and printing them both is the entire point -- an example
+   * where they differ would mean the invariant had failed.
+   */
+  entryFinancialTotal: Minor;
+  entryBudgetTotal: Minor;
+  entryPostingCount: number;
 
   /*
    * Getting back to the mix you chose.

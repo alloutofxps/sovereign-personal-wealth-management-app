@@ -256,8 +256,7 @@ export function BudgetGrid() {
                   <Money
                     value={minor(Math.abs(worstOverspent.available))}
                     size="body"
-                    tone="neutral"
-                    className="text-inherit"
+                    tone="inherit"
                   />{' '}
                   over
                 </span>

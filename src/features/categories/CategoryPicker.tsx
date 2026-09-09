@@ -13,9 +13,10 @@
 
 import { useEffect, useRef } from 'react';
 import type { AccountId } from '@/core/ledger';
+import type { ExplainTopic } from '@/content/explain';
 import { describePrediction } from '@/core/taxonomy/merchantMemory';
 import { useCategoryPicker, useMerchantPrediction } from '@/app/taxonomy/useTaxonomy';
-import { Select } from '@/design/ui';
+import { Explain, Select } from '@/design/ui';
 
 export function CategoryPicker({
   value,
@@ -86,11 +87,24 @@ export function AlwaysFileToggle({
   categoryName,
   checked,
   onChange,
+  onExplain,
 }: {
   merchant: string;
   categoryName: string;
   checked: boolean;
   onChange: (next: boolean) => void;
+  /**
+   * Opens the explanation of what a filing rule does.
+   *
+   * Taken as a prop rather than hosted here: this renders inside a sheet that
+   * already owns an explanation host, and a second host would mean two sheets
+   * competing to be the one on top.
+   *
+   * Typed as the host's own opener rather than narrowed to `'rules'`: the host
+   * accepts any topic, and a narrower parameter type is the wrong way round for
+   * a callback — it would refuse the very function that can satisfy it.
+   */
+  onExplain?: (topic: ExplainTopic) => void;
 }) {
   const trimmed = merchant.trim();
   if (!trimmed || !categoryName) return null;
@@ -103,15 +117,27 @@ export function AlwaysFileToggle({
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 size-4 shrink-0 accent-[var(--color-liquid)]"
       />
-      <span className="flex flex-col gap-0.5">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-body text-ink">
           Always file &ldquo;{trimmed}&rdquo; as {categoryName.toLowerCase()}
         </span>
-        <span className="text-caption text-ink-3">
-          Anything from this shop will be filed here from now on. You can change or remove the
-          rule in Settings at any time.
-        </span>
+        <span className="text-caption text-ink-3">Only from now on. Nothing already recorded moves.</span>
       </span>
+      {/*
+        * A span, not the label's own child action.
+        *
+        * Anything clickable inside a `<label>` still toggles the input it is
+        * bound to, so the information button has to stop the event before the
+        * label sees it — otherwise reading about the rule switches it on.
+        */}
+      {onExplain && (
+        <span
+          className="shrink-0"
+          onClick={(event) => event.preventDefault()}
+        >
+          <Explain topic="rules" label="filing things for you" onOpen={onExplain} />
+        </span>
+      )}
     </label>
   );
 }

@@ -10,7 +10,8 @@ import type { Claim } from '@/data/repositories/claimsRepo';
 import { recordCardPayment, recordPayback } from '@/app/ledger/actions';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Explain, Outcome, OutcomeRow } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 /* --- paying the card bill ------------------------------------------------ */
 
@@ -26,6 +27,9 @@ export function PayCardSheet({
   reserved: Minor;
 }) {
   const money = useMoney();
+  // What is on the card, so the explanation can say how much of what somebody
+  // holds is already spoken for rather than talking about cards in general.
+  const explain = useExplain({ cardsOwed: owed });
   const [amount, setAmount] = useState<Minor>(minor(0));
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -88,16 +92,20 @@ export function PayCardSheet({
           hint={`You owe ${money.format(owed)} at the moment.`}
         />
 
-        <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
-          <Row label="On your card" value={owed} />
-          <Row label="Already set aside for it" value={reserved} tone="liquid" />
-          <p className="pt-1 text-caption text-ink-2">
-            {covered
-              ? 'The money for this is already put by, so paying it will not change what is safe to spend.'
-              : 'This is a little more than you have put by, so some of it will come out of what is safe to spend.'}
-          </p>
-        </div>
+        <Outcome>
+          <OutcomeRow label="On your card" value={owed} />
+          <OutcomeRow label="Already set aside for it" value={reserved} tone="liquid" />
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-caption text-ink-2">
+              {covered
+                ? 'Already put by, so nothing else moves.'
+                : 'More than is put by, so some comes off what is safe to spend.'}
+            </p>
+            <Explain topic="cards" label="what is put by for cards" onOpen={explain.open} />
+          </div>
+        </Outcome>
       </div>
+      {explain.sheet}
     </BottomSheet>
   );
 }
@@ -115,6 +123,16 @@ export function PaybackSheet({
 }) {
   const money = useMoney();
   const [amount, setAmount] = useState<Minor>(minor(0));
+  /*
+   * What is still out, and what this settlement returns.
+   *
+   * With both, the example can say what is left afterwards -- which is the
+   * question somebody typing a partial payback is actually asking, and the one
+   * the rows above answer for this claim only.
+   */
+  const explain = useExplain(
+    claim ? { claimOutstanding: claim.outstanding, claimSettling: amount } : {},
+  );
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -153,7 +171,7 @@ export function PaybackSheet({
       open={open}
       onClose={onClose}
       title={claim ? `${claim.counterparty} paid you back` : 'Record a payback'}
-      description="Getting your own money returned is not income, so this will not change what you appear to earn."
+      description="Your own money coming back, not income."
       footer={
         <div className="flex flex-col gap-2">
           {problem && (
@@ -182,30 +200,24 @@ export function PaybackSheet({
             hint={`${money.format(claim.outstanding)} is still owed to you.`}
           />
 
-          <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
-            <Row label="You fronted" value={claim.expected} />
-            {claim.settled > 0 && <Row label="Already paid back" value={claim.settled} tone="liquid" />}
-            <Row label="Still owed after this" value={minor(Math.max(0, claim.outstanding - amount))} />
+          <Outcome>
+            <OutcomeRow label="You fronted" value={claim.expected} />
+            {claim.settled > 0 && (
+              <OutcomeRow label="Already paid back" value={claim.settled} tone="liquid" />
+            )}
+            <OutcomeRow
+              label="Still owed after this"
+              value={minor(Math.max(0, claim.outstanding - amount))}
+            />
+          </Outcome>
+
+          <div className="flex justify-end">
+            <Explain topic="fronted" label="money you fronted" onOpen={explain.open} />
           </div>
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }
 
-function Row({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: Minor;
-  tone?: 'liquid';
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-caption text-ink-2">{label}</span>
-      <Money value={value} size="body" {...(tone ? { tone } : {})} />
-    </div>
-  );
-}

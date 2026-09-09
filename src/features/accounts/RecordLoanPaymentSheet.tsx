@@ -29,7 +29,7 @@ import { useAccounts } from '@/app/ledger/useLedger';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
 import { toIsoDate } from '@/core/liquidity';
-import { BottomSheet, Button, Card, Input, Select } from '@/design/ui';
+import { BottomSheet, Button, Card, Input, Outcome, Select } from '@/design/ui';
 import { useCallback } from 'react';
 
 export function RecordLoanPaymentSheet({
@@ -167,13 +167,11 @@ export function RecordLoanPaymentSheet({
         ) : (
           <>
             {/* --- what this payment is made of ------------------------ */}
-            <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+            <Outcome>
               {computed && !edited ? (
                 <p className="text-caption text-ink-2">{describeSplit(computed, money.format)}</p>
               ) : (
-                <p className="text-caption text-ink-2">
-                  Type what your statement says this payment was made of.
-                </p>
+                <p className="text-caption text-ink-2">Type what the statement says.</p>
               )}
               <button
                 type="button"
@@ -190,7 +188,7 @@ export function RecordLoanPaymentSheet({
               >
                 {edited ? 'Work it out for me instead' : 'My statement says something different'}
               </button>
-            </div>
+            </Outcome>
 
             {edited && (
               <div className="flex gap-3">

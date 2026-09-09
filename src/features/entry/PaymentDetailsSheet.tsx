@@ -21,6 +21,7 @@ import { describeDate, describeWhen } from '@/app/dates';
 import { describeLocked } from '@/core/reconciliation/reconciliationMath';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
+import { minor } from '@/core/money';
 import { BottomSheet, Button, Explain, Money } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
@@ -31,7 +32,6 @@ export function PaymentDetailsSheet({
   entry: EntryWithPostings | null;
   onClose: () => void;
 }) {
-  const explain = useExplain();
   const locale = useAppConfig((s) => s.locale);
   const accounts = useAccounts();
   // Account ids are for the database. What a person reads is the name they
@@ -52,6 +52,30 @@ export function PaymentDetailsSheet({
    */
   const [savedNote, setSavedNote] = useState<string | null>(null);
 
+  /*
+   * Both books, added up separately, for the two-books example.
+   *
+   * Each book's postings sum to zero, so the size of the entry in that book is
+   * the positive half. Adding the two halves independently and printing both
+   * is the demonstration: they are equal because invariants I1-I10 refused the
+   * write otherwise, and seeing the same figure twice is what makes that
+   * checkable rather than a claim to be taken on faith.
+   *
+   * A transfer has no budget side at all -- both accounts are assets, nothing
+   * was spent — so nothing is passed and the sheet shows the general example.
+   * Printing "the category side adds up to nothing. They agree" would be an
+   * arithmetic curiosity dressed up as reassurance.
+   */
+  const sideTotal = (book: 'FINANCIAL' | 'BUDGET') =>
+    minor(
+      (entry?.postings ?? [])
+        .filter((p) => p.book === book && p.amount > 0)
+        .reduce((total, p) => total + p.amount, 0),
+    );
+  const financialSide = sideTotal('FINANCIAL');
+  const budgetSide = sideTotal('BUDGET');
+  const bothBooks = financialSide > 0 && budgetSide > 0;
+
   const isCorrection = entry?.kind === 'REVERSAL';
   // The note rides on the entry's first line, so this finds it wherever a
   // builder happened to put it.
@@ -61,6 +85,16 @@ export function PaymentDetailsSheet({
   const shown = entry ? presentEntry(entry, byId) : null;
   // A split is worth the sum of its parts, not the size of its first line.
   const amount = shown?.amount ?? null;
+
+  const explain = useExplain(
+    bothBooks
+      ? {
+          entryFinancialTotal: financialSide,
+          entryBudgetTotal: budgetSide,
+          entryPostingCount: entry?.postings.length ?? 0,
+        }
+      : {},
+  );
 
   useEffect(() => {
     setEditingNote(false);
@@ -254,17 +288,21 @@ export function PaymentDetailsSheet({
           </Detail>
 
           {isCorrection ? (
-            <p className="text-caption text-ink-3">
-              This entry is itself a correction. It undid an earlier payment. To put that
-              payment back, record it again.
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption text-ink-2">
+                This one undid an earlier payment.
+              </p>
+              <Explain topic="corrections" label="undoing something" onOpen={explain.open} />
+            </div>
           ) : confirming ? (
             <div className="flex flex-col gap-3">
-              <p className="text-caption text-ink">
-                This will put every balance back where it was before you recorded this. Both this
-                payment and the correction stay in your history, so the change is always
-                explainable. Are you sure?
-              </p>
+              {/* The question, and the button that answers "what will that do
+                  to my figures" — rather than a paragraph somebody reads once
+                  and then has to remember. */}
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-body text-ink">Put every balance back?</p>
+                <Explain topic="corrections" label="undoing something" onOpen={explain.open} />
+              </div>
               <div className="flex gap-2">
                 <Button variant="secondary" block onClick={() => setConfirming(false)}>
                   Keep it
@@ -289,10 +327,16 @@ export function PaymentDetailsSheet({
                   ? describeLocked(shown.reconciledAt, (iso) => describeWhen(iso, locale))
                   : 'This was locked during a statement check, so it cannot be edited or deleted.'}
               </p>
-              <p className="max-w-[46ch] text-caption text-ink-3">
-                If it really is wrong, unlock that statement check from the account first. The
-                unlock is recorded, so your history still explains itself.
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-caption text-ink-3">
+                  Unlock that statement check from the account first.
+                </p>
+                <Explain
+                  topic="checking"
+                  label="checking against your bank"
+                  onOpen={explain.open}
+                />
+              </div>
             </div>
           ) : (
             <div>

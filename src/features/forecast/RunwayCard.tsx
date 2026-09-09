@@ -100,8 +100,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           <h3 className="section-title text-ink">What could you go without?</h3>
           <p className="max-w-[44ch] text-caption text-ink-2">
-            Switch things off to see how much further the same money would go. Nothing here
-            changes your records.
+            Nothing here changes your records.
           </p>
 
           {data.categories.length === 0 ? (

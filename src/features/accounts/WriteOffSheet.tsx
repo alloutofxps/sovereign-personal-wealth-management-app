@@ -13,7 +13,8 @@ import { useCategoryPicker } from '@/app/taxonomy/useTaxonomy';
 import { CategoryPicker } from '@/features/categories/CategoryPicker';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { BottomSheet, Button, Money } from '@/design/ui';
+import { BottomSheet, Button, Explain, Outcome, OutcomeRow } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function WriteOffSheet({
   open,
@@ -25,6 +26,11 @@ export function WriteOffSheet({
   claim: Claim | null;
 }) {
   const money = useMoney();
+  // The whole of what is still out is what this write-off is about to convert
+  // into spending, so the two figures the example wants are the same number.
+  const explain = useExplain(
+    claim ? { claimOutstanding: claim.outstanding } : {},
+  );
   const [categoryId, setCategoryId] = useState<AccountId | null>(null);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -91,17 +97,15 @@ export function WriteOffSheet({
     >
       {claim && (
         <div className="flex flex-col gap-5 pb-2">
-          <div className="flex flex-col gap-2 rounded-md border border-caution-dim/50 bg-caution-wash px-3.5 py-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-caption text-ink-2">Still owed to you</span>
-              <Money value={claim.outstanding} size="lead" tone="caution" />
+          <Outcome tone="caution">
+            <OutcomeRow label="Still owed to you" value={claim.outstanding} size="lead" />
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption text-ink-2">
+                It becomes spending this month, not the month you paid it.
+              </p>
+              <Explain topic="fronted" label="money you fronted" onOpen={explain.open} />
             </div>
-            <p className="text-caption text-ink-2">
-              Up to now this has been kept out of your spending, because you expected it back.
-              Writing it off means it finally counts as money you spent, this month, not the
-              month you paid it, so a month you have already looked at is left alone.
-            </p>
-          </div>
+          </Outcome>
 
           <div className="flex flex-col gap-2">
             <span className="text-caption text-ink-2">
@@ -111,6 +115,7 @@ export function WriteOffSheet({
           </div>
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }

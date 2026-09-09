@@ -28,7 +28,8 @@ import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { formatRate1e6, rateFromDecimal } from '@/core/money/fxReturns';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Input, Select } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Explain, Input, Select } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 /**
  * The five choices, in the order somebody would think of them.
@@ -90,6 +91,9 @@ const FAMILIES: {
 
 export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const money = useMoney();
+  // No figures: nothing on this sheet has happened yet, so the general
+  // explanation is the only honest one to show.
+  const explain = useExplain();
   const baseCurrency = useAppConfig((s) => s.currencyCode);
   const [chosen, setChosen] = useState<AccountClass | null>(null);
   const [name, setName] = useState('');
@@ -212,7 +216,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
           {FAMILIES.map((family) => (
             <div
               key={family.key}
-              className="flex flex-col gap-2.5 rounded-md border border-line bg-raised px-3.5 py-3"
+              className="flex flex-col gap-2.5 rounded-lg bg-sunken px-3.5 py-3"
             >
               <div>
                 <p className="text-body text-ink">{family.title}</p>
@@ -336,12 +340,20 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
                 onChange={(e) => setOffBudget(e.target.checked)}
                 className="mt-0.5 size-4 accent-[var(--color-liquid)]"
               />
-              <span className="flex flex-col gap-0.5">
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-body text-ink">Keep this out of my budget</span>
                 <span className="text-caption text-ink-3">
-                  For savings you would rather not be tempted by. It stays part of what you
-                  are worth either way.
+                  Still part of what you are worth.
                 </span>
+              </span>
+              {/* Preventing the default stops the label toggling the checkbox
+                  when somebody taps the information button inside it. */}
+              <span className="shrink-0" onClick={(event) => event.preventDefault()}>
+                <Explain
+                  topic="safe-to-spend"
+                  label="what is safe to spend"
+                  onOpen={explain.open}
+                />
               </span>
             </label>
           )}
@@ -355,6 +367,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
           )}
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }

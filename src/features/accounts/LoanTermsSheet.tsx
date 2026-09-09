@@ -155,7 +155,7 @@ export function LoanTermsSheet({
 
         <p className="text-caption text-ink-3">
           {interestType === 'variable'
-            ? 'Because the rate can change, the schedule below is what would happen if it stayed where it is. Come back and change it when your lender does.'
+            ? 'The schedule below assumes this rate holds.'
             : 'These stay on this device, like everything else here.'}
         </p>
       </div>

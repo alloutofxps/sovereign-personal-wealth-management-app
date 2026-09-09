@@ -15,7 +15,8 @@ import { recordCrossCurrencyTransfer } from '@/app/investments/actions';
 import { useAccounts } from '@/app/ledger/useLedger';
 import { useFx } from '@/app/fx/useFx';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Input, Select } from '@/design/ui';
+import { BottomSheet, Button, Explain, Input, Outcome, Select } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function ConvertCurrencySheet({
   open,
@@ -61,6 +62,20 @@ export function ConvertCurrencySheet({
   const sameCurrency = Boolean(from && to && fromCurrency === toCurrency);
   const ready = Boolean(from && to && fromAmount > 0 && toAmount > 0 && !sameCurrency);
 
+  /*
+   * The two sides in the reporting currency, so the example can name the
+   * spread as an amount rather than as "whatever the bank kept".
+   *
+   * Both have to convert for the pair to mean anything: comparing dollars
+   * against euros would print a difference that is only the exchange rate
+   * wearing a disguise.
+   */
+  const explain = useExplain(
+    fromBase !== null && toBase !== null
+      ? { transferOut: minor(fromBase), transferIn: minor(toBase) }
+      : {},
+  );
+
   async function save() {
     if (!from || !to) return;
     setBusy(true);
@@ -92,7 +107,7 @@ export function ConvertCurrencySheet({
       onClose={onClose}
       size="tall"
       title="Convert between currencies"
-      description="What left one account and what actually arrived in the other. Both as your statements say them."
+      description="Both amounts, as your statements say them."
       footer={
         <Button variant="primary" block disabled={busy || !ready} onClick={() => void save()}>
           {busy ? 'Recording…' : 'Record it'}
@@ -143,12 +158,12 @@ export function ConvertCurrencySheet({
         />
 
         {/* --- what this will do --------------------------------------- */}
-        <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+        <Outcome>
           <p className="text-caption text-ink-2">
             {ready && from && to
               ? `${fx.formatIn(minor(fromAmount), fromCurrency)} will leave ${from.name} and ` +
                 `${fx.formatIn(minor(toAmount), toCurrency)} will arrive in ${to.name}.`
-              : 'Choose the two accounts and type both amounts, and this will say exactly what it is about to record.'}
+              : 'Pick both accounts and type both amounts.'}
           </p>
 
           {spread !== null && spread !== 0 && (
@@ -162,13 +177,13 @@ export function ConvertCurrencySheet({
             </p>
           )}
 
-          <p className="text-caption text-ink-3">
-            Nothing was earned and nothing was spent, so your spending and how fast you are
-            going will not move. What you are worth stays the same too, apart from anything the
-            bank kept.
-          </p>
-        </div>
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <p className="text-caption text-ink-3">Neither earned nor spent.</p>
+            <Explain topic="transfers" label="moving money about" onOpen={explain.open} />
+          </div>
+        </Outcome>
       </div>
+      {explain.sheet}
     </BottomSheet>
   );
 }

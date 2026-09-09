@@ -115,6 +115,24 @@ mark goes on the action that fixes the worst one, not on the states. This
 deliberately diverges from the reference sheet, which puts a dot on the
 over-budget tile: that works for its one-over example and breaks at four.
 
+### A tone prop and a colour class are not interchangeable
+
+A primitive that owns its colour — `Money` and its `tone`, and anything that
+follows it — emits exactly one colour utility. Passing a second one through
+`className` puts two utilities of equal specificity on one element, and the
+cascade is then decided by the order Tailwind happens to emit them in, not by
+the order they were written. Tailwind emits `text-ink` after
+`text-[var(--tile-ink)]`, so **the override loses, silently, with nothing wrong
+in the markup to see.**
+
+Every hero figure on a field rendered ink-black for a whole phase because of
+this. It was not visible in a diff, in a type error or in a lint run; it took
+sampling the computed colour to find.
+
+The fix is a tone, never a class: if a figure should take the colour of what it
+sits in, that is `tone="inherit"`. `toneNotOverridden.test.ts` fails any element
+that carries both a `tone` prop and a colour utility in `className`.
+
 ### Three surfaces, deliberately unlike each other
 
 - `.field` — large, flat, category-coloured, no border, no shadow. **Exactly one
@@ -135,6 +153,19 @@ Copy standard: second person, active voice, present tense, reading age ~12.
 Spell the arithmetic out with real numbers. Never explain the interface —
 explain the money. The field manual (`src/features/manual/chapters/**`) is the
 one exemption: it is long-form reference and is meant to be prose.
+
+**A sentence an engine builds is as testable as the number it builds it from,
+and needs testing just as much.** `describeFeeDrag` shipped saying "−€174.44
+*less* than the same money in a tracker" to everybody whose funds were cheaper
+than the comparison — most people holding index trackers. The figure it
+interpolated was correct to the cent. What was wrong was the word in front of
+it: `versusBaseline` is signed, and the sentence assumed a direction. 879 tests
+passed over a line that told anybody with cheap funds they were doing badly.
+
+So: where a `describe*` function's wording depends on a sign, a threshold, a
+count or a plural, there is a test per branch, and each one is written to fail
+against the old wording before it is kept. A test that only asserts the amount
+appears in the string is not a test of the sentence.
 
 ### No tracked-out uppercase micro-labels
 

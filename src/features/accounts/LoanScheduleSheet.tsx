@@ -36,7 +36,7 @@ import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { useMoney } from '@/app/money/useMoney';
 import { describeWhen } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
-import { BottomSheet, Button, Card, StatPill } from '@/design/ui';
+import { BottomSheet, Button, Card, Outcome, StatPill } from '@/design/ui';
 import { LoanTermsSheet } from './LoanTermsSheet';
 
 /** The steps on the overpayment slider, in whole units of currency. */
@@ -134,7 +134,7 @@ export function LoanScheduleSheet({
         ) : (
           <>
             {/* --- the split: the reason this sheet exists ------------- */}
-            <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+            <Outcome>
               <div className="flex flex-wrap gap-2">
                 <StatPill
                   label="Builds your equity"
@@ -153,7 +153,7 @@ export function LoanScheduleSheet({
               <p className="text-caption text-ink-2">
                 {describeSplit(view.split, money.format)}
               </p>
-            </div>
+            </Outcome>
 
             {/* --- how far through ------------------------------------- */}
             <Card>
@@ -198,7 +198,7 @@ export function LoanScheduleSheet({
             </Card>
 
             {/* --- what paying more would do --------------------------- */}
-            <div className="flex flex-col gap-2.5 rounded-md border border-line bg-raised px-3.5 py-3">
+            <Outcome>
               <label htmlFor="extra-principal" className="text-caption text-ink">
                 Paying extra each month
               </label>
@@ -224,7 +224,7 @@ export function LoanScheduleSheet({
               <p className="text-caption text-ink-2">
                 {describePayoff(view.payoff, money.format)}
               </p>
-            </div>
+            </Outcome>
 
             <button
               type="button"

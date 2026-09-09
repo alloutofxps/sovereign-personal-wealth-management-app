@@ -13,7 +13,7 @@ import type { AccountId } from '@/core/ledger';
 import { saveDebtTerms, type DebtTermsRow } from '@/data/repositories/ledgerRepo';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Money, Outcome } from '@/design/ui';
 
 export interface DebtTermsSheetProps {
   open: boolean;
@@ -112,10 +112,10 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
     >
       {account && (
         <div className="flex flex-col gap-5 pb-2">
-          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+          <Outcome className="flex-row items-baseline justify-between">
             <span className="text-caption text-ink-2">On it at the moment</span>
             <Money value={balance} size="lead" />
-          </div>
+          </Outcome>
 
           <Field
             label="Interest rate"

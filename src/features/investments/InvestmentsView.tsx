@@ -8,6 +8,36 @@
  * Nothing on this screen is advice. It states figures and explains what they
  * mean; it never says what to do about them, because it does not know anything
  * about the person's plans, their nerve or their tax position.
+ *
+ * ---------------------------------------------------------------------------
+ * THE DRIFT TILE NAMES THE CLASS THAT IS BEHIND, NEVER THE ONE THAT IS AHEAD
+ *
+ * This is the one place on the screen with a verb on it, and getting it wrong
+ * would have had the interface contradict the engine behind it.
+ *
+ * `core/investments/rebalance.ts` computes two routes back to a chosen mix and
+ * recommends neither, because it cannot: it does not know anybody's tax
+ * position, their horizon, or whether they are about to need the money. But it
+ * does *order* them, and the order is not arbitrary. Directing the next deposit
+ * at whatever is furthest behind costs nothing. Selling the side that grew gets
+ * there faster and realises a gain on the way, with a tax bill attached to it.
+ * The file offers the deposit route first and shows the sale alongside with
+ * what it would realise — deliberately, and it says so in its own header.
+ *
+ * The first version of this tile picked the line with the largest absolute
+ * drift. On a portfolio that is all equities against a 60/30/10 target, that is
+ * Shares at forty points over, and the sentence that closes an overweight gap
+ * is a sale: it read "Shares drifted 40pts high — €4,945 sell brings it back".
+ * One tile, put on the screen by a redesign, promoting the taxable disposal to
+ * the recommended next action of a screen whose engine refuses to recommend it.
+ *
+ * Shares of one portfolio sum to 100, so anything over its target has something
+ * under it. Selecting on `driftBp < 0` always finds that line when the mix is
+ * off, and what it yields is a buy: "Bonds, 30pts under — your next €3,709 in
+ * here closes it". Same drift, same sheet behind the tap, no disposal on
+ * screen.
+ *
+ * If this ever gets rewritten to rank by magnitude again, that is the bug.
  * ======================================================================== */
 
 import { useCallback, useState } from 'react';

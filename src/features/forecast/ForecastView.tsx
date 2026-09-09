@@ -70,8 +70,7 @@ export function ForecastView() {
         <Card accent="caution">
           <p className="text-body text-ink">Nothing to look ahead at yet</p>
           <p className="pt-1 max-w-[44ch] text-caption text-ink-2">
-            This works from the regular payments you have added. Tell Sovereign about your rent,
-            your phone, and when you are paid, and the line below will mean something.
+            Nothing is scheduled yet, so there is no line to draw.
           </p>
           <div className="pt-3">
             <Button variant="secondary" size="sm" onClick={() => navigate('home')}>
@@ -156,10 +155,10 @@ export function ForecastView() {
         </div>
       </section>
 
+      {/* The standing caveat, as the claim rather than the paragraph. Why it
+          is only arithmetic is the `runway` explanation on the card above. */}
       <p className="max-w-[46ch] text-caption text-ink-3">
-        Everything on this page is worked out fresh each time from what you have recorded.
-        Nothing here is saved, and none of it is a promise. It is arithmetic on what is
-        already known.
+        None of this is saved, and none of it is a promise.
       </p>
     </div>
   );

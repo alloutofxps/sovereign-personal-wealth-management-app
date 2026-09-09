@@ -136,8 +136,8 @@ export function QuickCoverSheet({
 
           {sources.length === 0 && readyToAssign <= 0 && (
             <p className="max-w-[46ch] text-caption text-ink-2">
-              Every other pot is empty too, so there is nothing to move across. This one will
-              settle itself when money next comes in.
+              Nothing to move across: every other pot is empty too. This one settles itself
+              when money next comes in.
             </p>
           )}
 

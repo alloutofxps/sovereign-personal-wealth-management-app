@@ -108,43 +108,20 @@ function isEmptyState(text: string): boolean {
  * ======================================================================== */
 
 const STILL_INLINE: readonly string[] = [
-  'features/accounts/AccountDetailSheet.tsx',
-  'features/accounts/ConvertCurrencySheet.tsx',
-  'features/accounts/CreateAccountSheet.tsx',
-  'features/accounts/LoanTermsSheet.tsx',
-  'features/accounts/RecordLoanPaymentSheet.tsx',
-  'features/accounts/RecordValuationSheet.tsx',
-  'features/accounts/SettleUpSheet.tsx',
-  'features/accounts/WriteOffSheet.tsx',
-  'features/analytics/AnalyticsView.tsx',
-  'features/budget/BudgetGrid.tsx',
-  'features/budget/QuickCoverSheet.tsx',
-  'features/calendar/CalendarView.tsx',
   'features/categories/CategoryManagerView.tsx',
-  'features/categories/CategoryPicker.tsx',
-  'features/dashboard/GettingStarted.tsx',
-  'features/entry/AddPaymentSheet.tsx',
-  'features/entry/PaymentDetailsSheet.tsx',
-  'features/forecast/ForecastView.tsx',
-  'features/forecast/RunwayCard.tsx',
   'features/forecast/WhatIfView.tsx',
   'features/goals/PotsView.tsx',
   'features/investments/AddHoldingSheet.tsx',
-  'features/investments/HoldingDetailSheet.tsx',
   'features/investments/InvestSheet.tsx',
-  'features/investments/InvestmentsView.tsx',
   'features/investments/RebalanceModal.tsx',
   'features/investments/SellHoldingSheet.tsx',
-  'features/investments/UpdatePricesSheet.tsx',
   'features/manual/ManualView.tsx',
   'features/manual/parts.tsx',
   'features/onboarding/steps.tsx',
   'features/settings/DataAndSecurity.tsx',
-  'features/settings/FxRatesSheet.tsx',
   'features/settings/RecoveryPhrase.tsx',
   'features/settings/SettingsView.tsx',
   'features/shell/BottomNav.tsx',
-  'features/shell/SelectionBar.tsx',
   'features/simulations/DebtPayoffView.tsx',
   'features/simulations/IndependenceView.tsx',
   'features/storage/ProtectStorage.tsx',
@@ -173,6 +150,51 @@ function featureFiles(dir: string, found: string[] = []): string[] {
  * failure at the moment it happens; an aria-label has to be a full phrase to
  * be worth anything. None of them is a paragraph under a figure.
  */
+/**
+ * Blank the inside of every `clsx(…)`, `cn(…)` and `className={…}`.
+ *
+ * A class list is not prose, and the cheap test for one -- does the string's
+ * own line mention `className` -- fails on the shape this codebase actually
+ * writes, where the opener sits a line above its arguments:
+ *
+ *     className={clsx(
+ *       'flex items-center justify-between rounded-md border px-3.5 py-3 ...',
+ *
+ * Five class lists were being counted as paragraphs on the debt list because of
+ * it. Matching the delimiters is exact where looking at one line is not.
+ *
+ * Newlines and the delimiters themselves are kept so line numbers still point
+ * at the right place and the JSX scan that follows sees the same structure.
+ */
+function blankClassExpressions(source: string): string {
+  const out = source.split('');
+  const openers = [...source.matchAll(/\b(?:clsx|cn)\s*\(|className\s*=\s*\{/g)];
+
+  for (const opener of openers) {
+    const start = opener.index!;
+    const openChar = source[start + opener[0].length - 1]!;
+    const closeChar = openChar === '(' ? ')' : '}';
+    let depth = 1;
+    let quote: string | null = null;
+
+    for (let i = start + opener[0].length; i < source.length && depth > 0; i++) {
+      const ch = source[i]!;
+      if (quote) {
+        if (ch === quote && source[i - 1] !== '\\') quote = null;
+      } else if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch;
+      } else if (ch === openChar) {
+        depth += 1;
+      } else if (ch === closeChar) {
+        depth -= 1;
+      }
+      if (depth > 0 && out[i] !== '\n') out[i] = ' ';
+    }
+  }
+
+  return out.join('');
+}
+
 function isAllowed(line: string, value: string): boolean {
   if (/\baria-label\s*=|\baria-description|\balt\s*=/.test(line)) return true;
   if (/\btoast\s*\(|\bthrow new|Error\(|\bmessage:/.test(line)) return true;
@@ -212,7 +234,7 @@ describe('no explanatory prose lives in a component', () => {
 
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      const lines = source.split('\n');
+      const lines = blankClassExpressions(source).split('\n');
 
       lines.forEach((line, index) => {
         // Quoted strings.
@@ -232,6 +254,17 @@ describe('no explanatory prose lives in a component', () => {
       const jsx = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
       for (const match of jsx.matchAll(/>\s*([^<>{}]{90,}?)\s*</g)) {
         const text = match[1]!.replace(/\s+/g, ' ').trim();
+        /*
+         * The sentence, not the indentation.
+         *
+         * The 90 in the pattern above counts raw inner text, so a caption
+         * nested four levels deep matched on whitespace alone -- fifteen of
+         * them did. The floor stays in the pattern to keep the scan cheap and
+         * is re-applied here against the trimmed copy, which is the same
+         * measure the quoted-string arm above uses. A gate that could be
+         * satisfied by reflowing JSX was not measuring copy.
+         */
+        if (text.length < LONG) continue;
         if ((text.match(/ /g) ?? []).length < 8) continue;
         if (!looksLikeProse(text)) continue;
         if (isEmptyState(text)) continue;

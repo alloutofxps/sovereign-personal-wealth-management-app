@@ -18,6 +18,12 @@ export { Explain, type ExplainProps } from './Explain';
 export { ClearButton, Input, SearchIcon, type InputProps } from './Input';
 export { List, ListItem, ListSectionHeader, type ListItemProps, type ListProps } from './List';
 export { Money, type MoneyProps, type MoneySize, type MoneyTone } from './Money';
+export {
+  Outcome,
+  OutcomeRow,
+  type OutcomeProps,
+  type OutcomeRowProps,
+} from './Outcome';
 export { AmountInput, Numpad, type AmountInputProps, type NumpadProps } from './Numpad';
 export {
   Select,

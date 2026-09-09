@@ -27,7 +27,17 @@ import { saveRule } from '@/data/repositories/rulesRepo';
 import { AlwaysFileToggle, CategoryPicker } from '@/features/categories/CategoryPicker';
 import { toast } from '@/app/toast';
 import { useMoney } from '@/app/money/useMoney';
-import { AmountInput, BottomSheet, Button, Input, Money, Select } from '@/design/ui';
+import {
+  AmountInput,
+  BottomSheet,
+  Button,
+  Explain,
+  Input,
+  Money,
+  Outcome,
+  Select,
+} from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import {
   SplitEditor,
   allocated,
@@ -84,6 +94,24 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
   const [payer, setPayer] = useState('');
   const [fromId, setFromId] = useState<AccountId>(ACCOUNT_IDS.everyday);
   const [toId, setToId] = useState<AccountId>(ACCOUNT_IDS.savings);
+
+  /*
+   * The amount typed so far is the figure both of these explanations want.
+   *
+   * A transfer between two accounts in one currency arrives whole, so out and
+   * in are the same number and the worked example says the honest thing: it
+   * moved, nothing was kept. `ConvertCurrencySheet` is where they differ, and
+   * that sheet passes its own pair.
+   */
+  const explain = useExplain(
+    amount > 0
+      ? kind === 'transfer'
+        ? { transferOut: amount, transferIn: amount }
+        : fronted
+          ? { claimOutstanding: amount }
+          : {}
+      : {},
+  );
 
   // Start clean every time the sheet opens.
   useEffect(() => {
@@ -374,10 +402,10 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         </div>
       ) : kind === 'income' ? (
         <div className="flex flex-col gap-4 pb-2">
-          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+          <Outcome className="flex-row items-baseline justify-between">
             <span className="text-caption text-ink-2">Money in</span>
             <Money value={amount} size="lead" tone="liquid" />
-          </div>
+          </Outcome>
 
           <Input
             label="Who paid you"
@@ -419,10 +447,10 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         </div>
       ) : kind === 'transfer' ? (
         <div className="flex flex-col gap-4 pb-2">
-          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+          <Outcome className="flex-row items-baseline justify-between">
             <span className="text-caption text-ink-2">Moving</span>
             <Money value={amount} size="lead" />
-          </div>
+          </Outcome>
 
           <Select
             label="Out of"
@@ -457,7 +485,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
         </div>
       ) : (
         <div className="flex flex-col gap-6 pb-2">
-          <div className="flex items-baseline justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3">
+          <Outcome className="flex-row items-baseline justify-between">
             <span className="text-caption text-ink-2">You spent</span>
             <button
               type="button"
@@ -466,15 +494,21 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             >
               <Money value={amount} size="lead" tone="neutral" />
             </button>
-          </div>
+          </Outcome>
 
-          {/* The toggle that keeps somebody else's costs out of your figures. */}
+          {/* The toggle that keeps somebody else's costs out of your figures.
+
+              The "i" sits beside the button rather than inside it: nesting one
+              tap target in another means the outer one wins the tap on a
+              phone, and putting it on its own line below orphaned it in a band
+              of empty space with nothing to attach to. */}
+          <div className="flex items-start gap-2">
           <button
             type="button"
             onClick={() => setFronted(!fronted)}
             aria-pressed={fronted}
             className={clsx(
-              'flex items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors',
+              'flex flex-1 items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors',
               fronted
                 ? 'border-liquid-dim bg-liquid-wash'
                 : 'border-line bg-raised hover:border-line-strong',
@@ -504,23 +538,24 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                 I fronted this for someone else
               </span>
               <span className="block pt-0.5 text-caption text-ink-2">
-                A work trip, a dinner you covered, a group booking. It will be kept out of your
-                own spending until the money comes back.
+                A work trip, a dinner you covered, a group booking.
               </span>
             </span>
           </button>
+            <span className="pt-3">
+              <Explain topic="fronted" label="money you fronted" onOpen={explain.open} />
+            </span>
+          </div>
 
           {fronted ? (
             <>
-              <Field label="Who will pay you back?">
-                <input
-                  type="text"
-                  value={owedBy}
-                  onChange={(e) => setOwedBy(e.target.value)}
-                  placeholder="Work, Sam, the group…"
-                  className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-                />
-              </Field>
+              <Input
+                label="Who will pay you back?"
+                type="text"
+                value={owedBy}
+                onChange={(e) => setOwedBy(e.target.value)}
+                placeholder="Work, Sam, the group…"
+              />
 
               <Field label="What kind of thing was it?">
                 <div className="grid grid-cols-2 gap-2">
@@ -572,6 +607,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
           {!splitting && (
             <div className="flex flex-col gap-3">
               <CategoryPicker
+                label=""
                 value={categoryId}
                 onChange={setCategoryId}
                 merchant={payee}
@@ -587,6 +623,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                   categoryName={category.name}
                   checked={alwaysFile}
                   onChange={setAlwaysFile}
+                  onExplain={explain.open}
                 />
               )}
             </div>
@@ -620,42 +657,35 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </div>
           </Field>
 
-          <Field label="Who did you pay? (optional)">
-            <input
-              type="text"
-              value={payee}
-              onChange={(e) => setPayee(e.target.value)}
-              placeholder="The shop or person you paid"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </Field>
+          <Input
+            label="Who did you pay? (optional)"
+            type="text"
+            value={payee}
+            onChange={(e) => setPayee(e.target.value)}
+            placeholder="The shop or person you paid"
+          />
 
-          <Field label="When was it?">
-            <input
-              type="date"
-              value={when}
-              max={toIsoDate(new Date())}
-              onChange={(e) => setWhen(e.target.value || toIsoDate(new Date()))}
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink"
-            />
-            {when !== toIsoDate(new Date()) && (
-              <p className="text-caption text-ink-3">
-                This will be counted on that day rather than today.
-              </p>
-            )}
-          </Field>
+          <Input
+            label="When was it?"
+            type="date"
+            value={when}
+            max={toIsoDate(new Date())}
+            onChange={(e) => setWhen(e.target.value || toIsoDate(new Date()))}
+            {...(when !== toIsoDate(new Date())
+              ? { hint: 'Counted on that day rather than today.' }
+              : {})}
+          />
 
-          <Field label="Notes (optional)">
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Anything you want to remember about it"
-              className="w-full rounded-md border border-line bg-raised px-3.5 py-3 text-body text-ink placeholder:text-ink-3"
-            />
-          </Field>
+          <Input
+            label="Notes (optional)"
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Anything you want to remember about it"
+          />
         </div>
       )}
+      {explain.sheet}
     </BottomSheet>
   );
 }
