@@ -30,7 +30,6 @@ const BAR: Record<PotStatus, string> = {
 };
 
 export function PotsView() {
-  const explain = useExplain();
   const dashboard = useDashboard();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PotPlan | null>(null);
@@ -39,6 +38,8 @@ export function PotsView() {
   const pots = dashboard.data?.pots ?? [];
   const monthlyTotal = minor(pots.reduce((total, pot) => total + pot.monthlyAllocation, 0));
   const needThisMonth = minor(pots.reduce((total, pot) => total + pot.stillNeededThisCycle, 0));
+
+  const explain = useExplain({ potsMonthlyTotal: monthlyTotal, potsStillNeeded: needThisMonth });
 
   return (
     <div className="flex flex-col gap-6">

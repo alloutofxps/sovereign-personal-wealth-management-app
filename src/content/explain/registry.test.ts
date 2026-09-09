@@ -128,6 +128,35 @@ describe('the copy standard holds', () => {
     expect(offenders, 'Define it in the same sentence or find another way to say it').toEqual([]);
   });
 
+  /*
+   * "Pot" is a named feature, not a generic container.
+   *
+   * Two explanations borrowed it for envelopes — "split into named pots",
+   * "from a pot with room" — which is the one word in this app somebody could
+   * reasonably read as pointing at a different screen. Saving up for car
+   * insurance and dividing up this month's money are separate features with
+   * separate sums, and a reader who has learned what a Pot is should not have
+   * to unlearn it two screens later.
+   *
+   * Only explanations genuinely about Pots may use the word. `safe-to-spend`
+   * qualifies because the money it names really is held in Pots — that
+   * subtraction is `goalFunding`.
+   */
+  const MAY_SAY_POT: ExplainTopic[] = ['pots', 'safe-to-spend'];
+
+  it('uses "pot" only where it means the Pots feature', () => {
+    const offenders: string[] = [];
+    for (const entry of ALL) {
+      if (MAY_SAY_POT.includes(entry.id)) continue;
+      const prose = [entry.title, entry.short, ...entry.how].join(' ').toLowerCase();
+      if (/\bpots?\b/.test(prose)) offenders.push(`${entry.id}: "${entry.title}"`);
+    }
+    expect(
+      offenders,
+      'Pot is a named feature. Say what the thing actually is.',
+    ).toEqual([]);
+  });
+
   it('never hedges and never apologises', () => {
     const offenders: string[] = [];
     for (const entry of ALL) {

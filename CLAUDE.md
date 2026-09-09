@@ -24,13 +24,18 @@ update the test and say so in the commit body.
 ## Layering
 
 ```
-core  ←  data  ←  app  ←  design  ←  features
+core  ←  content  ←  data  ←  app  ←  design  ←  features
 ```
 
 Imports point leftwards only. Enforced by eslint, and it is not advisory.
 
 - `src/core/**` — pure engines. No React, no DOM, no I/O. Deterministic and
   fully unit-tested. **Do not refactor it for a visual change.**
+- `src/content/**` — the words. Explanations, and the sums behind them written
+  out in the person's own figures. It sits directly above `core` because it
+  needs to name a `Minor` and nothing else: it may not know that a database, a
+  React tree or a screen exists. That is what keeps the copy reviewable on its
+  own and stops a screen's state leaking into a sentence.
 - `src/data/**` — SQLite/OPFS, repositories, migrations, the live-query bus.
 - `src/app/**` — hooks and selectors that join core to data. If a screen needs a
   value the core does not expose, **add a selector here** — never reach into

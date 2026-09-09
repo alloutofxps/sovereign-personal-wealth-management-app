@@ -26,12 +26,12 @@ export function CardsChapter() {
         grown by a few hundred pounds nobody ever decided to borrow.
       </Passage>
 
-      <Heading>The pot that fills itself</Heading>
+      <Heading>The reserve that fills itself</Heading>
 
       <Passage>
-        Every card in Sovereign is created with a pot attached to it, and you cannot have one
+        Every card in Sovereign is created with a reserve attached to it, and you cannot have one
         without the other. The moment you spend on the card, the money comes out of whichever
-        envelope you spent it from and goes into that pot instead.
+        category you spent it from and is held in that reserve instead.
       </Passage>
 
       <Passage>
@@ -71,14 +71,14 @@ export function CardsChapter() {
         items={[
           <>
             The statement is never a surprise. By the time it lands, the money for it has been
-            sitting untouched in the pot since the day of each purchase.
+            sitting untouched in the reserve since the day of each purchase.
           </>,
           <>
             Card spending and cash spending read identically in your budget, so the choice of
             which one to pay with stops being a budgeting decision.
           </>,
           <>
-            If the pot is short of what the card owes, the home screen says so plainly rather than
+            If the reserve is short of what the card owes, the home screen says so rather than
             waiting for you to work it out. That is the one case worth flagging: it means
             something was spent on the card outside the app.
           </>,

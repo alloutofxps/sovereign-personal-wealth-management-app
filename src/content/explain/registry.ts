@@ -114,24 +114,39 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
   envelopes: {
     id: 'envelopes',
     title: 'Giving money a job',
-    short: 'Your month’s money split into named pots, so each one answers for itself.',
+    short: 'Your month’s money divided up before you spend it, so each part answers for itself.',
     how: [
       'You decide how much of this month goes to food, to getting around, to going out.',
-      'Each pot then tracks its own spending, so running low on one does not quietly eat another.',
+      'Each amount then tracks its own spending, so running low on one does not quietly eat another.',
       'Nothing moves between your accounts. It is a plan laid over money you already have.',
     ],
+    worked: (c) => {
+      if (!need(c, ['assignedThisPeriod', 'readyToAssign'])) return null;
+      const f = c.figures;
+      return f.readyToAssign === 0
+        ? `You have given all ${c.money(f.assignedThisPeriod!)} of this period a job.`
+        : `You have given ${c.money(f.assignedThisPeriod!)} a job so far. ${c.money(f.readyToAssign!)} is still waiting for one.`;
+    },
     manual: 'pots',
   },
 
   cover: {
     id: 'cover',
-    title: 'Covering a pot',
-    short: 'Moving this month’s money from a pot with room to one that ran out.',
+    title: 'Covering a shortfall',
+    short: 'Moving this month’s money from something with room to something that ran out.',
     how: [
       'Going out has spent 8 more than it was given. Getting around has 60 spare.',
       'Move 8 across and both are square again.',
       'Your bank balance does not change. Only the plan does.',
     ],
+    worked: (c) => {
+      if (!need(c, ['coverShortfall', 'coverAvailable'])) return null;
+      const f = c.figures;
+      if (f.coverShortfall === 0) return null;
+      return f.coverAvailable === 0
+        ? `This one is ${c.money(f.coverShortfall!)} over, and nothing else has room to cover it.`
+        : `This one is ${c.money(f.coverShortfall!)} over. There is ${c.money(f.coverAvailable!)} with room elsewhere.`;
+    },
     manual: 'pots',
   },
 
@@ -189,6 +204,15 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'Pay in the 100 and next month still asks for 100 — reaching for the target never moves it.',
       'Fall behind and next month asks for more. Get ahead and it asks for less.',
     ],
+    worked: (c) => {
+      if (!need(c, ['potsMonthlyTotal'])) return null;
+      const f = c.figures;
+      if (f.potsMonthlyTotal === 0) return null;
+      const left = f.potsStillNeeded;
+      return left === undefined || left === 0
+        ? `Yours ask for ${c.money(f.potsMonthlyTotal!)} a month altogether, and this month is covered.`
+        : `Yours ask for ${c.money(f.potsMonthlyTotal!)} a month altogether. ${c.money(left)} of that is still to go in this month.`;
+    },
     manual: 'pots',
   },
 
@@ -250,6 +274,13 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'Tick off everything the statement lists. If the two numbers meet, your records are right — not close, exactly right.',
       'Payments that have not gone through yet are left out, because your statement cannot contain them either.',
     ],
+    worked: (c) => {
+      if (!need(c, ['statementDifference'])) return null;
+      const f = c.figures;
+      return f.statementDifference === 0
+        ? 'The two agree exactly, which is what finishing looks like.'
+        : `The two are ${c.money(minor(Math.abs(f.statementDifference!)))} apart. Something on one side is not on the other.`;
+    },
     manual: 'checking',
   },
 
@@ -386,6 +417,12 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'When storage runs low a browser clears data to make room, and it does not ask first.',
       'Granting permanent storage tells yours to leave Sovereign alone. It sends nothing anywhere — there is nowhere for it to go.',
     ],
+    worked: (c) => {
+      const used = c.figures.storageUsedBytes;
+      if (used === undefined || used <= 0) return null;
+      const mb = used / (1024 * 1024);
+      return `Your records take about ${mb < 1 ? 'less than a megabyte' : mb.toFixed(1) + ' MB'} on this device.`;
+    },
   },
 
   /* ---------------------------------------------------------------------

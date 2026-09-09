@@ -40,7 +40,6 @@ import { QuickAssignSheet } from './QuickAssignSheet';
 import { QuickCoverSheet } from './QuickCoverSheet';
 
 export function BudgetGrid() {
-  const explain = useExplain();
   const [, navigate] = useRoute();
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
@@ -53,6 +52,15 @@ export function BudgetGrid() {
   const [showSetup, setShowSetup] = useState(false);
 
   const data = budget.data;
+
+  const explain = useExplain(
+    data
+      ? {
+          assignedThisPeriod: data.plan.current.totalAssigned,
+          readyToAssign: data.plan.readyToAssign,
+        }
+      : {},
+  );
 
   // How far through the period the calendar has got, in basis points. A past
   // period is wholly gone and a future one has not started, so both sit at the

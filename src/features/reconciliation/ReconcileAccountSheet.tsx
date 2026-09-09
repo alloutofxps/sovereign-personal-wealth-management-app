@@ -61,7 +61,6 @@ export function ReconcileAccountSheet({
   const [statementDate, setStatementDate] = useState(toIsoDate(new Date()));
   const [statementBalance, setStatementBalance] = useState<Minor>(minor(0));
   const [busy, setBusy] = useState(false);
-  const explain = useExplain();
 
   const query = useLiveQuery(
     useCallback(
@@ -101,6 +100,7 @@ export function ReconcileAccountSheet({
   );
 
   const balanced = state?.status === 'balanced';
+  const explain = useExplain(state ? { statementDifference: state.discrepancy } : {});
 
   async function toggle(line: ReconcilableLine) {
     if (line.clearance === 'reconciled') {

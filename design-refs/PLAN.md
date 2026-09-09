@@ -112,6 +112,8 @@ Commit: `content: plain-language explanations behind information buttons`
 
 ## Phase 4 — screens
 
+Four screen groups, then a fifth pass that is not a screen group.
+
 Commit per group, not one giant commit. Each commit body names the reference
 screen followed and the category family assigned.
 
@@ -131,6 +133,14 @@ screen followed and the category family assigned.
    `CategoryManagerView`, `ReconcileAccountSheet`, the seven investment sheets,
    `FirstFlightWizard` + `steps.tsx` + `parts.tsx`, `LockGate`, `SelectionBar`,
    `UpdateBanner`, `Toasts`, `BottomNav`, `AppShell`.
+
+5. `design: the label review` — a separate final pass, after every screen is
+   finished. Re-asks the deletion question on all 63 labels restyled in phase
+   2, now that each one can be seen in a whole screen rather than in a diff.
+   The bar is **does this label earn its place**, not "is it a literal
+   duplicate": a heading that names what the list beneath it obviously is
+   should go. This also empties the `STILL_INLINE` debt list, for the same
+   reason — a paragraph is easier to judge in a finished screen.
 
 Every item is ticked off against `INVENTORY.md` in the commit body.
 

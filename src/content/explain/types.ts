@@ -122,6 +122,20 @@ export interface ExplainFigures {
   cgtRateBp: number;
   cgtExemption: Minor;
 
+  /* Dividing the month up. */
+  assignedThisPeriod: Minor;
+  readyToAssign: Minor;
+  /* Saving up. */
+  potsMonthlyTotal: Minor;
+  potsStillNeeded: Minor;
+  /* Covering a shortfall. */
+  coverShortfall: Minor;
+  coverAvailable: Minor;
+  /* Checking against the bank. */
+  statementDifference: Minor;
+  /* Keeping the records. */
+  storageUsedBytes: number;
+
   /* How long the money lasts. */
   usableCash: Minor;
   monthlyNeed: Minor;

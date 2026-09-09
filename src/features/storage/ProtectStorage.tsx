@@ -46,16 +46,20 @@ function dismissedBefore(): boolean {
  * or the person has said no thank you once already.
  */
 export function ProtectStorage({ context }: { context: ProtectStorageContext }) {
-  const explain = useExplain();
   const [needed, setNeeded] = useState(false);
+  /** What the records actually take, so the explanation can say so. */
+  const [usedBytes, setUsedBytes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState(context === 'after-import' && dismissedBefore());
+  const explain = useExplain(usedBytes === null ? {} : { storageUsedBytes: usedBytes });
 
   useEffect(() => {
     let cancelled = false;
     if (!supported()) return;
     void persistenceState().then((state) => {
-      if (!cancelled) setNeeded(!state.persisted);
+      if (cancelled) return;
+      setNeeded(!state.persisted);
+      setUsedBytes(state.usedBytes);
     });
     return () => {
       cancelled = true;
