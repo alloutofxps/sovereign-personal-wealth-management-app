@@ -200,12 +200,30 @@ export function describeFeeDrag(
 
   const horizon = drag.projections.find((p) => p.years === years) ?? drag.projections[0]!;
 
+  /*
+   * The gap runs both ways, and the sentence has to as well.
+   *
+   * `versusBaseline` is what the baseline fund would have kept less what
+   * yours will, so it is negative for anybody whose funds are cheaper than the
+   * comparison — which is not a rare case, it is the case for anybody holding
+   * ordinary index trackers. Printing it unconditionally after "less than"
+   * produced "roughly −€174.44 less than", which is a double negative dressed
+   * up as a figure and reads as a warning to somebody who is doing well.
+   */
+  const gap = minor(Math.abs(horizon.versusBaseline));
+  const direction = horizon.versusBaseline < 0 ? 'more' : 'less';
+  const ending =
+    horizon.versusBaseline === 0
+      ? `that comes to the same as the same money in a ` +
+        `${formatExpenseRatio(LOW_COST_BASELINE_BP)} tracker.`
+      : `that difference adds up to roughly ${format(gap)} ${direction} than the same ` +
+        `money in a ${formatExpenseRatio(LOW_COST_BASELINE_BP)} tracker.`;
+
   return (
     `At your current size, fund charges cost about ${format(drag.annualCost)} a year, ` +
     `${formatExpenseRatio(drag.weightedBp)} of what you hold. Held for ${horizon.years} years ` +
-    `at a steady ${(ASSUMED_GROSS_RETURN_BP / 100).toFixed(2)}% before charges, that ` +
-    `difference adds up to roughly ${format(horizon.versusBaseline)} less than the same ` +
-    `money in a ${formatExpenseRatio(LOW_COST_BASELINE_BP)} tracker.`
+    `at a steady ${(ASSUMED_GROSS_RETURN_BP / 100).toFixed(2)}% before charges, ` +
+    ending
   );
 }
 

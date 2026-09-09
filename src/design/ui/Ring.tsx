@@ -35,6 +35,16 @@ export interface RingProps {
   /** Stroke width. Heavier reads as a dial, lighter as a chart. */
   weight?: number;
   className?: string;
+  /**
+   * A second position on the same dial, drawn as a tick.
+   *
+   * This is what turns a progress ring into a *pacing* ring. The arc says how
+   * much of the money has gone; the tick says how much of the period has. The
+   * gap between them is the whole of what the pacing engine computes, and
+   * drawing both on one dial says it without a sentence — which is the point,
+   * because a sentence per envelope is a paragraph per screen.
+   */
+  mark?: number;
   /** What the arc means, for anybody who cannot see it. */
   'aria-label'?: string;
 }
@@ -43,6 +53,7 @@ export function Ring({
   progress,
   children,
   caption,
+  mark,
   size = 64,
   weight = 7,
   className,
@@ -87,6 +98,24 @@ export function Ring({
         // they scale with the viewBox and land heavier on a wider phone.
         vectorEffect="non-scaling-stroke"
       />
+      {mark !== undefined && (
+        // A short radial tick at the mark's angle. Drawn as a dash on the same
+        // circle so it lands exactly on the arc's own path rather than being
+        // positioned by trigonometry that has to agree with it.
+        <circle
+          cx={centre}
+          cy={centre}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity="0.55"
+          strokeWidth={weight}
+          strokeDasharray={`2 ${circumference}`}
+          strokeDashoffset={-circumference * Math.max(0, Math.min(1, mark))}
+          transform={`rotate(-90 ${centre} ${centre})`}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {children !== undefined && (
         <text
           x={centre}

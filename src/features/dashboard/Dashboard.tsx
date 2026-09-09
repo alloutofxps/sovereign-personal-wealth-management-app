@@ -141,7 +141,11 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
           <PaceCard data={data} onExplainTopic={explain.open} />
 
           {/* 3 — the balance sheet */}
-          <BalanceCard data={data} onExplainTopic={explain.open} />
+          <BalanceCard
+            data={data}
+            onExplainTopic={explain.open}
+            onOpen={() => navigate('accounts')}
+          />
 
           {/* 4 — anything waiting */}
           <TriageBar

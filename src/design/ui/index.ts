@@ -11,6 +11,7 @@ export {
   type StatCellProps,
 } from './FieldParts';
 export { Ring, type RingProps } from './Ring';
+export { Sparkline, type SparklineProps } from './Sparkline';
 export { CategorySquare, Row, RowList, type RowProps } from './Row';
 export { Chip, type ChipProps } from './Chip';
 export { Explain, type ExplainProps } from './Explain';

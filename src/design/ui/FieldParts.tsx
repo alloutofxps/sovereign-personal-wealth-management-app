@@ -28,10 +28,24 @@ export interface StatCellProps {
   label: string;
   /** A `Money`, a duration, a count. Never a sentence. */
   children: ReactNode;
+  /**
+   * The same quantity said the other way — an amount beside a percentage, a
+   * date beside a countdown. Optional, and still not a sentence.
+   *
+   * It exists because the alternative kept being a fourth cell, and four cells
+   * across a phone is a table nobody reads. Two readings of one fact belong in
+   * one cell.
+   *
+   * It sits on its own line rather than beside the figure. Inline was tried
+   * and lost: three cells across a 390pt phone leaves about 86pt of text per
+   * cell, and "+€1,543" with "+16.6%" after it truncated to "+€1,54…" — which
+   * is worse than either figure on its own.
+   */
+  hint?: string;
   className?: string;
 }
 
-export function StatCell({ label, children, className }: StatCellProps) {
+export function StatCell({ label, children, hint, className }: StatCellProps) {
   return (
     <div
       className={clsx(
@@ -44,6 +58,7 @@ export function StatCell({ label, children, className }: StatCellProps) {
     >
       <div className="truncate text-micro opacity-70">{label}</div>
       <div className="truncate pt-0.5 text-lead font-medium">{children}</div>
+      {hint && <div className="truncate text-micro opacity-70">{hint}</div>}
     </div>
   );
 }

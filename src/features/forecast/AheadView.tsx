@@ -13,7 +13,6 @@ import { Suspense, lazy, useEffect } from 'react';
 import { isAheadRoute, useRoute, type Route } from '@/app/router';
 import { Tabs } from '@/design/ui';
 import { CalendarView } from '@/features/calendar/CalendarView';
-import { SubscriptionAudit } from '@/features/calendar/SubscriptionAudit';
 import { DebtPayoffView } from '@/features/simulations/DebtPayoffView';
 import { ForecastView } from './ForecastView';
 
@@ -83,8 +82,10 @@ export function AheadView() {
         ]}
       />
 
-      {pane === 'calendar' && <SubscriptionAudit />}
-
+      {/* The audit used to be mounted here, which put it above the calendar's
+          own headline — a notice arriving before the screen it is about had
+          introduced itself. It renders inside the calendar now, under the
+          grid, where the bills it is talking about are. */}
       {pane === 'forecast' ? (
         <ForecastView />
       ) : pane === 'calendar' ? (

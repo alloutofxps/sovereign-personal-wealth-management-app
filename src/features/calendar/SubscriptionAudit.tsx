@@ -8,6 +8,19 @@
  * more is not an emergency, and an app that shouts about one has spent the
  * attention it will need on the day something is genuinely wrong. Every notice
  * here states the fact, offers the way out, and then stops talking.
+ *
+ * ---------------------------------------------------------------------------
+ * THREE KINDS, NAMED
+ *
+ * The three sorts of notice used to run together as one column of paragraphs,
+ * so a card with five things in it read as an essay. Each row now says which
+ * kind it is before it says anything else — a rise, a thing gone quiet, a
+ * charge that is not in the bills — because that is the word somebody scans
+ * for when deciding whether this one is worth reading.
+ *
+ * Describing every instance is right here. These are not attentional marks
+ * competing for one glance; they are a list of things to decide, and hiding
+ * the fourth would be hiding a charge.
  * ======================================================================== */
 
 import { useState } from 'react';
@@ -22,6 +35,11 @@ import {
 } from '@/data/repositories/scheduleRepo';
 import { toIsoDate } from '@/core/liquidity';
 import { Button, Card, Money } from '@/design/ui';
+
+/** The kind of notice, said in two or three words before the sentence. */
+function Kind({ children }: { children: string }) {
+  return <p className="text-micro font-medium text-caution">{children}</p>;
+}
 
 export function SubscriptionAudit() {
   const audit = useSubscriptionAudit();
@@ -39,9 +57,10 @@ export function SubscriptionAudit() {
 
   return (
     <Card label="Worth a look" accent="caution">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col divide-y divide-line-faint">
         {data.priceChanges.map((change) => (
-          <div key={change.itemId} className="flex flex-col gap-2">
+          <div key={change.itemId} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <Kind>Charged more than usual</Kind>
             <p className="text-body text-ink">
               {change.name} charged {money.format(change.chargedAmount)} instead of your usual{' '}
               {money.format(change.expectedAmount)}.
@@ -88,7 +107,8 @@ export function SubscriptionAudit() {
         ))}
 
         {data.dormant.map((quiet) => (
-          <div key={quiet.itemId} className="flex flex-col gap-2">
+          <div key={quiet.itemId} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <Kind>Nothing spent here lately</Kind>
             <p className="text-body text-ink">
               You are still paying {money.format(quiet.amount)} for {quiet.name}, and nothing has
               gone through that category in about {Math.round(quiet.weeksQuiet / 4)} months.
@@ -116,11 +136,12 @@ export function SubscriptionAudit() {
         ))}
 
         {data.candidates.map((candidate) => (
-          <div key={candidate.merchant} className="flex flex-col gap-2">
+          <div key={candidate.merchant} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+            <Kind>Not in your bills</Kind>
             <p className="text-body text-ink">
               {titleCase(candidate.merchant)} has charged you{' '}
               <Money value={candidate.amount} size="body" /> {candidate.occurrences} times,{' '}
-              {CADENCE_LABELS[candidate.cadenceGuess].toLowerCase()}. It is not in your bills.
+              {CADENCE_LABELS[candidate.cadenceGuess].toLowerCase()}.
             </p>
             <div>
               <Button

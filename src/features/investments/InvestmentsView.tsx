@@ -10,15 +10,17 @@
  * about the person's plans, their nerve or their tax position.
  * ======================================================================== */
 
-import { useState } from 'react';
-import clsx from 'clsx';
+import { useCallback, useState } from 'react';
 import { minor } from '@/core/money';
 import { describeAllocation, formatReturn, type Holding } from '@/core/investments';
 import { formatExpenseRatio } from '@/core/investments';
 import { usePortfolio } from '@/app/investments/usePortfolio';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
-import { Button, Card, Money } from '@/design/ui';
+import { useLiveQuery } from '@/data/live/useLiveQuery';
+import { INVESTMENT_TABLES, getRebalancePlan } from '@/data/repositories/investmentsRepo';
+import { familyFor } from '@/design/category';
+import { Button, Card, Field, Money, Ring, StatCell, StatStrip, Tile } from '@/design/ui';
 import { AddHoldingSheet } from './AddHoldingSheet';
 import { AssetAllocationBar } from './AssetAllocationBar';
 import { FeeDragCard } from './FeeDragCard';
@@ -29,7 +31,6 @@ import { RebalanceModal } from './RebalanceModal';
 import { RecordDividendSheet } from './RecordDividendSheet';
 import { SellHoldingSheet } from './SellHoldingSheet';
 import { UpdatePricesSheet } from './UpdatePricesSheet';
-import { DeferredTaxCard } from './DeferredTaxCard';
 
 export function InvestmentsView() {
   const [, navigate] = useRoute();
@@ -44,6 +45,46 @@ export function InvestmentsView() {
   const [payingOut, setPayingOut] = useState<Holding | null>(null);
   const [rebalancing, setRebalancing] = useState(false);
 
+  /*
+   * Drift, for the tile.
+   *
+   * `null` means no targets have been set, which is a different thing from
+   * being on target and gets a different treatment: nothing to fix, so nothing
+   * that looks like a fix.
+   */
+  const rebalance = useLiveQuery(
+    useCallback(() => getRebalancePlan(minor(0)), []),
+    INVESTMENT_TABLES,
+  );
+  const plan = rebalance.data ?? null;
+
+  /*
+   * The class furthest BEHIND, not the class furthest off.
+   *
+   * Those are different lines and the difference is the whole argument of
+   * `rebalance.ts`: the overweight side is closed by selling, which realises a
+   * gain and a tax bill, and the underweight side is closed by putting the
+   * next deposit there, which costs nothing. The engine offers the second
+   * first and recommends neither, so the tile cannot lead with "sell" —
+   * picking on absolute drift did exactly that.
+   *
+   * Shares of one portfolio add to 100, so whenever anything is over its
+   * target something else is under it. The underweight line is always there
+   * when the mix is off; the fallback is only for a plan that is off in a
+   * shape this does not expect.
+   */
+  const lines = plan === null || plan.alreadyBalanced ? [] : plan.lines;
+  const behind = lines.filter((line) => line.driftBp < 0);
+  const pool = behind.length > 0 ? behind : lines;
+  const worstDrift =
+    pool.length === 0
+      ? null
+      : pool.reduce((worst, line) =>
+          Math.abs(line.driftBp) > Math.abs(worst.driftBp) ? line : worst,
+        );
+  // The tile is coloured by what drifted, not by the fact that it drifted.
+  const driftFamily = familyFor(worstDrift?.assetClass);
+
   const data = portfolio.data;
   const up = (data?.totals.gainLoss ?? 0) > 0;
   const flat = (data?.totals.gainLoss ?? 0) === 0;
@@ -52,18 +93,22 @@ export function InvestmentsView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lead font-medium text-ink">What you hold</h1>
-          <p className="text-caption text-ink-2">
-            Your investments, what they have done, and what they cost to keep.
-          </p>
-        </div>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="headline text-ink">Invested</h1>
         {(data?.holdings.length ?? 0) > 0 && (
           <span className="flex shrink-0 gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setRebalancing(true)}>
-              Targets
-            </Button>
+            {/*
+              * Targets live here only when there is no drift tile below.
+              *
+              * Where something has drifted, the tile is the way in and it
+              * carries the number; a button saying the same thing two inches
+              * above it would be two entrances to one room.
+              */}
+            {worstDrift === null && (
+              <Button variant="secondary" size="sm" onClick={() => setRebalancing(true)}>
+                Targets
+              </Button>
+            )}
             <Button variant="secondary" size="sm" onClick={() => setPricing(true)}>
               Update prices
             </Button>
@@ -71,62 +116,106 @@ export function InvestmentsView() {
         )}
       </header>
 
-      {/* --- the headline -------------------------------------------------- */}
+      {/*
+        * --- the one field on this screen ---------------------------------
+        *
+        * Transport blue, because that is the family every invested thing
+        * carries: the brokerage row on the accounts screen, the equity segment
+        * of the bar below, the ticker square on each holding.
+        *
+        * The gain, what went in and the fee sit in the strip as three facts of
+        * the same kind, rather than one as a loud pill and the others as lines
+        * of grey prose underneath. They are what qualifies the figure, and the
+        * sentences that used to carry them said nothing the numbers did not.
+        */}
       {data && data.holdings.length > 0 && (
-        <Card label="What it is all worth" accent="liquid">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <Money value={data.totals.marketValue} size="figure" />
-              <span
-                className={clsx(
-                  'tnum rounded-pill px-2.5 py-1 text-micro font-medium',
-                  flat
-                    ? 'bg-raised text-ink-2'
-                    : up
-                      ? 'bg-liquid-wash text-liquid'
-                      : 'bg-deficit-wash text-deficit',
-                )}
-              >
-                {up ? '+' : data.totals.gainLoss < 0 ? '−' : ''}
-                {money.format(minor(Math.abs(data.totals.gainLoss)))} (
-                {formatReturn(data.totals.returnBp)})
-              </span>
-            </div>
-
-            <p className="text-caption text-ink-2">
-              {money.format(data.totals.costBasis)} went in.{' '}
-              {flat
-                ? 'It is exactly where it started.'
-                : up
-                  ? 'The rest is growth you have not sold.'
-                  : 'It is below what you paid, which is what markets do between the days you look.'}
-            </p>
-
-            {data.feeDrag.weightedBp > 0 && (
-              <p className="text-caption text-ink-3">
-                Weighted fund fee: {formatExpenseRatio(data.feeDrag.weightedBp)} a year, about{' '}
-                {money.format(data.feeDrag.annualCost)} at this size.
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
-                Add a holding
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setInvesting(true)}>
-                Record money going in
-              </Button>
-            </div>
+        <Field family="transport">
+          <div className="text-caption opacity-75">What it is all worth</div>
+          <div className="pt-1">
+            <Money value={data.totals.marketValue} size="anchor" tone="inherit" />
           </div>
-        </Card>
+
+          <StatStrip className="pt-5">
+            <StatCell label="Went in">
+              {money.format(data.totals.costBasis, { decimals: 'hide' })}
+            </StatCell>
+            <StatCell
+              label={flat ? 'Unchanged' : up ? 'Growth' : 'Below cost'}
+              hint={formatReturn(data.totals.returnBp)}
+            >
+              {up ? '+' : data.totals.gainLoss < 0 ? '−' : ''}
+              {money.format(minor(Math.abs(data.totals.gainLoss)), { decimals: 'hide' })}
+            </StatCell>
+            {data.feeDrag.weightedBp > 0 && (
+              <StatCell
+                label="Fund fee"
+                hint={`${money.format(data.feeDrag.annualCost, { decimals: 'hide' })} a year`}
+              >
+                {formatExpenseRatio(data.feeDrag.weightedBp)}
+              </StatCell>
+            )}
+          </StatStrip>
+
+          <div className="flex flex-wrap gap-2 pt-5">
+            <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+              Add a holding
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setInvesting(true)}>
+              Record money going in
+            </Button>
+          </div>
+        </Field>
       )}
 
-      {/* --- what of it is not yours ---------------------------------------- */}
-      {data && data.holdings.length > 0 && (
-        <DeferredTaxCard
-          investments={data.totals.marketValue}
-          costBasis={data.totals.costBasis}
-        />
+      {/*
+        * --- what has drifted ---------------------------------------------
+        *
+        * One tile, one class, one number, one way to act on it. The sheet
+        * behind it lists every line; this names the one that is furthest from
+        * where it was meant to be, which is the only one a person can act on
+        * first anyway.
+        *
+        * See CLAUDE.md: describe every instance, name only the one that needs
+        * a decision. The bar below describes the whole allocation; this names
+        * the single slice that has a decision attached to it.
+        */}
+      {data && data.holdings.length > 0 && worstDrift && (
+        <Tile
+          family={driftFamily}
+          onClick={() => setRebalancing(true)}
+          className="flex items-center gap-3.5"
+          aria-label={`${worstDrift.name} is off target. Open targets.`}
+        >
+          <Ring
+            progress={worstDrift.currentBp / 10_000}
+            mark={worstDrift.targetBp / 10_000}
+            size={46}
+            weight={6}
+          />
+          <span className="flex min-w-0 flex-1 flex-col">
+            {/* Comma, not a verb: the class names are a mix of singular and
+                plural — "Cash is" and "Bonds are" — and no one copula fits
+                both. */}
+            <span className="truncate text-body font-medium">
+              {worstDrift.name}, {Math.round(Math.abs(worstDrift.driftBp) / 100)}pts{' '}
+              {worstDrift.driftBp > 0 ? 'over' : 'under'}
+            </span>
+            <span className="truncate pt-0.5 text-caption opacity-75">
+              {worstDrift.difference === 0
+                ? 'Set against the target you gave it'
+                : worstDrift.difference > 0
+                  ? `Your next ${money.format(minor(worstDrift.difference), {
+                      decimals: 'hide',
+                    })} in here closes it`
+                  : `${money.format(minor(-worstDrift.difference), {
+                      decimals: 'hide',
+                    })} would have to come out of it`}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-pill bg-[color-mix(in_srgb,var(--color-surface)_62%,transparent)] px-2.5 py-1 text-micro font-medium">
+            Fix
+          </span>
+        </Tile>
       )}
 
       {/* --- nothing yet ---------------------------------------------------- */}
@@ -167,9 +256,44 @@ export function InvestmentsView() {
             description={describeAllocation(data.allocation)}
           />
 
-          <HoldingsList holdings={data.holdings} onOpen={setViewing} />
+          <HoldingsList
+            holdings={data.holdings}
+            priceHistory={data.priceHistory}
+            onOpen={setViewing}
+          />
 
           <FeeDragCard drag={data.feeDrag} />
+
+          {/*
+            * --- where the tax figure went ---------------------------------
+            *
+            * The deferred-tax card lives on Net worth now, in both regimes.
+            *
+            * It was never a fact about the portfolio. Under a gains regime it
+            * needs the cost basis, which is here; under a deemed-return regime
+            * it is charged on the bank balances and the card debts too, and a
+            * figure worked out from the brokerage alone told a household with
+            * twenty-eight thousand in the bank that it owed nothing. The
+            * screen that already holds every account is the screen where the
+            * whole estate is on hand, so that is where the number belongs.
+            *
+            * This is the link, not a second copy of it. One number, one home.
+            */}
+          <button
+            type="button"
+            onClick={() => navigate('accounts')}
+            className="press flex items-center justify-between gap-3 rounded-card border border-line px-4 py-3.5 text-left"
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="text-body text-ink">What of this is not yours</span>
+              <span className="pt-0.5 text-caption text-ink-2">
+                The tax owed on it is worked out across everything you hold, on Net worth.
+              </span>
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-ink-3">
+              →
+            </span>
+          </button>
         </>
       )}
 

@@ -24,7 +24,9 @@ import {
   listInvestmentAccounts,
   listPortfolio,
   listSecurities,
+  priceHistories,
 } from '@/data/repositories/investmentsRepo';
+import type { Minor } from '@/core/money';
 import type { Security } from '@/core/investments';
 
 export interface PortfolioData {
@@ -34,6 +36,13 @@ export interface PortfolioData {
   feeDrag: FeeDrag;
   accounts: LedgerAccount[];
   securities: Security[];
+  /**
+   * Recent prices per security, oldest first, for the sparkline in each row.
+   *
+   * A security with fewer than two prices is absent rather than present and
+   * short, so a row either draws a real line or draws nothing.
+   */
+  priceHistory: Map<string, Minor[]>;
   /** True when there are accounts that could hold securities but none do yet. */
   awaitingFirstHolding: boolean;
 }
@@ -46,8 +55,13 @@ export function usePortfolio(accountId?: AccountId): LiveQueryResult<PortfolioDa
       listSecurities(),
     ]);
 
+    // Second round trip, not third: it needs the security ids the first one
+    // returned. Twelve rows still cost one query between them.
+    const priceHistory = await priceHistories(holdings.map((h) => h.security.id));
+
     return {
       holdings,
+      priceHistory,
       totals: totalsOf(holdings),
       allocation: allocationOf(holdings),
       feeDrag: feeDragOf(holdings),

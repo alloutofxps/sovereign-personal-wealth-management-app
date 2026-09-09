@@ -127,15 +127,15 @@ Router behaviour that must survive:
 
 ### Calendar pane — `CalendarView`
 
-- Heading "What is due, and when".
+- Heading "What is due".
 - Month / This week toggle (`aria-label="How much of the calendar to show"`).
 - Month grid with weekday initials from the locale, today marked, dots for events.
 - Previous / next month controls with aria labels.
 - In/out totals for the month.
 - "Scheduled payments" list.
-- `DayDetailSheet` on tapping a day — "That day altogether".
+- `DayDetailSheet` on tapping a day — the day's events as rows, and "That day, in less out" where there is more than one.
 - `AddBillSheet` reachable from the calendar.
-- `SubscriptionAudit` — "Worth a look": unused subscriptions with days-unused.
+- `SubscriptionAudit` — "Worth a look": a rise, a category gone quiet, a charge that is not in the bills. Mounted inside `CalendarView`, under the grid (4b; it used to sit in `AheadView` above the calendar's own heading).
 
 ### Where it went pane — `AnalyticsView`
 
@@ -150,7 +150,7 @@ Router behaviour that must survive:
 
 ### Payoff pane — `DebtPayoffView`
 
-- Heading "Paying off what you owe".
+- Heading "Paying it off".
 - "What you put towards it each month" — editable monthly figure, tap to change.
 - Minimum-payment floor stated.
 - "Two ways of going about it" — avalanche and snowball, months and interest for each, which costs least / which clears one soonest.
@@ -170,6 +170,8 @@ Router behaviour that must survive:
 ---
 
 ## Accounts (`#/accounts`) — `AccountsView`
+
+- `DeferredTaxCard` — tax waiting inside this / what holding this costs a year, what that leaves, what was counted and excluded. Only shown when a tax regime is set. **Moved here from Investments in 4b**: a deemed-return charge falls on the whole estate, so a figure worked out from the brokerage alone told a household with money in the bank that it owed nothing. Investments links to it.
 
 - Heading "Accounts".
 - "What you are worth" summary.
@@ -225,10 +227,10 @@ Router behaviour that must survive:
 
 ## Budget (`#/budget`) — `BudgetGrid`
 
-- Heading "Give every pound a job".
+- Heading "Envelopes".
 - Period navigation: "The period before" / "The period after", with aria labels.
 - "Assigned this period" total.
-- Envelope rows grouped, each with assigned / spent / left and a pacing bar.
+- Envelope tiles grouped, each in its category's family colour, with a pacing ring: the arc is what has gone, the tick is where the period is. One hot mark names the worst overspend and counts the rest.
 - `QuickAssignSheet` — assign to one envelope.
 - `AssignSheet` — the fuller assign flow.
 - `QuickCoverSheet` — cover an overspent envelope from another.
@@ -251,12 +253,13 @@ Router behaviour that must survive:
 
 ## Investments (`#/investments`) — `InvestmentsView`
 
-- Headings "What you hold" / "Everything you hold".
-- "What it is all worth" total.
-- `AssetAllocationBar` — "How it is spread".
-- `FeeDragCard` — "What the funds charge".
-- `DeferredTaxCard` — tax waiting inside this / what holding this costs a year, what that leaves, what was counted and excluded. Only shown when a tax regime is set.
-- `HoldingsList` — per-holding rows.
+- Heading "Invested".
+- "What it is all worth" — the screen's one field, in the transport family, with what went in, the growth and the fund fee in the strip.
+- Drift tile — the class furthest **behind** its target, with a pacing ring and the deposit that would close it. Opens `RebalanceModal`. Present only when targets are set and the mix is off; the header's "Targets" button takes its place when it is absent.
+- `AssetAllocationBar` — "How it is spread". One 44px stacked bar in the category families, then every slice named with its value and share.
+- `HoldingsList` — per-holding rows, each with the security's family square and a sparkline of its recent prices.
+- `FeeDragCard` — "What the funds charge". Three horizons on a shared scale; says "more" or "less than a cheap tracker takes" according to which way the comparison runs.
+- Link through to the deferred-tax figure on Net worth. **The card itself moved to `AccountsView` in 4b** — see below.
 - Empty states: "No investment accounts yet", "Nothing recorded yet".
 
 ### Sheets

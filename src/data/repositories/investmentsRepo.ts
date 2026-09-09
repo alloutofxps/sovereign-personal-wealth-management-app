@@ -17,7 +17,7 @@
  * a total that is not the sum of the rows underneath it.
  * ======================================================================== */
 
-import { sql } from 'drizzle-orm';
+import { asc, inArray, sql } from 'drizzle-orm';
 import { basisPoints, minor, type BasisPoints, type Minor } from '@/core/money';
 import {
   LedgerError,
@@ -579,6 +579,48 @@ export async function priceHistory(
     priceMinor: minor(Number(row[1])),
     source: String(row[2]),
   }));
+}
+
+/**
+ * The last `limit` prices for each of several securities, oldest first.
+ *
+ * One query for the whole screen. The holdings list draws a sparkline in every
+ * row, and a per-row query would turn a list of twelve into twelve round trips
+ * to the worker - the shape that makes a local database feel like a network.
+ *
+ * Securities with fewer than two prices are simply absent from the map. There
+ * is no line to draw from one point, and an entry of length one would invite
+ * the caller to draw a flat one, which would be a claim rather than a gap.
+ */
+export async function priceHistories(
+  securityIds: readonly string[],
+  limit = 12,
+): Promise<Map<string, Minor[]>> {
+  const out = new Map<string, Minor[]>();
+  if (securityIds.length === 0) return out;
+
+  const rows = await db
+    .select({
+      securityId: securityPrices.securityId,
+      priceMinor: securityPrices.priceMinor,
+    })
+    .from(securityPrices)
+    .where(inArray(securityPrices.securityId, [...securityIds]))
+    .orderBy(asc(securityPrices.date), asc(securityPrices.createdAt));
+
+  for (const row of rows) {
+    const series = out.get(row.securityId);
+    if (series) series.push(minor(Number(row.priceMinor)));
+    else out.set(row.securityId, [minor(Number(row.priceMinor))]);
+  }
+
+  for (const [id, series] of out) {
+    // Oldest first, so the tail is the most recent `limit`.
+    if (series.length < 2) out.delete(id);
+    else if (series.length > limit) out.set(id, series.slice(-limit));
+  }
+
+  return out;
 }
 
 /* ===========================================================================

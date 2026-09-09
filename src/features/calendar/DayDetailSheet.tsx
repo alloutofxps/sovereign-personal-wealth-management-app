@@ -8,9 +8,19 @@
  * "Rent is due on the 1st" is a fact. "Paying this leaves €1,450 safe to
  * spend" is the same fact in the form somebody can act on, and it is the only
  * version worth putting on a screen.
+ *
+ * ---------------------------------------------------------------------------
+ * NO CARDS IN HERE
+ *
+ * Each event used to be a `Card` inside the sheet, so a day with three bills
+ * on it presented as three bordered boxes stacked in a tray that already has
+ * its own edges. A sheet is a surface; things on it are rows. The hairline
+ * between rows does the separating, and the category square does the
+ * identifying, which is the same pattern every other list in the app uses.
  * ======================================================================== */
 
 import { useState } from 'react';
+import clsx from 'clsx';
 import { minor } from '@/core/money';
 import { describeSchedule } from '@/core/recurring';
 import type { CalendarDay, DayEvent } from '@/app/calendar/useCalendar';
@@ -24,7 +34,8 @@ import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
 import { listScheduled, saveScheduled } from '@/data/repositories/scheduleRepo';
 import { occurrencesWithin } from '@/core/recurring';
-import { BottomSheet, Button, Card, Money } from '@/design/ui';
+import { familyClassFor } from '@/design/category';
+import { BottomSheet, Button, Money } from '@/design/ui';
 
 export function DayDetailSheet({
   day,
@@ -62,37 +73,39 @@ export function DayDetailSheet({
         : {})}
     >
       {day && (
-        <div className="flex flex-col gap-4 pb-2">
-          {day.events.map((event) => (
-            <EventRow
-              key={`${event.itemId}-${day.date}`}
-              event={event}
-              date={day.date}
-              accountName={nameOf(event.accountId)}
-              categoryName={
-                event.categoryId ? (picker.byId.get(event.categoryId)?.name ?? null) : null
-              }
-              safeToSpend={safeToSpend}
-              busy={busy === event.itemId}
-              onBusy={setBusy}
-              onDone={onClose}
-              money={money}
-            />
-          ))}
+        <div className="flex flex-col pb-2">
+          <ul className="flex flex-col divide-y divide-line-faint">
+            {day.events.map((event) => (
+              <li key={`${event.itemId}-${day.date}`}>
+                <EventRow
+                  event={event}
+                  date={day.date}
+                  accountName={nameOf(event.accountId)}
+                  categoryName={
+                    event.categoryId ? (picker.byId.get(event.categoryId)?.name ?? null) : null
+                  }
+                  safeToSpend={safeToSpend}
+                  busy={busy === event.itemId}
+                  onBusy={setBusy}
+                  onDone={onClose}
+                  money={money}
+                />
+              </li>
+            ))}
+          </ul>
 
+          {/* Only worth stating where there is more than one thing to add up. */}
           {day.events.length > 1 && (
-            <Card label="That day altogether">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-caption text-ink-2">
-                  {day.moneyIn > 0 && day.moneyOut > 0
-                    ? 'In, less out'
-                    : day.moneyIn > 0
-                      ? 'Arriving'
-                      : 'Going out'}
-                </span>
-                <Money value={day.net} size="lead" tone={day.net >= 0 ? 'liquid' : 'neutral'} />
-              </div>
-            </Card>
+            <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-line pt-4">
+              <span className="text-caption text-ink-2">
+                {day.moneyIn > 0 && day.moneyOut > 0
+                  ? 'That day, in less out'
+                  : day.moneyIn > 0
+                    ? 'That day, arriving'
+                    : 'That day, going out'}
+              </span>
+              <Money value={day.net} size="lead" tone={day.net >= 0 ? 'liquid' : 'neutral'} />
+            </div>
           )}
         </div>
       )}
@@ -183,50 +196,52 @@ function EventRow({
     safeToSpend !== null && outgoing ? minor(safeToSpend - event.amount) : null;
 
   return (
-    <Card>
-      <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-body text-ink">{event.name}</p>
-            <p className="truncate pt-0.5 text-caption text-ink-3">
-              {[
-                outgoing ? 'Due from' : 'Into',
-                accountName ?? 'an account you have not said yet',
-                categoryName ? `· ${categoryName}` : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            </p>
-          </div>
-          <Money
-            value={event.amount}
-            size="lead"
-            tone={outgoing ? 'neutral' : 'liquid'}
-          />
-        </div>
-
-        <p className="text-caption text-ink-2">
-          {outgoing
-            ? after !== null
-              ? `Paying this leaves ${money.format(after)} safe to spend.`
-              : 'This is already held back from what is safe to spend.'
-            : 'This is counted as arriving before you spend it.'}
-        </p>
-
-        <p className="text-caption text-ink-3">{describeSchedule(event.cadence, date)}</p>
-
-        <div className="flex flex-wrap gap-2">
-          {outgoing && (
-            <Button variant="secondary" size="sm" disabled={busy} onClick={() => void payEarly()}>
-              {busy ? 'Recording…' : 'Mark as paid'}
-            </Button>
+    <div className="flex flex-col gap-3 py-4">
+      <div className="flex items-start gap-3">
+        {/* The category's own hue, so a bill looks the same here as it does in
+            the donut, the envelope tile and the transaction row. */}
+        <span
+          aria-hidden="true"
+          className={clsx(
+            familyClassFor(event.categoryId ?? event.itemId),
+            'mt-0.5 size-2.5 shrink-0 rounded-pill bg-[var(--tile-ink)]',
           )}
-          <Button variant="quiet" size="sm" disabled={busy} onClick={() => void skipOnce()}>
-            Skip this one
-          </Button>
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-body text-ink">{event.name}</p>
+          <p className="truncate pt-0.5 text-caption text-ink-3">
+            {[
+              outgoing ? 'Due from' : 'Into',
+              accountName ?? 'an account you have not said yet',
+              categoryName ? `· ${categoryName}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          </p>
         </div>
+        <Money value={event.amount} size="lead" tone={outgoing ? 'neutral' : 'liquid'} />
       </div>
-    </Card>
+
+      <p className="pl-[1.375rem] text-caption text-ink-2">
+        {outgoing
+          ? after !== null
+            ? `Paying this leaves ${money.format(after)} safe to spend.`
+            : 'This is already held back from what is safe to spend.'
+          : 'This is counted as arriving before you spend it.'}{' '}
+        <span className="text-ink-3">{describeSchedule(event.cadence, date)}</span>
+      </p>
+
+      <div className="flex flex-wrap gap-2 pl-[1.375rem]">
+        {outgoing && (
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void payEarly()}>
+            {busy ? 'Recording…' : 'Mark as paid'}
+          </Button>
+        )}
+        <Button variant="quiet" size="sm" disabled={busy} onClick={() => void skipOnce()}>
+          Skip this one
+        </Button>
+      </div>
+    </div>
   );
 }
 

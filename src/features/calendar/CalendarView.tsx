@@ -26,6 +26,7 @@ import { useAppConfig } from '@/app/config/store';
 import { Button, Card, Money, Tabs } from '@/design/ui';
 import { AddBillSheet } from '@/features/dashboard/AddBillSheet';
 import { DayDetailSheet } from './DayDetailSheet';
+import { SubscriptionAudit } from './SubscriptionAudit';
 
 type Span = 'month' | 'week';
 
@@ -52,7 +53,7 @@ export function CalendarView() {
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">What is due, and when</h1>
+        <h1 className="headline text-ink">What is due</h1>
         <p className="text-caption text-ink-2">
           Everything you have told Sovereign about, laid out on the days it lands.
         </p>
@@ -81,12 +82,8 @@ export function CalendarView() {
 
           <div className="flex flex-col items-center">
             <span className="text-body font-medium text-ink">{monthLabel(anchor, locale)}</span>
-            {!loading && (
-              <span className="text-caption text-ink-3">
-                {month.totalIn === 0 && month.totalOut === 0
-                  ? 'Nothing scheduled this month'
-                  : 'In and out this month'}
-              </span>
+            {!loading && month.totalIn === 0 && month.totalOut === 0 && (
+              <span className="text-caption text-ink-3">Nothing scheduled this month</span>
             )}
           </div>
 
@@ -100,18 +97,23 @@ export function CalendarView() {
           </button>
         </div>
 
+        {/* Two facts of the same kind, named rather than colour-coded. The
+            dots below carry the same distinction on the grid, where there is
+            no room for a word; here there is. */}
         {(month.totalIn > 0 || month.totalOut > 0) && (
-          <div className="flex items-center justify-center gap-4 pb-3">
-            <span className="flex items-center gap-1.5 text-caption text-ink-2">
-              <Dot tone="in" /> <Money value={month.totalIn} size="caption" tone="liquid" /> in
+          <div className="flex justify-between gap-4 border-y border-line-faint py-2.5">
+            <span className="flex items-baseline gap-2">
+              <span className="text-caption text-ink-3">Arriving</span>
+              <Money value={month.totalIn} size="caption" tone="liquid" decimals="hide" />
             </span>
-            <span className="flex items-center gap-1.5 text-caption text-ink-2">
-              <Dot tone="out" /> <Money value={month.totalOut} size="caption" /> out
+            <span className="flex items-baseline gap-2">
+              <span className="text-caption text-ink-3">Going out</span>
+              <Money value={month.totalOut} size="caption" decimals="hide" />
             </span>
           </div>
         )}
 
-        <div className="grid grid-cols-7 gap-1 pb-1" aria-hidden="true">
+        <div className="grid grid-cols-7 gap-1 pb-1 pt-3" aria-hidden="true">
           {initials.map((initial, i) => (
             <span key={i} className="text-center text-micro uppercase text-ink-3">
               {initial}
@@ -129,6 +131,11 @@ export function CalendarView() {
           ))}
         </div>
       </Card>
+
+      {/* What the schedule itself suggests looking at: a rise, a thing gone
+          quiet, a charge that was never written down. It renders nothing at
+          all when there is nothing to say. */}
+      <SubscriptionAudit />
 
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
@@ -160,14 +167,23 @@ function DayCell({ day, onOpen }: { day: CalendarDay; onOpen: () => void }) {
       aria-label={`${day.date}${hasEvents ? `, ${day.events.length} scheduled` : ', nothing scheduled'}`}
       aria-current={day.isToday ? 'date' : undefined}
       disabled={!hasEvents}
+      /*
+       * A day with something on it is marked by its dots, not by a box.
+       *
+       * Every day used to carry a border and a fill the moment anything was
+       * scheduled, which turned a month with a normal number of bills into a
+       * grid of twenty identical outlined squares — the exact wallpaper the
+       * three-surface hierarchy exists to stop. Today is the one cell that
+       * gets a fill, because today is the one cell that needs finding.
+       */
       className={clsx(
-        'flex min-h-[3.25rem] flex-col items-center gap-1 rounded-md border px-1 py-1.5',
+        'flex min-h-[3.25rem] flex-col items-center gap-1 rounded-md px-1 py-1.5',
         'transition-colors',
         day.isToday
-          ? 'border-liquid-dim bg-liquid-wash'
+          ? 'bg-liquid-wash'
           : hasEvents
-            ? 'border-line bg-raised hover:border-line-strong'
-            : 'border-transparent',
+            ? 'hover:bg-raised'
+            : '',
         !day.inMonth && 'opacity-35',
         day.isPast && !day.isToday && 'opacity-60',
       )}

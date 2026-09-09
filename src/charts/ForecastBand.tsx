@@ -99,6 +99,24 @@ export function ForecastBand({
           .curve(curveMonotoneX);
         return scoped(segment) ?? '';
       }),
+      /*
+       * Every stretch where the balance is under the cushion, as an x-range.
+       *
+       * ALL of them are hatched. A squeeze is a fact about the shape of the
+       * period, it is descriptive, and hiding the second one would be hiding
+       * something true. Only the deepest is named — see the label below, and
+       * the rule in CLAUDE.md.
+       */
+      squeezes: shortfallRuns.map((segment) => {
+        const from = points.indexOf(segment[0]!);
+        const deepest = segment.reduce((low2, p) => (p.balance < low2.balance ? p : low2));
+        return {
+          x0: x(from),
+          x1: x(from + segment.length - 1),
+          deepest,
+          deepestX: x(from + segment.indexOf(deepest)),
+        };
+      }),
       showsZero: low < 0,
     };
   }, [points, buffer]);
@@ -121,6 +139,31 @@ export function ForecastBand({
   const activeIndex = scrubIndex ?? 0;
   const active = points[activeIndex]!;
   const activeX = geometry.x(activeIndex);
+
+  // The one worth naming: the window holding the lowest point of them all.
+  const deepestSqueeze =
+    geometry.squeezes.length === 0
+      ? null
+      : geometry.squeezes.reduce((worst, s) =>
+          s.deepest.balance < worst.deepest.balance ? s : worst,
+        );
+
+  /*
+   * Where the word sits.
+   *
+   * Centred on the deepest day, but kept inside the drawing: a squeeze whose
+   * lowest point is the first day put half of "tight" past x=0 and it rendered
+   * as "ight". The word annotates a band rather than marking a tick, so
+   * sliding it along the band costs nothing and clipping it costs the label.
+   */
+  const SQUEEZE_LABEL_HALF_WIDTH = 14;
+  const squeezeLabelX =
+    deepestSqueeze === null
+      ? 0
+      : Math.min(
+          Math.max(deepestSqueeze.deepestX, PADDING.left + SQUEEZE_LABEL_HALF_WIDTH),
+          WIDTH - PADDING.right - SQUEEZE_LABEL_HALF_WIDTH,
+        );
 
   return (
     <figure className="m-0 flex flex-col gap-2">
@@ -154,7 +197,46 @@ export function ForecastBand({
             <stop offset="0%" stopColor="var(--color-liquid)" stopOpacity="0.2" />
             <stop offset="100%" stopColor="var(--color-liquid)" stopOpacity="0" />
           </linearGradient>
+          {/*
+            * The squeeze hatch.
+            *
+            * A pattern rather than a fill, because a solid block over the
+            * chart would read as a region of the data. Diagonal lines read as
+            * an annotation laid on top of it, which is what this is.
+            */}
+          <pattern
+            id="forecast-squeeze"
+            width="7"
+            height="7"
+            patternTransform="rotate(45)"
+            patternUnits="userSpaceOnUse"
+          >
+            <line
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="7"
+              stroke="var(--color-obligation)"
+              strokeWidth="2.6"
+              opacity="0.3"
+            />
+          </pattern>
         </defs>
+
+        {/*
+          * Every tight window, hatched. See the note in the geometry above:
+          * describing all of them is the point, and there may be three.
+          */}
+        {geometry.squeezes.map((squeeze) => (
+          <rect
+            key={squeeze.deepest.date}
+            x={squeeze.x0}
+            y={PADDING.top}
+            width={Math.max(2, squeeze.x1 - squeeze.x0)}
+            height={geometry.floor - PADDING.top}
+            fill="url(#forecast-squeeze)"
+          />
+        ))}
 
         <path d={geometry.areaPath} fill="url(#forecast-fade)" />
 
@@ -168,6 +250,28 @@ export function ForecastBand({
             stroke="var(--color-deficit-dim)"
             strokeWidth="1"
           />
+        )}
+
+        {/*
+          * ONE label, on the deepest squeeze only.
+          *
+          * The hatching describes every tight window; this names the one worth
+          * planning around. Three labels on one chart is no label — the eye
+          * has nowhere to go — so this picks a single winner rather than
+          * annotating each band. See CLAUDE.md: describe every instance, name
+          * only the one that needs a decision.
+          */}
+        {deepestSqueeze && (
+          <text
+            x={squeezeLabelX}
+            y={PADDING.top + 10}
+            textAnchor="middle"
+            fontSize="10"
+            fontWeight="600"
+            fill="var(--color-obligation)"
+          >
+            tight
+          </text>
         )}
 
         {/* The cushion. */}

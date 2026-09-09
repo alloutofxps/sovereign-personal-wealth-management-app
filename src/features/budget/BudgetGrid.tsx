@@ -21,19 +21,17 @@ import {
   useBudgetPeriod,
   type BudgetRow,
 } from '@/app/budget/useBudget';
-import {
-  describeEnvelopePace,
-  envelopePace,
-  paceTone,
-  type EnvelopePace,
-} from '@/core/budget';
+// No `paceTone` here on purpose: a tile's colour is its category, never its
+// status. The pace is drawn — the arc against the tick — rather than tinted.
+import { describeEnvelopePace, envelopePace } from '@/core/budget';
 import { assignOnDate } from '@/app/ledger/actions';
 import { toIsoDate } from '@/core/liquidity';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Card, Explain, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Explain, Money, Ring, Tile } from '@/design/ui';
+import { familyFor } from '@/design/category';
 import { useExplain } from '@/features/explain/useExplain';
 import { BudgetSettingsCard } from './BudgetSettingsCard';
 import { QuickAssignSheet } from './QuickAssignSheet';
@@ -72,14 +70,25 @@ export function BudgetGrid() {
     ? describeReadyToAssign(data.plan.readyToAssign, (amount) => money.format(amount))
     : null;
 
+  /*
+   * The one worth naming, and how many are behind it.
+   *
+   * Worst by how far over rather than by size, because a small envelope 40
+   * over is a more urgent hole than a large one 5 over, and the strip is
+   * offering to fix one thing.
+   */
+  const overspent = (data?.rows ?? []).filter((row) => row.available < 0);
+  const overspentCount = overspent.length;
+  const worstOverspent =
+    overspentCount === 0
+      ? null
+      : overspent.reduce((worst, row) => (row.available < worst.available ? row : worst));
+
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">Give every pound a job</h1>
+      <header className="flex items-center gap-1">
+        <h1 className="headline text-ink">Envelopes</h1>
         <Explain topic="envelopes" label="giving money a job" onOpen={explain.open} />
-        <p className="text-caption text-ink-2">
-          Decide what your money is for before you spend it, one period at a time.
-        </p>
       </header>
 
       {/* --- which period ------------------------------------------------- */}
@@ -173,66 +182,97 @@ export function BudgetGrid() {
           </div>
         </Card>
       ) : (
-        <Card padding="none">
-          <div
-            className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2"
-            aria-hidden="true"
-          >
-            <span className="text-caption text-ink-3">Pot</span>
-            <span className="text-right text-caption text-ink-3">
-              In
-            </span>
-            <span className="text-right text-caption text-ink-3">
-              Out
-            </span>
-            <span className="text-right text-caption text-ink-3">
-              Left
-            </span>
-          </div>
-
-          <ul className="divide-y divide-line-faint">
-            {data.groups.map((group) => (
-              <li key={group.groupId}>
-                <div className="grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-x-3 bg-sunken/60 px-4 py-2">
-                  <span className="truncate text-caption font-medium text-ink-2">
-                    {group.groupName}
-                  </span>
-                  <Money value={group.assigned} size="caption" tone="muted" />
-                  <Money value={group.activity} size="caption" tone="muted" />
-                  <Money
-                    value={group.available}
-                    size="caption"
-                    tone={group.available < 0 ? 'deficit' : 'muted'}
+        <>
+          {data.groups.map((group) => (
+            <section key={group.groupId} className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="section-title text-ink">{group.groupName}</h2>
+                <span className="text-caption text-ink-3">
+                  <Money value={group.available} size="caption" tone="muted" decimals="hide" />{' '}
+                  left
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {group.rows.map((row) => (
+                  <EnvelopeTile
+                    key={row.envelopeId}
+                    row={row}
+                    onOpen={() => setAssigning(row)}
+                    periodProgressBp={periodProgressBp}
                   />
-                </div>
+                ))}
+              </div>
+            </section>
+          ))}
 
-                <ul>
-                  {group.rows.map((row) => (
-                    <Row
-                      key={row.envelopeId}
-                      row={row}
-                      onAssign={() => setAssigning(row)}
-                      onCover={() => setCovering(row)}
-                      onActivity={() => navigate('transactions')}
-                      periodProgressBp={periodProgressBp}
-                    />
-                  ))}
-                </ul>
-              </li>
-            ))}
+          {data.ungrouped.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="section-title text-ink">Everything else</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {data.ungrouped.map((row) => (
+                  <EnvelopeTile
+                    key={row.envelopeId}
+                    row={row}
+                    onOpen={() => setAssigning(row)}
+                    periodProgressBp={periodProgressBp}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
-            {data.ungrouped.map((row) => (
-              <Row
-                key={row.envelopeId}
-                row={row}
-                onAssign={() => setAssigning(row)}
-                onCover={() => setCovering(row)}
-                onActivity={() => navigate('transactions')}
-                periodProgressBp={periodProgressBp}
-              />
-            ))}
-          </ul>
-        </Card>
+          {/*
+            * THE ONE HOT MARK ON THIS SCREEN.
+            *
+            * Being over budget is described on the tile itself — the ring
+            * completes and the wording turns from "left of" to "over of", both
+            * in the envelope's own hue — because that is a fact about a number
+            * and every envelope may carry one. Four over means four completed
+            * rings, and nothing is hidden.
+            *
+            * What does not scale is the mark that says LOOK HERE. So there is
+            * one, on the action, naming the worst of them. Cover it and the
+            * next-worst takes its place, which is how every over-budget
+            * envelope stays reachable without five dots on one screen.
+            *
+            * See "describe every instance; name only the one that needs a
+            * decision" in CLAUDE.md.
+            */}
+          {worstOverspent && (
+            <button
+              type="button"
+              onClick={() => setCovering(worstOverspent)}
+              className="press flex items-center gap-3.5 rounded-card bg-ink p-4 text-left text-base"
+            >
+              <span
+                aria-hidden="true"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md bg-hot text-[1.1rem] leading-none"
+              >
+                ↑
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-body font-medium">
+                  {worstOverspent.name} is{' '}
+                  <Money
+                    value={minor(Math.abs(worstOverspent.available))}
+                    size="body"
+                    tone="neutral"
+                    className="text-inherit"
+                  />{' '}
+                  over
+                </span>
+                <span className="block pt-0.5 text-caption opacity-65">
+                  {overspentCount > 1
+                    ? `${overspentCount - 1} more after this one`
+                    : 'Move money across to square it'}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-pill bg-[var(--fill-subtle)] px-3 py-1.5 text-caption font-medium">
+                Cover
+              </span>
+            </button>
+          )}
+        </>
       )}
 
       {/* --- how the budget is shaped -------------------------------------- */}
@@ -277,19 +317,39 @@ export function BudgetGrid() {
   );
 }
 
-function Row({
+/**
+ * One envelope, as a tile in its own category's colour.
+ *
+ * The hue comes from the semantic seed mapping, so an envelope funding rent is
+ * verdigris because rent is housing — not because a hash landed there and not
+ * because the grid needed a fourth colour in that slot.
+ *
+ * The ring is the pacing engine's own comparison: how much of the money has
+ * gone against how much of the period has. Over budget completes it and the
+ * wording turns from "left of" to "over of". Both are descriptions and both
+ * scale — see the note on the cover strip above, and the rule in CLAUDE.md.
+ */
+function EnvelopeTile({
   row,
-  onAssign,
-  onCover,
-  onActivity,
+  onOpen,
   periodProgressBp,
 }: {
   row: BudgetRow;
-  onAssign: () => void;
-  onCover: () => void;
-  onActivity: () => void;
+  onOpen: () => void;
   periodProgressBp: number;
 }) {
+  const money = useMoney();
+
+  /*
+   * What this envelope actually had to spend this period.
+   *
+   * `assigned` alone is the wrong denominator and reads as a bug on screen:
+   * an envelope carrying 66 forward and assigned 520 has 586 available, and
+   * "586 left of 520" is a sentence nobody can make sense of. What was left is
+   * left of everything that was in it, which is what was put in plus what came
+   * over from last period.
+   */
+  const pot = minor(row.assigned + row.broughtForward);
   const pace = envelopePace({
     assignedMinor: row.assigned,
     // Activity is stored as a negative for money going out; the pacing engine
@@ -298,100 +358,44 @@ function Row({
     periodProgressBp,
   });
 
-  return (
-    <li className="grid grid-cols-[1fr_auto_auto_auto] items-start gap-x-3 px-4 py-2.5">
-      <button
-        type="button"
-        onClick={row.overspent ? onCover : onAssign}
-        className="min-w-0 text-left"
-      >
-        <span className="block truncate text-body text-ink">{row.name}</span>
-        {row.targetAmount !== null && row.targetAmount > 0 && (
-          <span className="block truncate text-caption text-ink-3">
-            Aiming for <Money value={row.targetAmount} size="caption" tone="muted" />
-          </span>
-        )}
-      </button>
-
-      <button
-        type="button"
-        onClick={onAssign}
-        aria-label={`Assign money to ${row.name}`}
-        className="rounded-md px-2 py-1 text-right transition-colors hover:bg-raised"
-      >
-        <Money value={row.assigned} size="caption" tone={row.assigned > 0 ? 'neutral' : 'muted'} />
-      </button>
-
-      <button
-        type="button"
-        onClick={onActivity}
-        aria-label={`What went out of ${row.name}`}
-        className="rounded-md px-2 py-1 text-right transition-colors hover:bg-raised"
-      >
-        <Money value={row.activity} size="caption" tone="muted" />
-      </button>
-
-      <button
-        type="button"
-        onClick={row.overspent ? onCover : onAssign}
-        className="rounded-md px-2 py-1 text-right transition-colors hover:bg-raised"
-      >
-        <Money
-          value={row.available}
-          size="caption"
-          // Emerald when there is money to use, clay when it has been
-          // overspent, and deliberately quiet at exactly zero — a pot that has
-          // done its job is not an alert.
-          tone={row.available > 0 ? 'liquid' : row.available < 0 ? 'deficit' : 'muted'}
-        />
-        <PacingBar pace={pace} name={row.name} />
-      </button>
-    </li>
-  );
-}
-
-/**
- * How fast one pot is going, against how fast the period is.
- *
- * Two pixels high and the width of the Available column. It is reference
- * information somebody looks for when they are looking for it — a full-width
- * bar on every row would make the grid about pacing, which is not what the
- * grid is for.
- *
- * The tick is the calendar. When the fill is left of it there is more money
- * than month; when it is right, the pot is going faster than the days are.
- */
-function PacingBar({ pace, name }: { pace: EnvelopePace; name: string }) {
-  if (pace.status === 'unbudgeted') return null;
-
-  const filled = Math.min(100, pace.spentPercentBp / 100);
-  const marker = Math.min(100, pace.periodProgressBp / 100);
-  const tone = paceTone(pace);
+  const over = row.available < 0;
+  const spentFraction = pot > 0 ? Math.abs(row.activity) / pot : 0;
+  // No symbol: this sits inside a sentence fragment under an amount that
+  // already carries one, and two symbols on one tile reads as two figures.
+  const total = money.format(pot, { display: 'none', decimals: 'hide' });
 
   return (
-    <span
-      className="relative mt-1 block h-[2px] w-full overflow-hidden rounded-pill bg-line"
-      role="img"
-      aria-label={describeEnvelopePace(pace, name)}
-      title={describeEnvelopePace(pace, name)}
+    <Tile
+      family={familyFor(row.envelopeId)}
+      onClick={onOpen}
+      aria-label={`${row.name}, ${over ? 'over budget' : 'within budget'}`}
     >
-      <span
-        className={clsx(
-          'absolute inset-y-0 left-0 rounded-pill',
-          tone === 'caution' ? 'bg-caution' : tone === 'liquid' ? 'bg-liquid' : 'bg-ink-4',
-        )}
-        style={{ width: `${filled}%` }}
-      />
-      {/* Where the calendar has got to. */}
-      <span
-        className="absolute inset-y-0 w-px bg-ink-3"
-        style={{ left: `${marker}%` }}
-      />
-    </span>
+      <Ring
+        progress={spentFraction}
+        mark={periodProgressBp / 10_000}
+        size={58}
+        weight={6}
+        aria-label={describeEnvelopePace(pace, row.name)}
+      >
+        {Math.round(pace.spentPercentBp / 100)}
+      </Ring>
+
+      <div className="truncate pt-3 text-body font-medium">{row.name}</div>
+      <div className="pt-1.5">
+        <Money
+          value={minor(Math.abs(row.available))}
+          size="lead"
+          tone="neutral"
+          decimals="hide"
+        />
+      </div>
+      <div className="truncate pt-0.5 text-caption opacity-70">
+        {pot === 0 ? 'nothing assigned yet' : `${over ? 'over of' : 'left of'} ${total}`}
+      </div>
+    </Tile>
   );
 }
 
-/** Put money into one pot, for the period on screen. */
 function AssignSheet({
   row,
   onClose,

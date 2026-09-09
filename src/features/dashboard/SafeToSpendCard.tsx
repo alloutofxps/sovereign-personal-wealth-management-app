@@ -77,12 +77,7 @@ export function SafeToSpendCard({
             aria-label="See what has been taken off"
             className="press-row -mx-1 mt-1 block rounded-lg px-1 text-left"
           >
-            <Money
-              value={liquidity.safeToSpend}
-              size="anchor"
-              tone="neutral"
-              className="text-[var(--tile-ink)]"
-            />
+            <Money value={liquidity.safeToSpend} size="anchor" tone="inherit" />
           </button>
         </div>
 

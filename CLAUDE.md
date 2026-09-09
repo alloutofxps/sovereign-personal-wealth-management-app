@@ -96,6 +96,25 @@ single dot marking the one thing that needs a decision. A third occurrence is a
 bug. It is a fill and a marker — **never small text**, because it does not clear
 AA as type on any of our grounds.
 
+### Describe every instance; name only the one that needs a decision
+
+The budget above only holds if you know which treatments may repeat. This is
+that rule, and it generalises well past the two screens it came from:
+
+- **Descriptive treatments scale.** A ring, a hatched band, a category hue, a
+  bar. They state a fact about one item, and every item may carry one. Four
+  envelopes over budget get four completed rings; three tight weeks get three
+  hatched bands. Suppressing the second one would be hiding a fact.
+- **Attentional treatments do not scale.** A hot dot, a named label, an action
+  strip. They say *look here*, and saying it four times says it nowhere. Exactly
+  one per screen, on the single thing a person could act on next.
+
+So being over budget is described — the ring completes, the wording turns from
+"left of" to "over of", both in the envelope's own category hue — and the hot
+mark goes on the action that fixes the worst one, not on the states. This
+deliberately diverges from the reference sheet, which puts a dot on the
+over-budget tile: that works for its one-over example and breaks at four.
+
 ### Three surfaces, deliberately unlike each other
 
 - `.field` — large, flat, category-coloured, no border, no shadow. **Exactly one

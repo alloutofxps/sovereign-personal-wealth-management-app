@@ -27,7 +27,7 @@ export interface FxView {
   /** True when at least one currency other than the base one has a rate. */
   hasForeign: boolean;
   /** Format an amount in a named currency: `$12,450.00`. */
-  formatIn: (amount: Minor, currency: string) => string;
+  formatIn: (amount: Minor, currency: string, options?: { decimals?: 'auto' | 'hide' }) => string;
   /**
    * What a foreign amount is worth in the reporting currency, or null when no
    * rate has been recorded for it yet.
@@ -54,8 +54,12 @@ export function useFx(): FxView {
   );
 
   const formatIn = useCallback(
-    (amount: Minor, currency: string) =>
-      formatMoney(amount, { currency: currency as CurrencyCode, locale }),
+    (amount: Minor, currency: string, options?: { decimals?: 'auto' | 'hide' }) =>
+      formatMoney(amount, {
+        currency: currency as CurrencyCode,
+        locale,
+        ...(options?.decimals ? { decimals: options.decimals } : {}),
+      }),
     [locale],
   );
 

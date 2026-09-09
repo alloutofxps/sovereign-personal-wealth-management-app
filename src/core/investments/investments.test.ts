@@ -369,6 +369,41 @@ describe('what charges compound to', () => {
     expect(said).not.toMatch(/you should|switch to|move your money|we recommend/i);
   });
 
+  /*
+   * The regression this exists for.
+   *
+   * `versusBaseline` is what the comparison fund would have kept less what
+   * yours will, so it goes negative for anybody holding funds cheaper than the
+   * 0.15% baseline - which is most people holding ordinary trackers, and was
+   * the seeded household. The sentence printed the signed figure after the
+   * word "less", so a cheap portfolio was told its charges added up to
+   * "-EUR174.44 less than" a tracker: a double negative that reads as bad news
+   * to somebody who is doing well.
+   */
+  it('says "more" when the funds are cheaper than the comparison', () => {
+    const cheap = feeDragOf([
+      holding(security('X', 'equity', LOW_COST_BASELINE_BP - 5), 100 * SHARE, 0, 100_00),
+    ]);
+    const said = describeFeeDrag(cheap, (a) => `\u20ac${(a / 100).toFixed(2)}`);
+
+    expect(cheap.projections[1]!.versusBaseline).toBeLessThan(0);
+    expect(said).toContain('more than the same money');
+    expect(said).not.toContain('less than');
+    // Never a negative amount inside a sentence that already carries the sign
+    // in a word.
+    expect(said).not.toMatch(/\u2212|-\u20ac/);
+  });
+
+  it('says "less" when the funds are dearer than the comparison', () => {
+    const dear = feeDragOf([
+      holding(security('X', 'equity', LOW_COST_BASELINE_BP + 50), 100 * SHARE, 0, 100_00),
+    ]);
+    const said = describeFeeDrag(dear, (a) => `\u20ac${(a / 100).toFixed(2)}`);
+
+    expect(dear.projections[1]!.versusBaseline).toBeGreaterThan(0);
+    expect(said).toContain('less than the same money');
+  });
+
   it('asks for the charge rather than assuming it is nothing', () => {
     const unknown = [holding(security('X', 'equity', 0), 100 * SHARE, 0, 100_00)];
     const said = describeFeeDrag(feeDragOf(unknown), (a) => `€${(a / 100).toFixed(2)}`);

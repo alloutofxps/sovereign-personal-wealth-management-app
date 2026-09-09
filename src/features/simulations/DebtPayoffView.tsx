@@ -167,7 +167,7 @@ function describeMonths(months: number): string {
 function Header() {
   return (
     <header className="flex flex-col gap-1">
-      <h1 className="text-lead font-medium text-ink">Paying off what you owe</h1>
+      <h1 className="headline text-ink">Paying it off</h1>
       <p className="text-caption text-ink-2">
         Same money, two orders. One costs less; the other feels faster.
       </p>

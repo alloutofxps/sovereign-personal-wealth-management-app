@@ -44,7 +44,7 @@ export function PotsView() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-lead font-medium text-ink">Your pots</h1>
+        <h1 className="headline text-ink">Your pots</h1>
         <Explain topic="pots" label="saving up for something" onOpen={explain.open} />
         <p className="text-caption text-ink-2">
           Things that only come round now and then, saved for a bit at a time.

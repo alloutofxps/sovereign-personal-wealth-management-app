@@ -91,7 +91,6 @@ export function SellHoldingSheet({
     return <BottomSheet open={false} onClose={onClose} children={null} />;
   }
 
-  const explain = useExplain();
   const quantity = safeQuantity(shares);
   const price = safeAmount(priceText) || holding.priceMinor;
   const fee = safeAmount(feeText);
@@ -108,6 +107,27 @@ export function SellHoldingSheet({
   });
 
   const ready = quantity > 0 && preview !== null && !preview.error && Boolean(cash);
+
+  /*
+   * The explanation is given the preview, not a second sum.
+   *
+   * `previewSale` runs the same `relieveLotsFIFO` that records the sale, so
+   * "the units come out of your two oldest parcels, which cost 1,000" is the
+   * arithmetic that is about to happen rather than a restatement of the rule.
+   * Before a quantity is typed there is nothing to relieve and the sheet falls
+   * back to the general example, which is the right thing for it to do.
+   */
+  const sale = preview && !preview.error ? preview.result : null;
+  const explain = useExplain(
+    sale
+      ? {
+          saleParcels: sale.relieved.length,
+          saleCostRelieved: sale.totalCostBasisRelieved,
+          saleProceeds: sale.totalProceeds,
+          saleGain: sale.realizedGain,
+        }
+      : {},
+  );
 
   async function sell() {
     if (!holding || !cash || !preview || preview.error) return;

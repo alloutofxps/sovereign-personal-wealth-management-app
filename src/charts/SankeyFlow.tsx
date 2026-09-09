@@ -42,6 +42,35 @@ const NODE_WIDTH = 10;
 const NODE_GAP = 10;
 const PADDING = { top: 8, bottom: 8 };
 
+/* ===========================================================================
+ * PHASE 5: THESE TONES AND THIS OPACITY ARE A MEASURED PAIR
+ * ---------------------------------------------------------------------------
+ * A REGRESSION, recorded so it is not re-filed as a preference. This file was
+ * not touched by the redesign; phase 1 re-pointed the tokens under it, and the
+ * ribbons lost separation as a result. Composited at the 0.34 opacity below:
+ *
+ *   before (obsidian palette)   closest pair dE 13.0   0 of 10 confusable
+ *   after  (daylight palette)   closest pair dE 10.0   1 of 10 confusable
+ *
+ * The obvious fix is wrong. Re-pointing these at the six category families —
+ * which is what phase 5 is meant to do, and is right for consistency with the
+ * donut and the rows — makes it WORSE at 0.34: closest pair dE 6.8, two
+ * confusable pairs. Six hues composited at a third over white are all pastels.
+ *
+ * 0.34 was tuned against a near-black ground, where a colour darkens toward
+ * black and keeps its hue. Over white everything washes toward white.
+ *
+ * THE FLOOR IS 0.55. Measured across the six families, closest pair:
+ *
+ *   alpha   daylight (#fff)   midnight (#131936)
+ *   0.34         6.8               10.8
+ *   0.45         9.5               14.0
+ *   0.55        11.5               17.2   <- both clear of 10
+ *
+ * dE below 10 reads as the same colour at a glance. So phase 5 moves these to
+ * the six families AND raises the opacity to at least 0.55. Doing the first
+ * without the second is a regression on top of a regression.
+ * ======================================================================== */
 const RIBBON_TONE: Record<FlowLink['tone'], string> = {
   income: 'var(--color-liquid)',
   fixed: 'var(--color-ink-3)',

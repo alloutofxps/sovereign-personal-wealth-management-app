@@ -34,6 +34,7 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useFx } from '@/app/fx/useFx';
 import { useRoute } from '@/app/router';
+import { usePortfolio } from '@/app/investments/usePortfolio';
 import { Button, Card, Field, Money } from '@/design/ui';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
 import { WriteOffSheet } from './WriteOffSheet';
@@ -44,6 +45,7 @@ import { CreateAccountSheet } from './CreateAccountSheet';
 import { RecordValuationSheet } from './RecordValuationSheet';
 import { LoanScheduleSheet } from './LoanScheduleSheet';
 import { RecordLoanPaymentSheet } from './RecordLoanPaymentSheet';
+import { DeferredTaxCard } from '@/features/investments/DeferredTaxCard';
 import { NetWorthHistoryCard } from './NetWorthHistoryCard';
 import { ReconcileAccountSheet } from '@/features/reconciliation/ReconcileAccountSheet';
 
@@ -57,6 +59,9 @@ export function AccountsView() {
   const fx = useFx();
   const accounts = useAccounts();
   const balances = useBalances();
+  // For the deferred-tax card below: a gains regime is charged on the gain,
+  // which only the portfolio's cost basis knows about.
+  const portfolio = usePortfolio();
   const claims = useLiveQuery(useCallback(() => listOpenClaims(), []), CLAIM_TABLES);
   const terms = useLiveQuery(useCallback(() => debtTerms(), []), ['accounts', 'postings']);
   const valued = useLiveQuery(useCallback(() => lastValuedDates(), []), ACCOUNT_TABLES);
@@ -186,7 +191,7 @@ export function AccountsView() {
           <div className="min-w-0">
             <div className="text-caption opacity-75">Everything, net</div>
             <div className="pt-1">
-              <Money value={worth} size="anchor" tone="neutral" className="text-[var(--tile-ink)]" />
+              <Money value={worth} size="anchor" tone="inherit" />
             </div>
           </div>
           {data && data.netWorthChange !== 0 && (
@@ -215,6 +220,25 @@ export function AccountsView() {
 
       {/* --- the line it got here along ------------------------------------ */}
       <NetWorthHistoryCard />
+
+      {/*
+        * --- the part of it that is not yours ------------------------------
+        *
+        * This used to sit on Invested, which was the wrong screen under both
+        * regimes and dangerously wrong under one. A deemed-return charge falls
+        * on the whole estate — bank balances and card debts included — so a
+        * figure worked out from the brokerage alone said "nothing to pay" to a
+        * household with twenty-eight thousand sitting in the bank. A gains
+        * regime needs the portfolio's cost basis, which is why the card takes
+        * it as a prop rather than reading it here.
+        *
+        * It renders nothing at all until a regime has been chosen, so the
+        * usual case for this screen is unchanged. Invested links here.
+        */}
+      <DeferredTaxCard
+        investments={portfolio.data?.totals.marketValue ?? minor(0)}
+        costBasis={portfolio.data?.totals.costBasis ?? minor(0)}
+      />
 
       {/* --- the four sections --------------------------------------------- */}
       {ORDER.map((group) => {

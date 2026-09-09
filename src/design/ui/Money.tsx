@@ -16,7 +16,15 @@ import type { Minor } from '@/core/money';
 import { useMoney, type MoneyDisplayOptions } from '@/app/money/useMoney';
 
 export type MoneySize = 'anchor' | 'figure' | 'lead' | 'body' | 'caption';
-export type MoneyTone = 'auto' | 'neutral' | 'muted' | 'liquid' | 'caution' | 'deficit';
+export type MoneyTone =
+  | 'auto'
+  /** Takes the colour of what it sits in — a field, a tile, a coloured row. */
+  | 'inherit'
+  | 'neutral'
+  | 'muted'
+  | 'liquid'
+  | 'caution'
+  | 'deficit';
 
 export interface MoneyProps extends MoneyDisplayOptions {
   value: Minor;
@@ -47,6 +55,17 @@ const SIZE: Record<MoneySize, string> = {
 };
 
 const TONE: Record<Exclude<MoneyTone, 'auto'>, string> = {
+  /*
+   * Takes the colour of whatever it sits in.
+   *
+   * For a figure on a field, which already carries its family's ink. The
+   * alternative that was tried first -- `tone="neutral"` plus a
+   * `text-[var(--tile-ink)]` className -- puts two colour utilities of equal
+   * specificity on one element, and Tailwind emits `text-ink` after the
+   * arbitrary one, so the override lost on every field in the app without
+   * leaving a trace in the markup.
+   */
+  inherit: 'text-current',
   neutral: 'text-ink',
   muted: 'text-ink-2',
   liquid: 'text-liquid',

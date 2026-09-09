@@ -136,6 +136,25 @@ export function NetWorthTimeline({
               strokeWidth="1"
               strokeDasharray="2 5"
             />
+            {/*
+              * PHASE 5: the collision here is HORIZONTAL, not vertical.
+              *
+              * PRE-EXISTING, not caused by the redesign — this file has not
+              * been touched since a318dd7, and `y` is derived from the value
+              * through unchanged geometry, so nothing about the new palette or
+              * type scale can move these labels down the page.
+              *
+              * What did change is the face: Space Grotesk is wider than Geist
+              * at the same size. These are `textAnchor="end"`, so the extra
+              * width extends LEFTWARDS from the right edge, and a long
+              * formatted amount now reaches back far enough to overlap both
+              * the label above it and the line itself.
+              *
+              * Do not go looking at vertical spacing. The fixes worth trying
+              * are: drop to a compact format for the axis, keep only the
+              * milestones that are far enough apart in value to label, or move
+              * the labels inside the plot on the left where there is room.
+              */}
             <text
               x={WIDTH - PADDING.right}
               y={geometry.y(milestone.amount) - 3}

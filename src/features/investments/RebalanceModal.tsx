@@ -46,7 +46,6 @@ const OFFERED: AssetClass[] = [
 
 export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const money = useMoney();
-  const explain = useExplain();
   const [tab, setTab] = useState<'targets' | 'plan'>('targets');
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [depositText, setDepositText] = useState('');
@@ -62,6 +61,31 @@ export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () =
   const plan = useLiveQuery(
     useCallback(() => getRebalancePlan(minor(deposit)), [deposit]),
     INVESTMENT_TABLES,
+  );
+
+  /*
+   * The class furthest from where it was meant to be, for the worked example.
+   *
+   * Taken from the same plan the sheet renders, so the sentence in the
+   * explanation and the rows below it are reading one calculation. Nothing is
+   * passed while the plan is still loading or while no targets exist, and the
+   * sheet then shows the general example instead of a made-up one.
+   */
+  const worstLine = (plan.data?.lines ?? []).reduce<
+    NonNullable<typeof plan.data>['lines'][number] | null
+  >(
+    (worst, line) =>
+      worst === null || Math.abs(line.driftBp) > Math.abs(worst.driftBp) ? line : worst,
+    null,
+  );
+  const explain = useExplain(
+    worstLine
+      ? {
+          mixCurrentBp: worstLine.currentBp,
+          mixTargetBp: worstLine.targetBp,
+          mixDepositToFix: minor(Math.max(0, -worstLine.difference)),
+        }
+      : {},
   );
 
   // Start from what is saved, so this is editing rather than starting over.

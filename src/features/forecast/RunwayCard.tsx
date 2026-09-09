@@ -1,11 +1,25 @@
-/* How long your money would last, and how much further it would stretch if
- * everything optional came off. */
+/* ===========================================================================
+ * HOW LONG YOUR MONEY WOULD LAST
+ * ---------------------------------------------------------------------------
+ * A what-if, and it says so. Nothing switched off here is recorded anywhere;
+ * the toggles change a number on this card and nothing else in the app.
+ *
+ * The duration leads and the monthly cost sits beside it, because "four
+ * months" is the answer and "€2,140 a month" is the working. Switching a
+ * category off moves both, which is the only reason the working is on screen.
+ *
+ * The categories are a list of switches rather than chips, because the state
+ * that matters is on-or-off per row and a chip row makes people hunt for which
+ * ones are dimmed. Each row keeps its amount so the size of the lever is
+ * visible before it is pulled.
+ * ======================================================================== */
 
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { calculateRunway, describeDuration, describeRunway } from '@/core/forecast';
 import type { ForecastData } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
+import { familyClassFor } from '@/design/category';
 import { Card, Explain, Money } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
@@ -66,7 +80,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-4">
           <div className="flex flex-col gap-0.5">
-            <span className="text-figure font-medium text-ink">
+            <span className="figure text-figure text-ink">
               {describeDuration(scenario.days)}
             </span>
             <span className="text-caption text-ink-3">
@@ -83,13 +97,11 @@ export function RunwayCard({ data }: { data: ForecastData }) {
           {describeRunway(asYouAre, bareBones, (amount) => money.format(amount))}
         </p>
 
-        <div className="flex flex-col gap-2 border-t border-line pt-3">
-          <span className="text-caption text-ink-2">
-            What could you go without?
-          </span>
-          <p className="max-w-[44ch] text-caption text-ink-3">
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <h3 className="section-title text-ink">What could you go without?</h3>
+          <p className="max-w-[44ch] text-caption text-ink-2">
             Switch things off to see how much further the same money would go. Nothing here
-            changes your records. It is only a what-if.
+            changes your records.
           </p>
 
           {data.categories.length === 0 ? (
@@ -98,7 +110,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
               to switch on and off.
             </p>
           ) : (
-            <ul className="flex flex-col gap-1.5 pt-1">
+            <ul className="flex flex-col divide-y divide-line-faint pt-1">
               {data.categories.map((category) => {
                 const off = excluded.has(category.id);
                 return (
@@ -107,29 +119,42 @@ export function RunwayCard({ data }: { data: ForecastData }) {
                       type="button"
                       onClick={() => toggle(category.id)}
                       aria-pressed={!off}
-                      className={clsx(
-                        'flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-left transition-colors',
-                        off
-                          ? 'border-line bg-sunken text-ink-3'
-                          : 'border-line-strong bg-raised text-ink',
-                      )}
+                      className="flex w-full items-center justify-between gap-3 py-2.5 text-left"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex min-w-0 items-center gap-3">
+                        {/* The switch. Verdigris when on, because the category
+                            keeps its own hue on the square beside it and two
+                            colours competing in one row reads as decoration. */}
                         <span
                           className={clsx(
-                            'flex h-4 w-7 shrink-0 items-center rounded-pill px-0.5 transition-colors',
+                            'flex h-[18px] w-8 shrink-0 items-center rounded-pill px-0.5 transition-colors',
                             off ? 'bg-line-strong' : 'bg-liquid',
                           )}
                           aria-hidden="true"
                         >
                           <span
                             className={clsx(
-                              'size-3 rounded-full bg-base transition-transform',
-                              off ? 'translate-x-0' : 'translate-x-3',
+                              'size-3.5 rounded-full bg-base transition-transform',
+                              off ? 'translate-x-0' : 'translate-x-3.5',
                             )}
                           />
                         </span>
-                        <span className="truncate text-body">{category.name}</span>
+                        <span
+                          aria-hidden="true"
+                          className={clsx(
+                            familyClassFor(category.id),
+                            'size-2 shrink-0 rounded-pill bg-[var(--tile-ink)] transition-opacity',
+                            off && 'opacity-35',
+                          )}
+                        />
+                        <span
+                          className={clsx(
+                            'truncate text-body transition-colors',
+                            off ? 'text-ink-3' : 'text-ink',
+                          )}
+                        >
+                          {category.name}
+                        </span>
                       </span>
                       <span className={clsx('shrink-0', off && 'line-through opacity-60')}>
                         <Money
@@ -146,7 +171,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
           )}
         </div>
       </div>
-    {explain.sheet}
+      {explain.sheet}
     </Card>
   );
 }

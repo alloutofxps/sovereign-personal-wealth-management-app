@@ -4,6 +4,10 @@
  * Three shortcuts through the tedious part of budgeting. Each says exactly
  * what it will do before it does it, because an automation whose effect you
  * cannot predict is one you stop trusting after the first surprise.
+ *
+ * They are rows on the sheet rather than three bordered boxes inside it. The
+ * sheet is already a surface; drawing a second edge around each option said
+ * "three components" when what is on offer is one choice out of three.
  * ======================================================================== */
 
 import { useState } from 'react';
@@ -71,7 +75,7 @@ export function QuickAssignSheet({
       title="Fill things in for me"
       description="Shortcuts through the repetitive part. Nothing happens until you pick one."
     >
-      <div className="flex flex-col gap-3 pb-2">
+      <div className="flex flex-col divide-y divide-line-faint pb-2">
         <Option
           title="Top up everything saving towards something"
           detail={
@@ -168,10 +172,10 @@ function Option({
   onClick: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-line bg-raised px-3.5 py-3">
+    <div className="flex flex-col gap-2 py-4 first:pt-1">
       <span className="text-body text-ink">{title}</span>
-      <span className="text-caption text-ink-3">{detail}</span>
-      <div>
+      <span className="max-w-[46ch] text-caption text-ink-2">{detail}</span>
+      <div className="pt-0.5">
         <Button variant="secondary" size="sm" disabled={disabled || busy} onClick={onClick}>
           {busy ? 'Working…' : 'Do this'}
         </Button>

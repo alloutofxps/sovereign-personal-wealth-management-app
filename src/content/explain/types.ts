@@ -140,6 +140,30 @@ export interface ExplainFigures {
   usableCash: Minor;
   monthlyNeed: Minor;
   runwayMonths: number;
+
+  /*
+   * Selling part of a holding.
+   *
+   * These come from the same relief engine that records the sale, not from a
+   * second calculation done for the explanation - so the worked example and
+   * the entry that lands in the ledger cannot disagree.
+   */
+  saleParcels: number;
+  saleCostRelieved: Minor;
+  saleProceeds: Minor;
+  saleGain: Minor;
+
+  /*
+   * Getting back to the mix you chose.
+   *
+   * Shares of the whole, in basis points, for the class that is furthest from
+   * where it was meant to be - plus what putting money in would take to fix
+   * it. No class name: every field here is a number, and naming the class
+   * would mean the explanation could disagree with the tile that opened it.
+   */
+  mixCurrentBp: number;
+  mixTargetBp: number;
+  mixDepositToFix: Minor;
 }
 
 export interface ExplainContext {

@@ -257,6 +257,29 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'We count that as all ten of the 80 units and two of the 100 ones, so the gain is worked out against 1,000 of what you paid.',
       'Most tax offices expect this order, which is why it is the default.',
     ],
+    /*
+     * Read from the same preview the sheet shows and the sale records, so the
+     * example cannot drift from the entry. It appears only once a quantity has
+     * been typed, because before that there is no sale to describe.
+     */
+    worked: (c) => {
+      if (!need(c, ['saleParcels', 'saleCostRelieved', 'saleGain'])) return null;
+      const f = c.figures;
+      const parcels = f.saleParcels!;
+      const gain = f.saleGain!;
+      const from =
+        parcels === 1
+          ? 'The units come out of one parcel'
+          : `The units come out of your ${parcels} oldest parcels`;
+      return (
+        `${from}, which cost ${c.money(f.saleCostRelieved!)}. ` +
+        (gain === 0
+          ? 'That is exactly what they are selling for, so there is no gain.'
+          : gain > 0
+            ? `Selling at more than that realises a gain of ${c.money(minor(gain))}.`
+            : `Selling at less than that takes a loss of ${c.money(minor(-gain))}.`)
+      );
+    },
     manual: 'selling',
   },
 
@@ -368,6 +391,26 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
       'Putting your next deposit into whatever is furthest behind gets you back without selling anything.',
       'Selling the part that grew also works, and turns a gain into one you may owe tax on.',
     ],
+    /*
+     * The class that is furthest off, in the same hundreds the copy above
+     * uses. `mixDepositToFix` is what the deposit route would take, which is
+     * the route offered first because it sells nothing.
+     */
+    worked: (c) => {
+      if (!need(c, ['mixCurrentBp', 'mixTargetBp'])) return null;
+      const f = c.figures;
+      const current = Math.round(f.mixCurrentBp! / 100);
+      const target = Math.round(f.mixTargetBp! / 100);
+      if (current === target) return null;
+      const fix =
+        f.mixDepositToFix === undefined || f.mixDepositToFix === 0
+          ? ''
+          : ` Putting ${c.money(f.mixDepositToFix)} into what is behind closes it without ` +
+            'selling anything.';
+      return (
+        `One part of your mix is at ${current} in every 100 where you wanted ${target}.` + fix
+      );
+    },
   },
 
   /* ---------------------------------------------------------------------

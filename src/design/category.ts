@@ -138,7 +138,36 @@ const ACCOUNT_KINDS: Record<string, Family> = {
   debts: 'obligation',
 };
 
+/**
+ * What a security is, rather than where it is held.
+ *
+ * The allocation bar needs hues and there is no seventh palette in this app to
+ * give it. These follow the same sentences as the account kinds above, so a
+ * person who has learned the index once reads the bar with it: anything
+ * invested is the blue, anything at rest is the teal, property is the
+ * verdigris it is everywhere else.
+ *
+ * `other` is deliberately absent. It means "we do not know what this is", and
+ * a category hue on that slice would be inventing an entry in an index that is
+ * supposed to be learnable. The bar paints it neutral instead.
+ *
+ * `cash_equivalent` lands on the same verdigris as `real_estate`, which is a
+ * real collision and the honest one: it is the family `cash` and `checking`
+ * already carry, and a portfolio holding both a REIT and a money-market fund
+ * gets two verdigris segments separated by the bar's gap and named in the
+ * legend. Splitting them would mean a seventh family that means nothing.
+ */
+const ASSET_CLASSES: Record<string, Family> = {
+  equity: 'transport',
+  fixed_income: 'health',
+  real_estate: 'housing',
+  commodity: 'food',
+  crypto: 'leisure',
+  cash_equivalent: 'housing',
+};
+
 const PINNED: Record<string, Family> = {
+  ...ASSET_CLASSES,
   ...SEEDED_CATEGORIES,
   ...SEEDED_GROUPS,
   ...SEEDED_POTS,
