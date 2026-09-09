@@ -43,7 +43,8 @@ import { useMoney } from '@/app/money/useMoney';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Card, Input } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Explain, Input } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { ManualLink } from '@/features/manual/ManualLink';
 
 export function ReconcileAccountSheet({
@@ -60,6 +61,7 @@ export function ReconcileAccountSheet({
   const [statementDate, setStatementDate] = useState(toIsoDate(new Date()));
   const [statementBalance, setStatementBalance] = useState<Minor>(minor(0));
   const [busy, setBusy] = useState(false);
+  const explain = useExplain();
 
   const query = useLiveQuery(
     useCallback(
@@ -172,6 +174,9 @@ export function ReconcileAccountSheet({
     >
       {step === 'details' ? (
         <div className="flex flex-col gap-4 pb-2">
+          <div className="flex justify-end">
+            <Explain topic="checking" label="checking against your bank" onOpen={explain.open} />
+          </div>
           <Input
             type="date"
             label="Statement ending date"
@@ -286,6 +291,7 @@ export function ReconcileAccountSheet({
           )}
         </div>
       )}
+    {explain.sheet}
     </BottomSheet>
   );
 }

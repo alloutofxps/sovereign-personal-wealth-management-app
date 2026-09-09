@@ -20,7 +20,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { persistenceState, requestPersistence } from '@/data/persistence';
 import { toast } from '@/app/toast';
-import { Button, Card } from '@/design/ui';
+import { Button, Card, Explain } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 /** Where the prompt is being shown, which decides how it explains itself. */
 export type ProtectStorageContext = 'settings' | 'after-import';
@@ -45,6 +46,7 @@ function dismissedBefore(): boolean {
  * or the person has said no thank you once already.
  */
 export function ProtectStorage({ context }: { context: ProtectStorageContext }) {
+  const explain = useExplain();
   const [needed, setNeeded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState(context === 'after-import' && dismissedBefore());
@@ -79,7 +81,11 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
   if (!needed || hidden) return null;
 
   return (
-    <Card label="Keeping your records" accent="caution">
+    <Card
+      label="Keeping your records"
+      accent="caution"
+      action={<Explain topic="storage" label="keeping your records" onOpen={explain.open} />}
+    >
       <div className="flex flex-col gap-3">
         <p className="text-caption text-ink-2">
           {context === 'after-import'
@@ -119,6 +125,7 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
           anywhere. There is nowhere for it to go.
         </p>
       </div>
+    {explain.sheet}
     </Card>
   );
 }

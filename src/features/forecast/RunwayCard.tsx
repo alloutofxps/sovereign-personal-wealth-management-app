@@ -6,7 +6,8 @@ import clsx from 'clsx';
 import { calculateRunway, describeDuration, describeRunway } from '@/core/forecast';
 import type { ForecastData } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
-import { Card, Money } from '@/design/ui';
+import { Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function RunwayCard({ data }: { data: ForecastData }) {
   const money = useMoney();
@@ -49,8 +50,19 @@ export function RunwayCard({ data }: { data: ForecastData }) {
 
   const changed = excluded.size > 0;
 
+  const explain = useExplain({
+    usableCash: data.usableCash,
+    monthlyNeed: scenario.monthlyNeed,
+    ...(scenario.months === null ? {} : { runwayMonths: scenario.months }),
+  });
+
   return (
-    <Card label="How long your money would last">
+    <Card
+      label="How long your money would last"
+      action={
+        <Explain topic="runway" label="how long your money would last" onOpen={explain.open} />
+      }
+    >
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-4">
           <div className="flex flex-col gap-0.5">
@@ -134,6 +146,7 @@ export function RunwayCard({ data }: { data: ForecastData }) {
           )}
         </div>
       </div>
+    {explain.sheet}
     </Card>
   );
 }

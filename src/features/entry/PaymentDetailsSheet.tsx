@@ -21,7 +21,8 @@ import { describeDate, describeWhen } from '@/app/dates';
 import { describeLocked } from '@/core/reconciliation/reconciliationMath';
 import { useAppConfig } from '@/app/config/store';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Money } from '@/design/ui';
+import { BottomSheet, Button, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function PaymentDetailsSheet({
   entry,
@@ -30,6 +31,7 @@ export function PaymentDetailsSheet({
   entry: EntryWithPostings | null;
   onClose: () => void;
 }) {
+  const explain = useExplain();
   const locale = useAppConfig((s) => s.locale);
   const accounts = useAccounts();
   // Account ids are for the database. What a person reads is the name they
@@ -227,7 +229,16 @@ export function PaymentDetailsSheet({
             </Detail>
           )}
 
-          <Detail label="What it moved">
+          <Detail
+            label="What it moved"
+            action={
+              <Explain
+                topic="two-books"
+                label="why a payment is stored twice"
+                onOpen={explain.open}
+              />
+            }
+          >
             <ul className="flex flex-col gap-1.5">
               {entry.postings
                 .filter((p) => p.book === 'FINANCIAL')
@@ -292,14 +303,26 @@ export function PaymentDetailsSheet({
           )}
         </div>
       )}
+    {explain.sheet}
     </BottomSheet>
   );
 }
 
-function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+function Detail({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-caption text-ink-2">{label}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-caption text-ink-2">{label}</span>
+        {action}
+      </div>
       {children}
     </div>
   );

@@ -7,7 +7,8 @@ import { describeDate, shortDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { CumulativeSpend } from '@/charts/CumulativeSpend';
-import { Card } from '@/design/ui';
+import type { ExplainTopic } from '@/content/explain';
+import { Card, Explain } from '@/design/ui';
 
 const TONE: Record<PaceStatus, { text: string; bar: string; chip: string }> = {
   on_track: { text: 'text-liquid', bar: 'bg-liquid', chip: 'bg-liquid-wash text-liquid' },
@@ -17,7 +18,13 @@ const TONE: Record<PaceStatus, { text: string; bar: string; chip: string }> = {
   no_plan: { text: 'text-ink-2', bar: 'bg-ink-4', chip: 'bg-raised text-ink-2' },
 };
 
-export function PaceCard({ data }: { data: DashboardData }) {
+export function PaceCard({
+  data,
+  onExplainTopic,
+}: {
+  data: DashboardData;
+  onExplainTopic: (topic: ExplainTopic) => void;
+}) {
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
   const { pacing } = data;
@@ -27,11 +34,17 @@ export function PaceCard({ data }: { data: DashboardData }) {
   const periodNoun = CADENCE_NOUNS[data.cadence];
 
   return (
-    <Card label="How fast you are spending" action={
-      <span className={clsx('rounded-pill px-2 py-0.5 text-micro font-medium', tone.chip)}>
-        {paceLabel(pacing.status)}
-      </span>
-    }>
+    <Card
+      label="Spending pace"
+      action={
+        <span className="flex items-center gap-1">
+          <span className={clsx('rounded-pill px-2 py-0.5 text-micro font-medium', tone.chip)}>
+            {paceLabel(pacing.status)}
+          </span>
+          <Explain topic="pace" label="your spending pace" onOpen={onExplainTopic} />
+        </span>
+      }
+    >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2.5">
           <Bar

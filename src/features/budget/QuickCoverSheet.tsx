@@ -18,7 +18,8 @@ import type { BudgetRow } from '@/app/budget/useBudget';
 import { assignOnDate, moveBetweenEnvelopes } from '@/app/ledger/actions';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { BottomSheet } from '@/design/ui';
+import { BottomSheet, Explain } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function QuickCoverSheet({
   row,
@@ -35,6 +36,7 @@ export function QuickCoverSheet({
 }) {
   const money = useMoney();
   const [busy, setBusy] = useState<string | null>(null);
+  const explain = useExplain();
 
   const needed = row ? minor(-row.available) : minor(0);
 
@@ -128,7 +130,12 @@ export function QuickCoverSheet({
           )}
         </div>
       )}
-    </BottomSheet>
+    <div className="flex justify-end pb-2">
+        <Explain topic="cover" label="covering a pot" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
+      
+      </BottomSheet>
   );
 }
 

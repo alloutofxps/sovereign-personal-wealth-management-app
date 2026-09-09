@@ -2,16 +2,26 @@
 
 import clsx from 'clsx';
 import type { DashboardData } from '@/app/dashboard/useDashboard';
-import { Card, Money } from '@/design/ui';
+import type { ExplainTopic } from '@/content/explain';
+import { Card, Explain, Money } from '@/design/ui';
 
-export function BalanceCard({ data }: { data: DashboardData }) {
+export function BalanceCard({
+  data,
+  onExplainTopic,
+}: {
+  data: DashboardData;
+  onExplainTopic: (topic: ExplainTopic) => void;
+}) {
   const have = Math.max(0, data.liquidCash);
   const owe = Math.max(0, data.totalDebt);
   const span = have + owe || 1;
   const havePercent = (have / span) * 100;
 
   return (
-    <Card label="What you are worth">
+    <Card
+      label="What you are worth"
+      action={<Explain topic="net-worth" label="what you are worth" onOpen={onExplainTopic} />}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-4">
           <Money
@@ -39,7 +49,10 @@ export function BalanceCard({ data }: { data: DashboardData }) {
 
         <div className="flex items-start justify-between gap-4">
           <Legend swatch="bg-liquid" label="What you have" value={data.liquidCash} />
-          <Legend swatch="bg-deficit" label="What you owe" value={data.totalDebt} align="right" />
+          <div className="flex items-start gap-1">
+            <Legend swatch="bg-deficit" label="What you owe" value={data.totalDebt} align="right" />
+            <Explain topic="cards" label="money owed on a card" onOpen={onExplainTopic} />
+          </div>
         </div>
 
         {data.totalDebt > 0 && (

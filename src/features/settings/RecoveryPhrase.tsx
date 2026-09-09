@@ -19,7 +19,8 @@
  * ======================================================================== */
 
 import { useState } from 'react';
-import { Button } from '@/design/ui';
+import { Button, Explain } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function RecoveryPhrase({
   value,
@@ -29,6 +30,7 @@ export function RecoveryPhrase({
   value: string;
   onChange: (phrase: string) => void;
 }) {
+  const explain = useExplain();
   const [made, setMade] = useState<{ number: number; word: string }[] | null>(null);
   /** The generated phrase, held back until it has been acknowledged. */
   const [pending, setPending] = useState('');
@@ -149,6 +151,8 @@ export function RecoveryPhrase({
         </p>
       )}
 
+      <Explain topic="recovery-phrase" label="your recovery phrase" onOpen={explain.open} />
+      {explain.sheet}
       <Button variant="secondary" size="sm" disabled={busy} onClick={() => void make()}>
         {busy ? 'Making one…' : 'Make me a new phrase'}
       </Button>

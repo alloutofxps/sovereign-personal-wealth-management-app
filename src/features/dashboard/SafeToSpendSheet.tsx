@@ -8,7 +8,8 @@ import type { Minor } from '@/core/money';
 import type { DashboardData } from '@/app/dashboard/useDashboard';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
-import { BottomSheet, Money } from '@/design/ui';
+import { BottomSheet, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { ManualLink } from '@/features/manual/ManualLink';
 
 export function SafeToSpendSheet({
@@ -20,6 +21,7 @@ export function SafeToSpendSheet({
   onClose: () => void;
   data: DashboardData | undefined;
 }) {
+  const explain = useExplain();
   const locale = useAppConfig((s) => s.locale);
 
   return (
@@ -89,7 +91,12 @@ export function SafeToSpendSheet({
           </div>
         </div>
       )}
-    </BottomSheet>
+    <div className="flex justify-end pb-1">
+        <Explain topic="cushion" label="your safety cushion" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
+      
+      </BottomSheet>
   );
 }
 

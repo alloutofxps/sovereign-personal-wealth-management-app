@@ -13,12 +13,14 @@
  * ======================================================================== */
 
 import { Suspense, lazy, useState } from 'react';
+import { minor, type Minor } from '@/core/money';
 import { useDashboard } from '@/app/dashboard/useDashboard';
 import { useRecentEntries } from '@/app/ledger/useLedger';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { Button, Card, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 // Loaded when somebody taps a payment, not before. It is a sheet that only
 // appears on demand, and it brings the whole audit view and the statement-check
 // wording with it — none of which belongs in front of a person who has opened
@@ -42,6 +44,14 @@ import { SafeToSpendCard, SafeToSpendSkeleton } from './SafeToSpendCard';
 import { SafeToSpendSheet } from './SafeToSpendSheet';
 import { TriageBar } from './TriageBar';
 
+/** The bills and the card balances are both in one breakdown list. */
+function sumKind(
+  breakdown: readonly { amount: Minor; kind: string }[],
+  kind: 'bill' | 'card',
+): Minor {
+  return minor(breakdown.filter((line) => line.kind === kind).reduce((t, l) => t + l.amount, 0));
+}
+
 export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unreviewed?: number }) {
   const [, navigate] = useRoute();
   const locale = useAppConfig((s) => s.locale);
@@ -52,6 +62,40 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
 
   const data = dashboard.data;
   const recent = entries.data ?? [];
+
+  /*
+   * The figures an explanation can build a worked example from.
+   *
+   * Everything here is what this household actually holds, so the sheet says
+   * "take off the 412 of bills due" rather than "take off your bills". Before
+   * the first payment is recorded there is no `data` and every field is
+   * absent, which is exactly right: `worked()` returns null and the sheet
+   * shows the general version instead of a column of zeroes.
+   */
+  const explain = useExplain(
+    data
+      ? {
+          liquidCash: data.liquidCash,
+          billsDue: sumKind(data.liquidity.breakdown, 'bill'),
+          cardsOwed: sumKind(data.liquidity.breakdown, 'card'),
+          cushion: data.buffer,
+          setAsideInPots: data.liquidity.goalFunding,
+          safeToSpend: data.liquidity.safeToSpend,
+          dailyPace: data.liquidity.dailyPace,
+          paceDays: data.liquidity.paceDays,
+          spentThisCycle: data.pacing.spent,
+          elapsedPercent: data.pacing.elapsedPercent,
+          spentPercent: data.pacing.spentPercent,
+          netWorth: data.netWorth,
+          totalDebts: data.totalDebt,
+          // What you hold, which the dashboard does not carry directly: net
+          // worth is already assets less debts, so adding the debts back gives
+          // the assets. Without this the worked example falls back to the
+          // general one, which is a quieter failure than it looks.
+          totalAssets: minor(data.netWorth + data.totalDebt),
+        }
+      : {},
+  );
   const [looking, setLooking] = useState<(typeof recent)[number] | null>(null);
 
   return (
@@ -86,13 +130,17 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
       {data?.hasActivity && (
         <>
           {/* 1 — the liquidity anchor */}
-          <SafeToSpendCard data={data} onExplain={() => setExplaining(true)} />
+          <SafeToSpendCard
+            data={data}
+            onExplain={() => setExplaining(true)}
+            onExplainTopic={explain.open}
+          />
 
           {/* 2 — pace and the curve */}
-          <PaceCard data={data} />
+          <PaceCard data={data} onExplainTopic={explain.open} />
 
           {/* 3 — the balance sheet */}
-          <BalanceCard data={data} />
+          <BalanceCard data={data} onExplainTopic={explain.open} />
 
           {/* 4 — anything waiting */}
           <TriageBar
@@ -168,6 +216,7 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
       )}
 
       <SafeToSpendSheet open={explaining} onClose={() => setExplaining(false)} data={data} />
+      {explain.sheet}
       {addingBill && (
         <Suspense fallback={null}>
           <AddBillSheet open={addingBill} onClose={() => setAddingBill(false)} />

@@ -3,14 +3,15 @@
 
 import { Suspense, lazy, useState } from 'react';
 import clsx from 'clsx';
-import { COMMON_CURRENCIES, currencyDisplayName } from '@/core/money';
+import { COMMON_CURRENCIES, currencyDisplayName, minor } from '@/core/money';
 import { getStorageStatus, resetDatabase } from '@/data/client';
 import { ensureStarterChart } from '@/data/seed';
 import { useAppConfig } from '@/app/config/store';
 import { useRoute } from '@/app/router';
 import { useTheme, type ThemeChoice } from '@/app/theme';
 import { toast } from '@/app/toast';
-import { Button, Card } from '@/design/ui';
+import { Button, Card, Explain } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { DataAndSecurity } from './DataAndSecurity';
 import { FxRatesSheet } from './FxRatesSheet';
@@ -38,6 +39,7 @@ export function SettingsView() {
   const [editingRates, setEditingRates] = useState(false);
   const [working, setWorking] = useState(false);
   const [walkthrough, setWalkthrough] = useState(false);
+  const explain = useExplain({ cgtRateBp, cgtExemption: minor(cgtExemptionMinor) });
 
   async function startAgain() {
     setWorking(true);
@@ -138,7 +140,10 @@ export function SettingsView() {
         </div>
       </Card>
 
-      <Card label="Tax">
+      <Card
+        label="Tax"
+        action={<Explain topic="tax-regime" label="where you are taxed" onOpen={explain.open} />}
+      >
         <div className="flex flex-col gap-3">
           <p className="text-caption text-ink-2">
             Sovereign can show what part of your investments would go in tax, next to the figure
@@ -163,7 +168,10 @@ export function SettingsView() {
           {taxRegime === 'flat_gains' && (
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1.5">
-                <span className="text-caption text-ink-3">Rate</span>
+                <span className="flex items-center gap-1 text-caption text-ink-3">
+                  Rate
+                  <Explain topic="cgt" label="your rate and allowance" onOpen={explain.open} />
+                </span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -273,6 +281,7 @@ export function SettingsView() {
           </div>
         )}
       </Card>
+      {explain.sheet}
     </div>
   );
 }

@@ -31,7 +31,8 @@ import {
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Card, Input } from '@/design/ui';
+import { BottomSheet, Button, Card, Input, Explain } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 /** The classes worth offering a target for. The rest are rarely deliberate. */
 const OFFERED: AssetClass[] = [
@@ -45,6 +46,7 @@ const OFFERED: AssetClass[] = [
 
 export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const money = useMoney();
+  const explain = useExplain();
   const [tab, setTab] = useState<'targets' | 'plan'>('targets');
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [depositText, setDepositText] = useState('');
@@ -121,6 +123,9 @@ export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () =
       }
     >
       <div className="flex flex-col gap-4 pb-2">
+        <div className="flex justify-end">
+          <Explain topic="rebalance" label="getting back to your mix" onOpen={explain.open} />
+        </div>
         {/* --- tabs ------------------------------------------------------ */}
         <div className="flex gap-2">
           <Tab label="What you want" chosen={tab === 'targets'} onChoose={() => setTab('targets')} />
@@ -178,6 +183,7 @@ export function RebalanceModal({ open, onClose }: { open: boolean; onClose: () =
           />
         )}
       </div>
+    {explain.sheet}
     </BottomSheet>
   );
 }

@@ -38,7 +38,8 @@ import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Card, Input, Money, Select } from '@/design/ui';
+import { BottomSheet, Button, Card, Explain, Input, Money, Select } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function SellHoldingSheet({
   holding,
@@ -90,6 +91,7 @@ export function SellHoldingSheet({
     return <BottomSheet open={false} onClose={onClose} children={null} />;
   }
 
+  const explain = useExplain();
   const quantity = safeQuantity(shares);
   const price = safeAmount(priceText) || holding.priceMinor;
   const fee = safeAmount(feeText);
@@ -234,7 +236,12 @@ export function SellHoldingSheet({
           )}
         </div>
       </div>
-    </BottomSheet>
+    <div className="flex justify-end pb-1">
+        <Explain topic="selling" label="which units you sold" onOpen={explain.open} />
+      </div>
+      {explain.sheet}
+      
+      </BottomSheet>
   );
 }
 

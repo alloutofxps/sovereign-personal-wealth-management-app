@@ -24,7 +24,8 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useLiveQuery } from '@/data/live/useLiveQuery';
 import { LEDGER_TABLES, balancesByType, spendableCash } from '@/data/repositories/ledgerRepo';
-import { Card, Money } from '@/design/ui';
+import { Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { ManualLink } from '@/features/manual/ManualLink';
 
 export function DeferredTaxCard({
@@ -93,6 +94,19 @@ export function DeferredTaxCard({
     return deferredTax({ savings, investments, investmentCostBasis: costBasis, debts }, regime);
   }, [regimeKind, cgtRateBp, cgtExemptionMinor, savings, investments, costBasis, debts]);
 
+  /*
+   * The tax explanation answers a different question under each regime, so it
+   * is handed the regime as well as the figures. See the note on this topic in
+   * the registry: a `short` that spoke only of a gain would be false under a
+   * yearly charge, which is the regime this household is actually under.
+   */
+  const explain = useExplain({
+    taxRegime: regimeKind,
+    portfolioValue: investments,
+    portfolioCost: costBasis,
+    ...(result ? { taxAmount: result.amount, reliefApplied: result.reliefApplied } : {}),
+  });
+
   // Nothing until the rest of the household has been read. A deemed-return
   // figure worked out from half the estate is worse than no figure at all.
   if (result === null || estate.data === undefined) return null;
@@ -100,7 +114,12 @@ export function DeferredTaxCard({
   const after = netWorthAfterTax(minor(savings + investments - debts), result);
 
   return (
-    <Card label={result.timing === 'every_year' ? 'What holding this costs a year' : 'Tax waiting inside this'}>
+    <Card
+      label={
+        result.timing === 'every_year' ? 'What holding this costs a year' : 'Tax inside what you hold'
+      }
+      action={<Explain topic="deferred-tax" label="tax inside what you hold" onOpen={explain.open} />}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-caption text-ink-2">
@@ -133,6 +152,7 @@ export function DeferredTaxCard({
           <ManualLink chapter="selling">How a sale is worked out</ManualLink>
         </div>
       </div>
+    {explain.sheet}
     </Card>
   );
 }

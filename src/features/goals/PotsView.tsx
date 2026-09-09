@@ -8,7 +8,8 @@ import { useDashboard } from '@/app/dashboard/useDashboard';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
-import { Button, Card, Money } from '@/design/ui';
+import { Button, Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { PotSheet, TopUpSheet } from './PotSheet';
 import { ManualLink } from '@/features/manual/ManualLink';
 
@@ -29,6 +30,7 @@ const BAR: Record<PotStatus, string> = {
 };
 
 export function PotsView() {
+  const explain = useExplain();
   const dashboard = useDashboard();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<PotPlan | null>(null);
@@ -42,6 +44,7 @@ export function PotsView() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-lead font-medium text-ink">Your pots</h1>
+        <Explain topic="pots" label="saving up for something" onOpen={explain.open} />
         <p className="text-caption text-ink-2">
           Things that only come round now and then, saved for a bit at a time.
         </p>
@@ -111,7 +114,8 @@ export function PotsView() {
       <PotSheet open={creating} onClose={() => setCreating(false)} />
       <PotSheet open={editing !== null} onClose={() => setEditing(null)} editing={editing} />
       <TopUpSheet open={toppingUp !== null} onClose={() => setToppingUp(null)} pot={toppingUp} />
-    </div>
+    {explain.sheet}
+      </div>
   );
 }
 

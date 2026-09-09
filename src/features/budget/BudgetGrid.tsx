@@ -33,12 +33,14 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Card, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { BudgetSettingsCard } from './BudgetSettingsCard';
 import { QuickAssignSheet } from './QuickAssignSheet';
 import { QuickCoverSheet } from './QuickCoverSheet';
 
 export function BudgetGrid() {
+  const explain = useExplain();
   const [, navigate] = useRoute();
   const money = useMoney();
   const locale = useAppConfig((s) => s.locale);
@@ -66,6 +68,7 @@ export function BudgetGrid() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
         <h1 className="text-lead font-medium text-ink">Give every pound a job</h1>
+        <Explain topic="envelopes" label="giving money a job" onOpen={explain.open} />
         <p className="text-caption text-ink-2">
           Decide what your money is for before you spend it, one period at a time.
         </p>
@@ -261,6 +264,7 @@ export function BudgetGrid() {
           />
         </>
       )}
+          {explain.sheet}
     </div>
   );
 }

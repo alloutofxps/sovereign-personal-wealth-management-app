@@ -21,23 +21,36 @@ import {
   type FeeDrag,
 } from '@/core/investments';
 import { useMoney } from '@/app/money/useMoney';
-import { Card, Money } from '@/design/ui';
+import { Card, Explain, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function FeeDragCard({ drag }: { drag: FeeDrag }) {
+  const explain = useExplain({
+    feeBp: drag.weightedBp,
+    portfolioValue: drag.portfolioValue,
+    feeThisYear: drag.annualCost,
+  });
   const money = useMoney();
 
   if (drag.portfolioValue <= 0 || drag.weightedBp === 0) {
     return (
-      <Card label="What the funds charge">
+      <Card
+        label="What the funds charge"
+        action={<Explain topic="fee-drag" label="what the funds charge" onOpen={explain.open} />}
+      >
         <p className="py-2 text-caption text-ink-2">
           {describeFeeDrag(drag, (amount) => money.format(amount))}
         </p>
+        {explain.sheet}
       </Card>
     );
   }
 
   return (
-    <Card label="What the funds charge">
+    <Card
+      label="What the funds charge"
+      action={<Explain topic="fee-drag" label="what the funds charge" onOpen={explain.open} />}
+    >
       <div className="flex flex-col gap-4">
         <p className="text-body text-ink">
           {describeFeeDrag(drag, (amount) => money.format(amount))}
@@ -70,6 +83,7 @@ export function FeeDragCard({ drag }: { drag: FeeDrag }) {
 
         <p className="text-caption text-ink-3">{PROJECTION_CAVEAT}</p>
       </div>
+    {explain.sheet}
     </Card>
   );
 }

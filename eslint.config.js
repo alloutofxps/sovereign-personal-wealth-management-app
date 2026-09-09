@@ -24,6 +24,20 @@ import globals from 'globals';
 const LAYERS = [
   {
     target: './src/core',
+    from: [
+      './src/content',
+      './src/ingest',
+      './src/data',
+      './src/app',
+      './src/design',
+      './src/charts',
+      './src/features',
+    ],
+  },
+  // Content is prose and nothing else. It may name a `Minor` and may not know
+  // that a database or a React tree exists.
+  {
+    target: './src/content',
     from: ['./src/ingest', './src/data', './src/app', './src/design', './src/charts', './src/features'],
   },
   {
@@ -63,7 +77,7 @@ export default tseslint.config(
             from.map((f) => ({
               target,
               from: f,
-              message: `Dependencies run one way: core < data < app < design < features. ${target} may not import from ${f}.`,
+              message: `Dependencies run one way: core < content < data < app < design < features. ${target} may not import from ${f}.`,
             })),
           ),
         },
