@@ -17,11 +17,13 @@ import {
 } from '@/core/ledger';
 import { SYSTEM_ACCOUNTS } from '@/data/seed';
 import { useMoney } from '@/app/money/useMoney';
-import { Aside, Formula, Heading, Lab, Ledger, Passage, Points, Switch } from '../parts';
+import { Aside, Formula, Heading, Lab, Ledger, Passage, Points, Standfirst, Switch } from '../parts';
 
 export function TwoBooksChapter() {
   return (
     <>
+      <Standfirst slug="two-books" />
+
       <Passage>
         Underneath everything Sovereign shows you there are two separate sets of books, and every
         single thing that happens to your money is written into both at once.

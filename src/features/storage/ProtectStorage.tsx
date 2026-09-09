@@ -125,8 +125,7 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
         </div>
 
         <p className="text-caption text-ink-3">
-          This only asks your browser not to delete anything. It does not send your data
-          anywhere. There is nowhere for it to go.
+          It only asks your browser not to delete anything.
         </p>
       </div>
     {explain.sheet}

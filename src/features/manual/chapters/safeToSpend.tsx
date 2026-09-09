@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react';
 import { minor } from '@/core/money';
 import { calculateSafeToSpend, type Commitment, type Cycle } from '@/core/liquidity';
 import { useMoney } from '@/app/money/useMoney';
-import { Aside, Controls, Dial, Formula, Heading, Lab, Passage, Readout } from '../parts';
+import { Aside, Controls, Dial, Formula, Heading, Lab, Passage, Readout, Standfirst } from '../parts';
 
 export function SafeToSpendChapter() {
   return (
     <>
+      <Standfirst slug="safe-to-spend" />
+
       <Passage>
         Every money app shows you a balance. A balance is the least useful number your bank has,
         because it is a fact about the past: it says what has already happened, and says nothing

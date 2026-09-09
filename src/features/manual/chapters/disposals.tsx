@@ -13,22 +13,13 @@ import {
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
-import {
-  Aside,
-  Controls,
-  Dial,
-  EngineSays,
-  Formula,
-  Heading,
-  Lab,
-  Passage,
-  Points,
-  Readout,
-} from '../parts';
+import { Aside, Controls, Dial, EngineSays, Formula, Heading, Lab, Passage, Points, Readout, Standfirst } from '../parts';
 
 export function DisposalsChapter() {
   return (
     <>
+      <Standfirst slug="selling" />
+
       <Passage>
         You bought the same fund four times over three years, at four different prices. Today you
         sell ten shares. Which ten did you sell?

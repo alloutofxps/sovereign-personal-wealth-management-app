@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
+import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 /* ===========================================================================
@@ -58,7 +59,7 @@ export default tseslint.config(
 
   {
     files: ['**/*.{ts,tsx}'],
-    plugins: { import: importPlugin },
+    plugins: { import: importPlugin, 'react-hooks': reactHooks },
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -70,6 +71,25 @@ export default tseslint.config(
       },
     },
     rules: {
+      /* ---------------------------------------------------------------------
+       * A memo that reads a value it does not depend on is frozen at whatever
+       * that value was on the first render.
+       *
+       * Phase 5 introduced exactly that and all three gates passed it: four
+       * chart geometry memos read a measured `width` while depending only on
+       * their data, which would have pinned every chart to its first-paint
+       * 320-unit geometry — the same symptom as the bug being removed, made
+       * permanent. It was caught by reading the diff, which is luck rather
+       * than a control.
+       *
+       * `rules-of-hooks` is an error because a conditional hook is never
+       * intentional. `exhaustive-deps` is a warning because a missing
+       * dependency sometimes is: a deliberately-once effect is a real pattern,
+       * and it is spelled with a comment rather than by silence.
+       * ------------------------------------------------------------------ */
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+
       'import/no-restricted-paths': [
         'error',
         {

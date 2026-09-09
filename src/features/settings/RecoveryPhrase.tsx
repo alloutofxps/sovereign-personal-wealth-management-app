@@ -75,10 +75,12 @@ export function RecoveryPhrase({
   if (made) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-caption text-ink-2">
-          Write these down, in this order, and keep the paper somewhere you would keep a
-          passport. They are the only way back into the file.
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-caption text-ink-2">
+            In this order, on paper. The only way back in.
+          </p>
+          <Explain topic="recovery-phrase" label="your recovery phrase" onOpen={explain.open} />
+        </div>
 
         <ol className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-md border border-line bg-sunken px-3.5 py-3 sm:grid-cols-3">
           {made.map((item) => (

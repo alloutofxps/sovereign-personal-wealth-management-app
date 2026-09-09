@@ -106,7 +106,7 @@ export function CumulativeSpend({
       const index = Math.round(ratio * (points.length - 1));
       setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
     },
-    [geometry, points.length],
+    [geometry, points.length, width],
   );
 
   if (!geometry || points.length === 0) return null;

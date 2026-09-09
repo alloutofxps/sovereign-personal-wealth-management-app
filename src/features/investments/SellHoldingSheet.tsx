@@ -87,24 +87,32 @@ export function SellHoldingSheet({
     if (!cashId && cashAccounts[0]) setCashId(cashAccounts[0].id);
   }, [cashId, cashAccounts]);
 
-  if (!holding) {
-    return <BottomSheet open={false} onClose={onClose} children={null} />;
-  }
-
+  /*
+   * Everything below tolerates a closed sheet, because the guard that used to
+   * sit here now sits under the last hook.
+   *
+   * `useExplain` needs the preview and the preview needs the holding, so the
+   * hook could not move up past its own inputs. The guard moved down instead —
+   * the safe direction, since the cost is a few numbers computed and discarded
+   * on a render where nothing is shown, against a hook count that changed
+   * between renders and put React's slots out of step.
+   */
   const quantity = safeQuantity(shares);
-  const price = safeAmount(priceText) || holding.priceMinor;
+  const price = safeAmount(priceText) || holding?.priceMinor || 0;
   const fee = safeAmount(feeText);
   const cash = cashAccounts.find((a) => a.id === cashId);
 
   // Previewed against the real relief engine rather than an approximation of
   // it, so the figure shown is the figure that will be recorded.
-  const preview = previewSale({
-    lots: lots.data ?? [],
-    holding,
-    quantity,
-    price: minor(price),
-    fee: minor(fee),
-  });
+  const preview = holding
+    ? previewSale({
+        lots: lots.data ?? [],
+        holding,
+        quantity,
+        price: minor(price),
+        fee: minor(fee),
+      })
+    : null;
 
   const ready = quantity > 0 && preview !== null && !preview.error && Boolean(cash);
 
@@ -128,6 +136,10 @@ export function SellHoldingSheet({
         }
       : {},
   );
+
+  if (!holding) {
+    return <BottomSheet open={false} onClose={onClose} children={null} />;
+  }
 
   async function sell() {
     if (!holding || !cash || !preview || preview.error) return;

@@ -132,7 +132,11 @@ export function ForecastBand({
       const index = Math.round(ratio * (points.length - 1));
       setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
     },
-    [points.length],
+    // `width` is not optional here. Without it this closure keeps whatever
+    // width it was created with, and after the container is measured the
+    // pointer is converted against a 320 that is no longer the viewBox — the
+    // scrubber lands on the wrong day. `exhaustive-deps` found this.
+    [points.length, width],
   );
 
   if (!geometry || points.length === 0) return null;

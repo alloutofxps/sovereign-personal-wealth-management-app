@@ -17,12 +17,25 @@
  * That combination is the point: a diagram of how something works can quietly
  * stop being true when the code changes, and an explanation drawn from
  * somebody's own money would let them act on a number that was never theirs.
+ *
+ * ---------------------------------------------------------------------------
+ * THE CONTENTS PAGE IS TILES, AND THE HUE IS THE INDEX
+ *
+ * It was a numbered list. Numbers say "read these in order", and these are
+ * reference — somebody arrives at chapter five from the investments screen
+ * without having read four, and a "5" beside it tells them they are late.
+ *
+ * The hue does the indexing instead, and it is the hue the chapter's own
+ * subject already carries everywhere else in the app: the pots chapter is the
+ * teal that pots are, the cards chapter the clay that debts are. That is the
+ * same index the donut and the envelope tiles teach, used once more.
  * ======================================================================== */
 
 import { useEffect } from 'react';
 import { useRoute, useRouteDetail } from '@/app/router';
-import { Button } from '@/design/ui';
-import { CHAPTERS, chapterBySlug, type Chapter } from './chapters';
+import { familyClass, familyForChapter } from '@/design/category';
+import { Button, Tile } from '@/design/ui';
+import { CHAPTERS, chapterBySlug, readingMinutes, type Chapter } from './chapters';
 
 export function ManualView() {
   const slug = useRouteDetail();
@@ -48,39 +61,44 @@ function Contents() {
   const [, navigate] = useRoute();
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-lead font-medium text-ink">The field manual</h1>
-        <p className="max-w-[58ch] text-body leading-relaxed text-ink-2">
-          How Sovereign works out what it tells you. Six chapters, each with a working model of
-          the thing it is describing. The same code that runs on your own money, running on
-          figures that are openly made up.
-        </p>
-        <p className="max-w-[58ch] text-caption text-ink-3">
-          Nothing here has to be read in order and nothing has to be finished. It is a reference,
-          and it will be here in a year when something finally makes you curious.
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-1">
+        <h1 className="headline text-ink">The field manual</h1>
+        <p className="measure text-caption text-ink-2">
+          Six chapters, each running the same code your own money does.
         </p>
       </header>
 
-      <ol className="flex flex-col gap-2">
-        {CHAPTERS.map((chapter, index) => (
-          <li key={chapter.slug}>
-            <button
-              type="button"
+      {/*
+        * Two columns of tiles rather than one column of rows. A chapter is a
+        * destination, not a list item, and the grid is what the envelope
+        * screen already established for "several things of the same kind, each
+        * with its own colour".
+        */}
+      <ul className="grid grid-cols-2 gap-2.5">
+        {CHAPTERS.map((chapter) => (
+          <li key={chapter.slug} className="contents">
+            <Tile
+              family={familyForChapter(chapter.slug)}
               onClick={() => navigate('manual', chapter.slug)}
-              className="flex w-full flex-col gap-1 rounded-lg border border-line bg-raised px-4 py-3.5 text-left transition-colors hover:border-line-strong"
+              className="flex flex-col gap-1.5"
+              aria-label={`${chapter.title}. ${readingMinutes(chapter)} minute read.`}
             >
-              <span className="flex items-baseline gap-3">
-                <span className="tnum text-micro text-ink-3">{index + 1}</span>
-                <span className="text-body font-medium text-ink">{chapter.title}</span>
-              </span>
-              <span className="max-w-[58ch] pl-[1.6rem] text-caption leading-relaxed text-ink-2">
+              <span className="text-body font-medium">{chapter.title}</span>
+              <span className="text-caption leading-relaxed opacity-80">
                 {chapter.standfirst}
               </span>
-            </button>
+              <span className="tnum pt-1 text-micro opacity-70">
+                {readingMinutes(chapter)} min
+              </span>
+            </Tile>
           </li>
         ))}
-      </ol>
+      </ul>
+
+      <p className="measure text-caption text-ink-3">
+        Nothing here has to be read in order, and nothing has to be finished.
+      </p>
     </div>
   );
 }
@@ -92,24 +110,32 @@ function Reader({ chapter }: { chapter: Chapter }) {
   const position = CHAPTERS.findIndex((c) => c.slug === chapter.slug);
   const previous = position > 0 ? CHAPTERS[position - 1] : null;
   const next = position < CHAPTERS.length - 1 ? CHAPTERS[position + 1] : null;
+  const family = familyForChapter(chapter.slug);
 
   return (
-    <article className="flex flex-col gap-6">
-      <button
-        type="button"
-        onClick={() => navigate('manual')}
-        className="self-start text-caption text-ink-3 hover:text-ink-2"
-      >
-        ← All chapters
-      </button>
+    <article className={`${familyClass(family)} flex flex-col gap-6`}>
+      {/*
+        * The running head.
+        *
+        * A chapter is long enough to lose your place in, and the one thing you
+        * lose first is which chapter it is. It sticks under the shell's own
+        * top inset rather than at zero, and carries the way out with it so
+        * "back to the contents" is never a scroll away.
+        */}
+      <div className="sticky top-0 z-10 -mx-5 flex items-center justify-between gap-3 bg-base/85 px-5 py-2.5 backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => navigate('manual')}
+          className="press-row -mx-1 rounded-md px-1 text-caption text-ink-3 hover:text-ink-2"
+        >
+          ← All chapters
+        </button>
+        <span className="truncate text-caption text-ink-3">{chapter.title}</span>
+      </div>
 
       <header className="flex flex-col gap-2">
-        <span className="text-caption text-ink-3">
-          Chapter {position + 1} · {chapter.engine}
-        </span>
-        <h1 className="max-w-[24ch] text-balance text-figure font-medium leading-tight text-ink">
-          {chapter.title}
-        </h1>
+        <span className="text-caption text-[var(--tile-ink)]">{chapter.engine}</span>
+        <h1 className="headline max-w-[24ch] text-balance text-ink">{chapter.title}</h1>
       </header>
 
       <div className="flex flex-col gap-5">
@@ -129,8 +155,7 @@ function Reader({ chapter }: { chapter: Chapter }) {
         )}
         {!next && (
           <p className="text-caption text-ink-3">
-            That is the last chapter. Nothing is unlocked by finishing it. You simply know how the
-            app works now.
+            The last chapter. Nothing is unlocked by finishing it.
           </p>
         )}
       </nav>

@@ -149,6 +149,27 @@ export function NetWorthTimeline({
 
   const last = points[points.length - 1];
 
+  /*
+   * Map a pointer position to the nearest month.
+   *
+   * The same arithmetic `CumulativeSpend` uses. Two charts that scrub
+   * differently is a kit, and the viewBox conversion is the part that is easy
+   * to get subtly wrong twice.
+   */
+  const handleScrub = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const svg = svgRef.current;
+      if (!svg || points.length === 0) return;
+      const bounds = svg.getBoundingClientRect();
+      if (bounds.width === 0) return;
+      const localX = ((event.clientX - bounds.left) / bounds.width) * width;
+      const ratio = (localX - PADDING.left) / (width - PADDING.left - PADDING.right);
+      const index = Math.round(ratio * (points.length - 1));
+      setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
+    },
+    [points.length, width],
+  );
+
   if (!geometry || !last) {
     return (
       <p className="py-2 text-caption text-ink-2">
@@ -213,26 +234,6 @@ export function NetWorthTimeline({
   const activeIndex = scrubIndex ?? points.length - 1;
   const active = points[activeIndex] ?? last;
 
-  /*
-   * Map a pointer position to the nearest month.
-   *
-   * The same arithmetic `CumulativeSpend` uses. Two charts that scrub
-   * differently is a kit, and the viewBox conversion is the part that is easy
-   * to get subtly wrong twice.
-   */
-  const handleScrub = useCallback(
-    (event: React.PointerEvent<SVGSVGElement>) => {
-      const svg = svgRef.current;
-      if (!svg || points.length === 0) return;
-      const bounds = svg.getBoundingClientRect();
-      if (bounds.width === 0) return;
-      const localX = ((event.clientX - bounds.left) / bounds.width) * width;
-      const ratio = (localX - PADDING.left) / (width - PADDING.left - PADDING.right);
-      const index = Math.round(ratio * (points.length - 1));
-      setScrubIndex(Math.min(points.length - 1, Math.max(0, index)));
-    },
-    [points.length, width],
-  );
 
   return (
     <figure ref={chartRef} className="m-0 flex flex-col gap-2">

@@ -20,25 +20,63 @@
 
 import { useId, type ReactNode } from 'react';
 import clsx from 'clsx';
+/*
+ * Deep import on purpose, and the barrel's own header explains why it has to
+ * be one: the registry is kept out of `@/content/explain` so that rendering a
+ * 22px information button on a first-paint screen does not drag every
+ * explanation in behind it.
+ *
+ * The manual is the opposite case. It is lazily loaded and quarantined from
+ * the opening bundle, and its whole subject is the prose, so it can have the
+ * registry synchronously without costing first paint anything. `ManualView` is
+ * verified absent from the opening chunk in the manual's own test.
+ */
+import { EXPLANATIONS } from '@/content/explain/registry';
+import type { ChapterSlug } from './chapters/slugs';
 
 /* --- prose --------------------------------------------------------------- */
 
+/**
+ * The line a chapter opens with, taken from its own `Explain` entry.
+ *
+ * Not a copy of it. The brief asks that the short answer on a screen and the
+ * first line of the long one never drift, and the only way to be sure of that
+ * is for there to be one string. This renders
+ * `EXPLANATIONS[slug].short` directly, so the two cannot disagree even in
+ * principle.
+ *
+ * Every chapter slug is also an explanation id — `safe-to-spend`, `two-books`,
+ * `pots`, `cards`, `selling`, `checking` — which is what makes the lookup
+ * possible from the address the chapter already has. `chapterShortLines` in
+ * the manual's test asserts that stays true.
+ *
+ * Set larger than a `Passage` and in the darker ink: it is the answer, and
+ * everything under it is the working.
+ */
+export function Standfirst({ slug }: { slug: ChapterSlug }) {
+  return (
+    <p className="measure text-lead leading-relaxed text-ink">
+      {EXPLANATIONS[slug].short}
+    </p>
+  );
+}
+
 /** A paragraph of the chapter. Set at a reading measure, not a UI one. */
 export function Passage({ children }: { children: ReactNode }) {
-  return <p className="max-w-[62ch] text-body leading-relaxed text-ink-2">{children}</p>;
+  return <p className="measure text-body leading-relaxed text-ink-2">{children}</p>;
 }
 
 /** A heading inside a chapter. */
 export function Heading({ children }: { children: ReactNode }) {
   return (
-    <h3 className="max-w-[52ch] text-balance pt-2 text-lead font-medium text-ink">{children}</h3>
+    <h3 className="measure text-balance pt-2 text-lead font-medium text-ink">{children}</h3>
   );
 }
 
 /** Something worth pausing on. Used sparingly — one or two a chapter. */
 export function Aside({ children }: { children: ReactNode }) {
   return (
-    <div className="max-w-[62ch] border-l-2 border-liquid-dim bg-liquid-wash/40 px-4 py-3">
+    <div className="measure border-l-2 border-liquid-dim bg-liquid-wash/40 px-4 py-3">
       <p className="text-body leading-relaxed text-ink-2">{children}</p>
     </div>
   );
@@ -63,7 +101,7 @@ export function Formula({ children }: { children: ReactNode }) {
 /** A list where each item is a claim, not a step. */
 export function Points({ items }: { items: ReactNode[] }) {
   return (
-    <ul className="flex max-w-[62ch] flex-col gap-2">
+    <ul className="flex measure flex-col gap-2">
       {items.map((item, index) => (
         <li key={index} className="flex gap-3 text-body leading-relaxed text-ink-2">
           {/* A drawn rule rather than a dash character: it sits on the optical
@@ -102,13 +140,13 @@ export function Lab({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-line-strong bg-surface">
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line bg-raised px-4 py-3">
+    <section className="demo overflow-hidden">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-dashed border-[var(--tile-ink)] px-4 py-3">
         <h4 className="text-body font-medium text-ink">{title}</h4>
-        <span className="font-mono text-micro text-ink-3">{engine}</span>
+        <span className="font-mono text-micro text-[var(--tile-ink)]">{engine}</span>
       </header>
       <div className="flex flex-col gap-5 p-4">{children}</div>
-      <p className="border-t border-line-faint bg-sunken px-4 py-2.5 text-caption text-ink-3">
+      <p className="px-4 pb-3 text-caption text-ink-3">
         Made-up figures. Nothing here touches your records.
       </p>
     </section>

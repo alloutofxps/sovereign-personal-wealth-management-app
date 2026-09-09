@@ -669,6 +669,40 @@
     letter-spacing: -0.015em;
   }
 
+  /* -------------------------------------------------------------------------
+   * THE READING MEASURE
+   * -------------------------------------------------------------------------
+   * 65 characters, for the one part of the app that is meant to be read rather
+   * than scanned. Everything else is a figure, a row or a label and sets its
+   * own width from the layout.
+   *
+   * It is a class rather than five `max-w-[62ch]` literals because it had
+   * already drifted to three different values across the manual, none of them
+   * the 65 the brief asks for.
+   * ---------------------------------------------------------------------- */
+  .measure {
+    max-width: 65ch;
+  }
+
+  /* -------------------------------------------------------------------------
+   * A WORKED EXAMPLE, NOT A PARAGRAPH
+   * -------------------------------------------------------------------------
+   * The manual's labs run the real engines on invented figures, and they used
+   * to be `.card`-shaped — which is the shape of every other block on the
+   * page, so a live calculation read as prose with numbers in it.
+   *
+   * The wash is the chapter's own family, so a lab belongs to its chapter
+   * visibly. The dotted edge is the part doing the work: a dotted rule is the
+   * long-standing convention for "this is illustrative", and it separates a
+   * demonstration from a statement without needing a colour that would then
+   * mean something.
+   * ---------------------------------------------------------------------- */
+  .demo {
+    border-radius: var(--radius-card);
+    border: 1px dashed var(--tile-ink, var(--color-line-strong));
+    background: color-mix(in srgb, var(--tile-wash, var(--color-raised)) 45%, transparent);
+  }
+
   /* Sentence case, at a size a person can actually read. This replaces the
      tracked-out uppercase label that sat above 67 headings and was the loudest
      generated-design tell left in the app. */

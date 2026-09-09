@@ -11,23 +11,13 @@ import {
   type PotTargetKind,
 } from '@/core/goals';
 import { useMoney } from '@/app/money/useMoney';
-import {
-  Aside,
-  Controls,
-  Dial,
-  EngineSays,
-  Formula,
-  Heading,
-  Lab,
-  Passage,
-  Points,
-  Readout,
-  Switch,
-} from '../parts';
+import { Aside, Controls, Dial, EngineSays, Formula, Heading, Lab, Passage, Points, Readout, Standfirst, Switch } from '../parts';
 
 export function PotsChapter() {
   return (
     <>
+      <Standfirst slug="pots" />
+
       <Passage>
         Irregular costs are what wreck an otherwise sensible month. The car insurance, the boiler
         service, the flights in August. None of them is a surprise. Every one of them arrives as

@@ -12,11 +12,13 @@ import {
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
-import { Aside, Dial, EngineSays, Heading, Lab, Passage, Points, Readout } from '../parts';
+import { Aside, Dial, EngineSays, Heading, Lab, Passage, Points, Readout, Standfirst } from '../parts';
 
 export function ReconcilingChapter() {
   return (
     <>
+      <Standfirst slug="checking" />
+
       <Passage>
         Every figure in Sovereign is worked out from something you typed or imported. That is a
         good design and it has exactly one hole in it: nothing has ever confirmed that the total

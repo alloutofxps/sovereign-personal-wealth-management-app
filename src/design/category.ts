@@ -166,6 +166,50 @@ const ASSET_CLASSES: Record<string, Family> = {
   cash_equivalent: 'housing',
 };
 
+/**
+ * The six field-manual chapters.
+ *
+ * A chapter tile takes the hue of the thing its chapter is about, so the
+ * contents page indexes by the same colours the rest of the app teaches: the
+ * pots chapter is the teal that savings are, the cards chapter the clay that
+ * debts are.
+ *
+ * Four of the six mean something. `checking` and `two-books` do not, and are
+ * assigned by elimination — there is no money category for "your records agree
+ * with the bank" or for "every payment is stored twice", because neither is a
+ * kind of spending. They take what is left so that six tiles are six colours,
+ * and that is the whole of their claim. Do not read meaning into those two.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS NOT IN `PINNED`
+ *
+ * `checking` is a chapter AND an account class. It was in `PINNED` for about
+ * an hour and the contents page came out wrong: the reconciliation chapter
+ * drew verdigris, because `ACCOUNT_KINDS` maps `checking` to a current account
+ * and won the spread.
+ *
+ * Reordering the spread would have fixed the tile and turned every checking
+ * account's row square purple — a worse bug in a place nobody would look. The
+ * two keys are not in conflict; they are in different namespaces that happen
+ * to share an English word, and `familyFor` takes "anything with a stable id",
+ * which was always going to collide with something eventually.
+ *
+ * A chapter slug is a URL segment, not an account id. It gets its own lookup.
+ */
+const MANUAL_CHAPTERS: Record<string, Family> = {
+  // The home screen's one number, which is the app's spine.
+  'safe-to-spend': 'housing',
+  // Money at rest, the same teal `savings` carries.
+  pots: 'health',
+  // What is owed, the same clay `credit_card` and `loan` carry.
+  cards: 'obligation',
+  // Anything invested, the same blue `brokerage` carries.
+  selling: 'transport',
+  // By elimination. See above.
+  'two-books': 'food',
+  checking: 'leisure',
+};
+
 const PINNED: Record<string, Family> = {
   ...ASSET_CLASSES,
   ...SEEDED_CATEGORIES,
@@ -212,4 +256,15 @@ export function isSeededKey(key: string): boolean {
 /** The binding class for anything with a stable id. */
 export function familyClassFor(key: string | null | undefined): string {
   return familyClass(familyFor(key));
+}
+
+/**
+ * The family for a field-manual chapter.
+ *
+ * Separate from `familyFor` on purpose — see the note above `MANUAL_CHAPTERS`.
+ * A chapter slug is a URL segment and an account class is a column value, and
+ * the two sharing the word "checking" is a coincidence rather than a meaning.
+ */
+export function familyForChapter(slug: string): Family {
+  return MANUAL_CHAPTERS[slug] ?? 'housing';
 }

@@ -4,21 +4,13 @@ import { useMemo, useState } from 'react';
 import { minor } from '@/core/money';
 import { calculateSafeToSpend, type Commitment, type Cycle } from '@/core/liquidity';
 import { useMoney } from '@/app/money/useMoney';
-import {
-  Aside,
-  Controls,
-  Dial,
-  Heading,
-  Lab,
-  Passage,
-  Points,
-  Readout,
-  Switch,
-} from '../parts';
+import { Aside, Controls, Dial, Heading, Lab, Passage, Points, Readout, Standfirst, Switch } from '../parts';
 
 export function CardsChapter() {
   return (
     <>
+      <Standfirst slug="cards" />
+
       <Passage>
         A credit card is the single easiest way for a budget to be quietly wrong. The money is
         still in your account, so the app says you have it. The card statement arrives three weeks

@@ -27,7 +27,8 @@ import {
 } from '@/app/security/lock';
 import { toast } from '@/app/toast';
 import { lockNow } from '@/features/shell/LockGate';
-import { BottomSheet, Button, Card, Input } from '@/design/ui';
+import { BottomSheet, Button, Card, Explain, Input } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { RecoveryPhrase, phraseIsUsable } from './RecoveryPhrase';
 
 export function DataAndSecurity() {
@@ -42,6 +43,7 @@ export function DataAndSecurity() {
 /* --- export and restore --------------------------------------------------- */
 
 function YourDataCard() {
+  const explain = useExplain();
   const fileInput = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<PersistenceState | null>(null);
   const [backups, setBackups] = useState<BackupFile[]>([]);
@@ -102,12 +104,13 @@ function YourDataCard() {
   }
 
   return (
-    <Card label="Your data">
+    <Card
+      label="Your data"
+      action={<Explain topic="storage" label="where your data lives" onOpen={explain.open} />}
+    >
       <div className="flex flex-col gap-3">
         <p className="text-caption text-ink-2">
-          Everything lives on this device. An export is the whole database in one file: a real
-          SQLite file, which any database tool on earth can open. Being able to leave is the
-          point.
+          An export is the whole database in one ordinary SQLite file.
         </p>
 
         {state && (
@@ -141,7 +144,7 @@ function YourDataCard() {
                 toast(
                   granted
                     ? 'Your browser has agreed to keep your data.'
-                    : 'Your browser said no for now. Adding Sovereign to your home screen usually changes its mind.',
+                    : 'Your browser said no. Adding Sovereign to your home screen usually changes that.',
                 );
                 void refresh();
               }}
@@ -207,12 +210,16 @@ function YourDataCard() {
             />
           )}
 
-          <p className="text-caption text-ink-2">
-            Either way the file is scrambled so only you can open it. There is no way to recover
-            it if you lose what opens it, not by us and not by anyone. Without either you get a
-            plain SQLite file that anything can read, which is the right choice if you are moving
-            it into a spreadsheet.
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-caption text-ink-2">
+              Lose what opens it and nobody can get it back.
+            </p>
+            <Explain
+              topic="recovery-phrase"
+              label="your recovery phrase"
+              onOpen={explain.open}
+            />
+          </div>
 
           {problem && (
             <p className="text-caption text-caution" role="alert">
@@ -266,8 +273,7 @@ function YourDataCard() {
           />
 
           <p className="text-caption text-caution">
-            Everything currently recorded on this device will be replaced by what is in this
-            file. If you have anything here you want to keep, export it first.
+            This replaces everything on the device. Export first if you want to keep it.
           </p>
 
           {problem && (
@@ -286,6 +292,7 @@ function YourDataCard() {
           </div>
         </div>
       </BottomSheet>
+      {explain.sheet}
     </Card>
   );
 }

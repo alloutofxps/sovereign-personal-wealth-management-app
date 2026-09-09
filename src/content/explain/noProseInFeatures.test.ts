@@ -108,11 +108,7 @@ function isEmptyState(text: string): boolean {
  * ======================================================================== */
 
 const STILL_INLINE: readonly string[] = [
-  'features/manual/ManualView.tsx',
-  'features/settings/DataAndSecurity.tsx',
-  'features/settings/RecoveryPhrase.tsx',
-  'features/settings/SettingsView.tsx',
-  'features/storage/ProtectStorage.tsx',
+
 ];
 
 /** Windows separators, normalised, so the list above matches on any machine. */
