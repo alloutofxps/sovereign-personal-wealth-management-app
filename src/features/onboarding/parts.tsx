@@ -32,7 +32,9 @@ export function StepFrame({
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+/* A label above a control. Named `Labelled` and not `Field`, because
+ * `Field` is the surface in `src/design/ui` and this is not one. */
+export function Labelled({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

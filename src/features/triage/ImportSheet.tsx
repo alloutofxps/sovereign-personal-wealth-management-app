@@ -160,7 +160,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
     >
       {step === 'choose' ? (
         <div className="flex flex-col gap-5 pb-2">
-          <Field label="Which account is this from?">
+          <Labelled label="Which account is this from?">
             <div className="flex flex-col gap-2">
               {ACCOUNT_CHOICES.map((choice) => (
                 <Choice
@@ -172,7 +172,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
                 </Choice>
               ))}
             </div>
-          </Field>
+          </Labelled>
 
           <div className="flex flex-col gap-2">
             <input
@@ -227,7 +227,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
               </Outcome>
             )}
 
-            <Field label="What Sovereign will bring in">
+            <Labelled label="What Sovereign will bring in">
               <ul className="flex flex-col gap-1">
                 {preview.rows.slice(0, 6).map((row) => (
                   <li
@@ -247,9 +247,9 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
                   …and {preview.rows.length - 6} more.
                 </p>
               )}
-            </Field>
+            </Labelled>
 
-            <Field label="Are these the right way round?">
+            <Labelled label="Are these the right way round?">
               <Choice
                 selected={mapping.outflowIsPositive}
                 onClick={() => updateMapping({ outflowIsPositive: !mapping.outflowIsPositive })}
@@ -261,10 +261,10 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
               <p className="text-caption text-ink-3">
                 Tap to flip if the amounts above have the wrong sign.
               </p>
-            </Field>
+            </Labelled>
 
             {preview.rejected.length > 0 && (
-              <Field label={`${preview.rejected.length} lines could not be read`}>
+              <Labelled label={`${preview.rejected.length} lines could not be read`}>
                 <ul className="flex flex-col gap-1">
                   {preview.rejected.slice(0, 4).map((row) => (
                     <li key={row.lineNumber} className="text-caption text-ink-3">
@@ -276,7 +276,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
                   These are usually totals or notes at the bottom of a statement. They will be
                   left out; nothing else is affected.
                 </p>
-              </Field>
+              </Labelled>
             )}
           </div>
         )
@@ -286,7 +286,9 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

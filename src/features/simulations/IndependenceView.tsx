@@ -8,7 +8,17 @@ import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useIndependenceAssumptions, type IndependenceAssumptions } from '@/app/config/store';
 import { GrowthBand } from '@/charts/GrowthBand';
-import { AmountInput, BottomSheet, Button, Card, Explain, Money } from '@/design/ui';
+import {
+  AmountInput,
+  BottomSheet,
+  Button,
+  Card,
+  Explain,
+  Field,
+  Money,
+  StatCell,
+  StatStrip,
+} from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
 /** 3.0% to 4.5%, in quarter-point steps. */
@@ -50,12 +60,41 @@ export function IndependenceView() {
     [assumptions, annualSpending, invested, monthlyContribution],
   );
 
+  /* The milestone the screen is named after: enough to stop, living as you
+   * do now. The other three qualify it and stay in the list below. */
+  const full = result.milestones.find((milestone) => milestone.kind === 'full') ?? null;
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex items-center justify-between gap-3">
         <h1 className="headline text-ink">When you could stop</h1>
         <Explain topic="independence" label="when you could stop" onOpen={explain.open} />
       </header>
+
+      {/* The h1 asks a question and the answer was in the fourth card down,
+          inside a list of four milestones. It is the hero now.
+
+          Transport, the same hue as Invested: this is that screen's own
+          future, and the money it is about is the money held there. */}
+      {full && (
+        <Field family="transport">
+          <div className="min-w-0">
+            <span className="text-caption opacity-75">{full.label}</span>
+            <div className="figure pt-1 text-figure">
+              {full.reached ? 'You are there' : describeWhen(full.months)}
+            </div>
+          </div>
+
+          <StatStrip className="pt-5">
+            <StatCell label="What it takes">
+              <Money value={full.target} size="lead" tone="neutral" decimals="hide" />
+            </StatCell>
+            <StatCell label="Of the way there" hint={`${result.multiple} times a year`}>
+              <span className="tnum">{Math.round(full.percent)}%</span>
+            </StatCell>
+          </StatStrip>
+        </Field>
+      )}
 
       <Card label="What you are working with">
         <div className="flex flex-col gap-1">

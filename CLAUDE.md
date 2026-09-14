@@ -149,6 +149,49 @@ that carries both a `tone` prop and a colour utility in `className`.
 Radii are hierarchical: the bigger the object, the rounder it is. One radius on
 everything is what makes a screen read as a kit of identical boxes.
 
+### One field per screen, or a reason written down
+
+"Exactly one per screen" was honoured as "never more than one" and not as
+"always one". It existed on **three of sixteen routes**; the other thirteen led
+with a `Card` carrying their hero figure, which is one surface doing two jobs —
+the state the three-surface hierarchy was introduced to fix.
+
+Nine routes have one now. The other seven are on a list, each with an argument
+rather than a label, and `fields.test.ts` fails if a route is on neither list,
+if an owner stops drawing one, or if one appears anywhere else.
+
+The question every screen has to answer is **is there one number this screen
+exists for**, and "no" is a real answer:
+
+- **Yes:** Today, What you're worth, Invested, Envelopes, Pots, Payoff, Ahead's
+  forecast and where-it-went panes, When you could stop.
+- **No:** Review (a queue — the count is a property of the stack, and a field
+  pushes the first row off the fold), the whole record (a list), the calendar
+  (two figures of the same kind; the screen is about *when*), What if (a list of
+  sketches with no figure until one is open), Categories (a structure),
+  Settings, and the manual (prose).
+
+A field where the answer is no is worse than none: it promotes one figure out of
+several equals, or puts a number above a screen whose subject is not a number.
+
+**The hue is not a free choice.** Five of the nine take the hue their own chapter
+of the field manual already carries, so the contents page and the screens agree:
+`two-books` → food → Envelopes, `pots` → health → Pots, `cards` → obligation →
+Payoff, `selling` → transport → Invested, `safe-to-spend` → housing → Today.
+Ahead's forecast shares Today's housing because it is the same cash one step
+further out; When you could stop shares Invested's transport because it is that
+screen's own future.
+
+`family="none"` exists for exactly one case and must stay rare: where it went,
+whose field sits directly above a Sankey in which every ribbon is already one of
+the six hues. A seventh above them would be a colour statement about nothing.
+Reach for it only where a hue would be *wrong*, never where one is hard to pick.
+
+**`Field` is the surface and nothing else.** Eight components in six files were
+also called `Field` — each a label above a control — so `<Field label="How
+often">` read like the panel from the kit and no guard could tell them apart.
+They are `Labelled` now, and the surface has no `label` prop on purpose.
+
 ### The kit, and when each piece applies
 
 Everything in `src/design/ui` is here. Reach for one of these before writing a
@@ -159,7 +202,7 @@ files before anybody named it.
 
 | | What it is for | Not for |
 | --- | --- | --- |
-| `Field` | The one panel a screen is built around, holding its hero figure | Anything below the fold |
+| `Field` | The one panel a screen is built around, holding its hero figure. `family="none"` for the one screen whose subject is every family at once | Anything below the fold; any screen with no single hero figure — see the list above |
 | `Card` | A list, a chart, a group of controls | A consequence — that is `Outcome` |
 | `Tile` | One of a grid of category-coloured siblings | A single object with no siblings |
 | `QuietTile` | The one slot that is about everything rather than a category | Anything with a family |

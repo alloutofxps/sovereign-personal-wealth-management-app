@@ -221,8 +221,8 @@ needs no code.
 
 ### A4. Thirteen of sixteen screens have no field
 
-**Found in phase 7. Pre-existing from phases 4a–4d. Not fixed — out of a
-motion phase's scope, and recorded here rather than acted on.**
+**Found in phase 7. Pre-existing from phases 4a–4d. FIXED in phase 4e, which
+was inserted before the audit for the reason in the closing note below.**
 
 The brief's §4 and `CLAUDE.md` both say a field is the one panel a screen is
 built around, **exactly one per screen**. Measured with
@@ -247,6 +247,35 @@ This matters beyond consistency for two reasons:
 
 Deciding which thirteen screens get a field, and what figure each one is built
 around, is a phase 4 question. It should not be answered by a selector.
+
+---
+
+**Resolved in phase 4e.** It was not thirteen fields. Each of the thirteen was
+asked whether it has one number it exists for, and six did:
+
+| | |
+| --- | --- |
+| Envelopes | what is left to give a job |
+| Pots | what to put by each month |
+| Ahead · forecast | how long the money would last |
+| Ahead · where it went | what went out in the period |
+| Payoff | what goes towards the debt each month |
+| When you could stop | when — the milestone the h1 is named after, which was in the fourth card down |
+
+Seven did not, and that is now a written position rather than an omission: a
+queue, a list, a calendar whose subject is *when*, a list of sketches, a
+structure, settings, and prose. The reasons are in `NO_FIELD` in
+`fields.test.ts`, which fails if a route is on neither list.
+
+Measured after: nine routes with exactly one field, seven with none, and the
+seven are exactly the seven.
+
+**The note this finding was really about.** The three-surface hierarchy is the
+structural change the redesign was commissioned for, and it had reached three
+screens of sixteen while six phases of work went past on top of it. The audit
+would have measured an app that never received its main change. What made it
+findable was counting rather than looking — `document.querySelectorAll('.field')`
+on each route, sixteen numbers, three of them 1.
 
 ---
 

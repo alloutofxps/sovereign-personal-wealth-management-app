@@ -133,14 +133,14 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
               : { error: parsedApr.why })}
           />
 
-          <Field
+          <Labelled
             label="Smallest payment they accept"
             hint="Paying only this is what keeps a card alive for a decade, so the planner needs to know it."
           >
             <TapToEdit value={minPayment} onEdit={() => setEditingAmount('minimum')} />
-          </Field>
+          </Labelled>
 
-          <Field label="Credit limit" hint="Optional. Only used to tell you how close you are.">
+          <Labelled label="Credit limit" hint="Optional. Only used to tell you how close you are.">
             <TapToEdit value={creditLimit} onEdit={() => setEditingAmount('limit')} />
             {creditLimit > 0 && (
               <p className={clsx('text-caption', overLimit ? 'text-caution' : 'text-ink-3')}>
@@ -149,9 +149,9 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
                   : `${money.format(minor(creditLimit - balance))} of room left.`}
               </p>
             )}
-          </Field>
+          </Labelled>
 
-          <Field
+          <Labelled
             label="Day of the month it is due"
             hint="So the forecast puts the bill on the right day rather than guessing at the month end."
           >
@@ -169,7 +169,7 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
                 {ordinal(dueDay)}
               </span>
             </div>
-          </Field>
+          </Labelled>
 
           <BottomSheet
             open={editingAmount !== null}
@@ -201,7 +201,9 @@ export function DebtTermsSheet({ open, onClose, account, balance }: DebtTermsShe
   );
 }
 
-function Field({
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({
   label,
   hint,
   children,

@@ -557,7 +557,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                 placeholder="Work, Sam, the group…"
               />
 
-              <Field label="What kind of thing was it?">
+              <Labelled label="What kind of thing was it?">
                 <div className="grid grid-cols-2 gap-2">
                   {(Object.keys(CLAIM_KIND_LABELS) as ClaimKind[]).map((k) => (
                     <button
@@ -576,7 +576,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                     </button>
                   ))}
                 </div>
-              </Field>
+              </Labelled>
             </>
           ) : (
             <>
@@ -633,7 +633,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             </>
           )}
 
-          <Field label="How did you pay?">
+          <Labelled label="How did you pay?">
             <div className="flex flex-col gap-2">
               {PAYMENT_METHODS.map((m) => (
                 <button
@@ -657,7 +657,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                 </button>
               ))}
             </div>
-          </Field>
+          </Labelled>
 
           <Input
             label="Who did you pay? (optional)"
@@ -712,7 +712,9 @@ async function undoJustSaved(id: Parameters<typeof voidEntry>[0]) {
   }
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

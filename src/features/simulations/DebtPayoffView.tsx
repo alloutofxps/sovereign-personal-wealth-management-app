@@ -14,7 +14,7 @@ import {
 import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
-import { AmountInput, BottomSheet, Button, Card, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Field, Money } from '@/design/ui';
 
 export function DebtPayoffView() {
   const [, navigate] = useRoute();
@@ -61,17 +61,26 @@ export function DebtPayoffView() {
     <div className="flex flex-col gap-6">
       <Header />
 
-      <Card label="What you put towards it each month" accent="liquid">
-        <div className="flex flex-col gap-3">
-          <button type="button" onClick={() => setEditing(true)} className="target text-left">
-            <Money value={monthly} size="figure" tone="liquid" />
+      {/* Obligation clay, which is the brief's own choice for this screen and
+          the hue its `cards` chapter already carries in the manual. */}
+      <Field family="obligation">
+        <div className="min-w-0">
+          <span className="text-caption opacity-75">What you put towards it each month</span>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label="Change what you put towards it each month"
+            className="target press-row -mx-1 mt-1 block rounded-lg px-1 text-left"
+          >
+            <Money value={monthly} size="anchor" tone="inherit" />
           </button>
-          <p className="text-caption text-ink-2">
-            The least you can pay across everything is {money.format(minimum)} a month. Anything
-            above that is what actually clears the debt. Tap the figure to change it.
-          </p>
         </div>
-      </Card>
+
+        <p className="measure pt-3 text-caption opacity-80">
+          The least you can pay across everything is {money.format(minimum)} a month. Anything
+          above that is what actually clears the debt. Tap the figure to change it.
+        </p>
+      </Field>
 
       <section className="flex flex-col gap-3">
         <h2 className="section-title text-ink">

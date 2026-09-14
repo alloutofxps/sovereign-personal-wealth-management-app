@@ -31,8 +31,16 @@ export interface FieldProps {
    * Which family colours it. The field takes the hue of whatever it is about:
    * the housing verdigris on Today because that is the app's spine, the
    * transport blue on Invested, the obligation clay on Payoff.
+   *
+   * `'none'` is for the one screen whose subject is every family at once.
+   * Where it went is that screen — the Sankey under its field colours every
+   * ribbon by family, so a hue above it would be a claim about nothing. It
+   * goes sunken instead of washed, the way `QuietTile` does at tile size.
+   * Reach for it only when a hue would be *wrong*, not when one is hard to
+   * pick: a field with no family on a screen that has one is a field that
+   * stopped indexing anything.
    */
-  family?: Family;
+  family?: Family | 'none';
   className?: string;
 }
 
@@ -45,7 +53,17 @@ export interface FieldProps {
  * card and the hierarchy collapses back to one surface.
  */
 export function Field({ children, family = 'housing', className }: FieldProps) {
-  return <section className={clsx('field', familyClass(family), className)}>{children}</section>;
+  return (
+    <section
+      className={clsx(
+        'field',
+        family === 'none' ? 'field-quiet' : familyClass(family),
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
 }
 
 /* --- the tile ------------------------------------------------------------ */

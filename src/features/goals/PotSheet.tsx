@@ -146,7 +146,7 @@ export function PotSheet({
             placeholder="Car insurance, holiday, new laptop…"
           />
 
-          <Field label="How does this one work?">
+          <Labelled label="How does this one work?">
             <div className="flex flex-col gap-2">
               <Choice selected={kind === 'by_date'} onClick={() => setKind('by_date')}>
                 I need it all by a certain date
@@ -166,10 +166,10 @@ export function PotSheet({
                 />
               )}
             </div>
-          </Field>
+          </Labelled>
 
           {kind === 'by_date' && (
-            <Field label="Does it come round again?">
+            <Labelled label="Does it come round again?">
               <div className="grid grid-cols-2 gap-2">
                 <Choice selected={recurring} onClick={() => setRecurring(true)}>
                   Yes, every year
@@ -178,7 +178,7 @@ export function PotSheet({
                   No, just once
                 </Choice>
               </div>
-            </Field>
+            </Labelled>
           )}
 
           <p className="text-caption text-ink-3">
@@ -285,7 +285,8 @@ export function TopUpSheet({
 
 /* --- shared bits --------------------------------------------------------- */
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Not the `Field` surface from the kit. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

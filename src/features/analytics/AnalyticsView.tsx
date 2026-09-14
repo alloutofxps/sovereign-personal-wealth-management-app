@@ -23,7 +23,16 @@ import { useRoute } from '@/app/router';
 import { CategoryBars, MedianTickKey } from '@/charts/CategoryBars';
 import { SpendDonut } from '@/charts/SpendDonut';
 import { SankeyFlow, SankeyLegend } from '@/charts/SankeyFlow';
-import { BottomSheet, Button, Card, Money, PillRow } from '@/design/ui';
+import {
+  BottomSheet,
+  Button,
+  Card,
+  Field,
+  Money,
+  PillRow,
+  StatCell,
+  StatStrip,
+} from '@/design/ui';
 
 const HORIZONS: Horizon[] = ['this-month', 'last-month', 'trailing-90', 'year-to-date'];
 
@@ -96,6 +105,38 @@ export function AnalyticsView() {
         </Card>
       ) : (
         <>
+          {/* --- what went out -------------------------------------------
+           *
+           * The only field in the app with no family, and the reason is the
+           * Sankey directly beneath it: every ribbon there is already one of
+           * the six hues, so a seventh above them would be a colour statement
+           * about nothing. See `family="none"` in `Surfaces.tsx`. */}
+          {!data.flow.empty && (
+            <Field family="none">
+              <div className="min-w-0">
+                <span className="text-caption opacity-75">
+                  Went out · {data.period.label.toLowerCase()}
+                </span>
+                <div className="pt-1">
+                  <Money value={data.flow.totalOut} size="anchor" tone="inherit" />
+                </div>
+              </div>
+
+              <StatStrip className="pt-5">
+                <StatCell label="Money in">
+                  <Money value={data.flow.totalIn} size="lead" tone="neutral" decimals="hide" />
+                </StatCell>
+                <StatCell label="Still in your accounts">
+                  {data.flow.retained > 0 ? (
+                    <Money value={data.flow.retained} size="lead" tone="neutral" decimals="hide" />
+                  ) : (
+                    <span className="opacity-60">Nothing</span>
+                  )}
+                </StatCell>
+              </StatStrip>
+            </Field>
+          )}
+
           {/* --- the flow ------------------------------------------------- */}
           <Card label={`Where your money went · ${data.period.label.toLowerCase()}`}>
             {data.flow.empty ? (
@@ -104,11 +145,6 @@ export function AnalyticsView() {
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-caption text-ink-2">Money in</span>
-                  <Money value={data.flow.totalIn} size="lead" tone="liquid" />
-                </div>
-
                 <SankeyFlow
                   graph={data.flow}
                   format={(amount) => money.format(amount)}

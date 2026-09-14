@@ -31,7 +31,17 @@ import { saveScheduled, type Cadence } from '@/data/repositories/scheduleRepo';
 import { savePot } from '@/data/repositories/potsRepo';
 import { Button, Explain, Input } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
-import { AddedList, Aside, Choice, Field, MoneyBox, StepFrame, Term, TextBox, readAmount } from './parts';
+import {
+  AddedList,
+  Aside,
+  Choice,
+  Labelled,
+  MoneyBox,
+  StepFrame,
+  Term,
+  TextBox,
+  readAmount,
+} from './parts';
 
 /** What a step has put into the ledger, for the list under its form. */
 export interface Added {
@@ -65,7 +75,7 @@ export function StepPromise() {
         <Explain topic="recovery-phrase" label="your recovery phrase" onOpen={explain.open} />
       </div>
 
-      <Field label="What do you count in?">
+      <Labelled label="What do you count in?">
         <select
           value={currency}
           onChange={(event) => setCurrency(event.target.value)}
@@ -77,7 +87,7 @@ export function StepPromise() {
             </option>
           ))}
         </select>
-      </Field>
+      </Labelled>
 
       <p className="text-caption text-ink-3">
         Changeable later, but easier to get right now than after a year of records.
@@ -236,7 +246,7 @@ export function StepRegulars({ added, onAdded }: StepProps) {
 
       <MoneyBox label="How much" value={typed} onChange={setTyped} exponent={money.exponent} />
 
-      <Field label="How often">
+      <Labelled label="How often">
         <select
           value={cadence}
           onChange={(event) => setCadence(event.target.value as Cadence)}
@@ -248,7 +258,7 @@ export function StepRegulars({ added, onAdded }: StepProps) {
             </option>
           ))}
         </select>
-      </Field>
+      </Labelled>
 
       <Input
         label="Next one due"
@@ -355,9 +365,9 @@ export function StepSaving({ added, onAdded }: StepProps) {
     >
       <TextBox label="What is it for?" value={name} onChange={setName} placeholder="Car insurance" />
 
-      <Field label={kind === 'monthly' ? 'How much each month' : 'How much you need'}>
+      <Labelled label={kind === 'monthly' ? 'How much each month' : 'How much you need'}>
         <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
-      </Field>
+      </Labelled>
 
       <div className="flex flex-col gap-2">
         <span className="text-caption text-ink-2">
@@ -558,13 +568,13 @@ function AccountAdder({
         ))}
       </div>
 
-      <Field label="What do you call it?">
+      <Labelled label="What do you call it?">
         <TextBox value={name} onChange={setName} placeholder={nameHint} />
-      </Field>
+      </Labelled>
 
-      <Field label={amountLabel}>
+      <Labelled label={amountLabel}>
         <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
-      </Field>
+      </Labelled>
 
       {problem && (
         <p className="text-caption text-caution" role="alert">

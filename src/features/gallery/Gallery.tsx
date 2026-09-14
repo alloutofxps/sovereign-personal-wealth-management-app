@@ -325,7 +325,7 @@ function CurrencySection() {
       <Card accent="liquid">
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Currency">
+            <Labelled label="Currency">
               <select
                 value={currencyCode}
                 onChange={(e) => setCurrency(e.target.value)}
@@ -337,8 +337,8 @@ function CurrencySection() {
                   </option>
                 ))}
               </select>
-            </Field>
-            <Field label="Locale">
+            </Labelled>
+            <Labelled label="Locale">
               <select
                 value={locale}
                 onChange={(e) => setLocale(e.target.value)}
@@ -350,7 +350,7 @@ function CurrencySection() {
                   </option>
                 ))}
               </select>
-            </Field>
+            </Labelled>
           </div>
 
           <div className="rounded-md border border-line bg-sunken px-3.5 py-3">
@@ -458,7 +458,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-caption text-ink-2">{label}</span>

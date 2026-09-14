@@ -131,7 +131,7 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
         />
       ) : (
         <div className="flex flex-col gap-5 pb-2">
-          <Field label="Is this money going out, or coming in?">
+          <Labelled label="Is this money going out, or coming in?">
             <div className="grid grid-cols-2 gap-2">
               {(['bill', 'income'] as Kind[]).map((k) => (
                 <Choice key={k} selected={kind === k} onClick={() => setKind(k)}>
@@ -139,7 +139,7 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
                 </Choice>
               ))}
             </div>
-          </Field>
+          </Labelled>
 
           <Input
             label="What is it called?"
@@ -204,7 +204,9 @@ export function AddBillSheet({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

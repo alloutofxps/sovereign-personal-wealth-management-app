@@ -11,7 +11,6 @@
  * ======================================================================== */
 
 import { useEffect, useState } from 'react';
-import clsx from 'clsx';
 import { minor, mulDivRound, type Minor } from '@/core/money';
 import { describeCycle } from '@/core/liquidity';
 import { describeReadyToAssign } from '@/core/budget';
@@ -30,7 +29,19 @@ import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Card, Explain, Money, Ring, Tile } from '@/design/ui';
+import {
+  AmountInput,
+  BottomSheet,
+  Button,
+  Card,
+  Explain,
+  Field,
+  Money,
+  Ring,
+  StatCell,
+  StatStrip,
+  Tile,
+} from '@/design/ui';
 import { familyFor } from '@/design/category';
 import { useExplain } from '@/features/explain/useExplain';
 import { BudgetSettingsCard } from './BudgetSettingsCard';
@@ -127,19 +138,19 @@ export function BudgetGrid() {
         </button>
       </div>
 
-      {/* --- ready to assign ---------------------------------------------- */}
+      {/* --- ready to assign ----------------------------------------------
+       *
+       * The hero here is a sentence rather than a figure, and that is not a
+       * shortcut. Zero-based budgeting's whole point is that one sentence
+       * going to zero, and `describeReadyToAssign` builds it per branch with
+       * a test behind each — surplus, deficit and exactly nought all read
+       * differently. Splitting the amount out to set it larger would mean
+       * writing that wording again in a feature. */}
       {pill && data && (
-        <Card accent={pill.tone === 'deficit' ? 'deficit' : 'liquid'}>
+        <Field family="food">
           <div className="flex flex-col gap-2">
-            <p
-              className={clsx(
-                'text-lead font-medium',
-                pill.tone === 'deficit' ? 'text-deficit' : 'text-liquid',
-              )}
-            >
-              {pill.headline}
-            </p>
-            <p className="text-caption text-ink-2">{pill.detail}</p>
+            <p className="text-lead font-medium">{pill.headline}</p>
+            <p className="text-caption opacity-80">{pill.detail}</p>
 
             {data.plan.futureOverReach > 0 && (
               <p className="text-caption text-caution">
@@ -155,13 +166,32 @@ export function BudgetGrid() {
               </p>
             )}
 
+            <StatStrip className="pt-2">
+              <StatCell label="Assigned this period">
+                <Money
+                  value={data.plan.current.totalAssigned}
+                  size="lead"
+                  tone="neutral"
+                  decimals="hide"
+                />
+              </StatCell>
+              <StatCell label="Held in envelopes">
+                <Money
+                  value={data.plan.heldInEnvelopes}
+                  size="lead"
+                  tone="neutral"
+                  decimals="hide"
+                />
+              </StatCell>
+            </StatStrip>
+
             <div className="flex flex-wrap gap-2 pt-1">
               <Button variant="secondary" size="sm" onClick={() => setQuickAssign(true)}>
                 Quick assign
               </Button>
             </div>
           </div>
-        </Card>
+        </Field>
       )}
 
       {/* --- the grid ------------------------------------------------------ */}

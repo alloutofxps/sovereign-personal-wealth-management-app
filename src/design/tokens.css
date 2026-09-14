@@ -608,6 +608,17 @@
     background: var(--tile-wash, var(--color-liquid-wash));
   }
 
+  /* The one field whose subject is every category rather than one of them.
+     Sunken rather than washed, so it reads as the odd one out on purpose
+     rather than as a family somebody forgot to assign — the same reasoning
+     as `QuietTile`, at field size. Where it went is the case: the Sankey
+     under it colours every ribbon by family, so a seventh hue above it
+     would be a colour statement about nothing. */
+  .field-quiet {
+    --tile-ink: var(--color-ink);
+    --tile-wash: var(--color-sunken);
+  }
+
   /* 2. The card. Surface fill, hairline, contact shadow. Lists and charts. */
   .card {
     background: var(--color-surface);

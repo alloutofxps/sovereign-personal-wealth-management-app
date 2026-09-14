@@ -8,7 +8,7 @@ import { useDashboard } from '@/app/dashboard/useDashboard';
 import { describeDate } from '@/app/dates';
 import { useAppConfig } from '@/app/config/store';
 import { useMoney } from '@/app/money/useMoney';
-import { Button, Card, Explain, Money } from '@/design/ui';
+import { Button, Card, Explain, Field, Money, StatCell, StatStrip } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 import { PotSheet, TopUpSheet } from './PotSheet';
 import { ManualLink } from '@/features/manual/ManualLink';
@@ -53,31 +53,33 @@ export function PotsView() {
       </header>
 
       {pots.length > 0 && (
-        <Card accent={needThisMonth > 0 ? 'caution' : 'liquid'}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-end justify-between gap-4">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-caption text-ink-2">
-                  To put by each month
-                </span>
-                <Money value={monthlyTotal} size="figure" tone="neutral" />
-              </div>
-              {needThisMonth > 0 && (
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-caption text-ink-3">
-                    Still to go this month
-                  </span>
-                  <Money value={needThisMonth} size="lead" tone="caution" />
-                </div>
-              )}
+        <Field family="health">
+          <div className="min-w-0">
+            <span className="text-caption opacity-75">To put by each month</span>
+            <div className="pt-1">
+              <Money value={monthlyTotal} size="anchor" tone="inherit" />
             </div>
-            <p className="text-caption text-ink-2">
-              {needThisMonth > 0
-                ? 'Already held back from what is safe to spend.'
-                : 'Everything for this month is put by. Nothing else needs doing.'}
-            </p>
           </div>
-        </Card>
+
+          <p className="pt-2 text-caption opacity-80">
+            {needThisMonth > 0
+              ? 'Already held back from what is safe to spend.'
+              : 'Everything for this month is put by. Nothing else needs doing.'}
+          </p>
+
+          <StatStrip className="pt-5">
+            <StatCell label="Still to go this month">
+              {needThisMonth > 0 ? (
+                <Money value={needThisMonth} size="lead" tone="neutral" decimals="hide" />
+              ) : (
+                <span className="opacity-60">Nothing</span>
+              )}
+            </StatCell>
+            <StatCell label={pots.length === 1 ? 'Pot' : 'Pots'}>
+              <span className="tnum">{pots.length}</span>
+            </StatCell>
+          </StatStrip>
+        </Field>
       )}
 
       {pots.length === 0 ? (

@@ -415,7 +415,7 @@ function ChangeSheet({
         />
 
         {direction === 'out' && (
-          <Field label="What kind of spending">
+          <Labelled label="What kind of spending">
             <select
               value={category ?? ''}
               onChange={(event) => setCategory((event.target.value || null) as AccountId | null)}
@@ -428,7 +428,7 @@ function ChangeSheet({
                 </option>
               ))}
             </select>
-          </Field>
+          </Labelled>
         )}
 
         <Select
@@ -461,7 +461,9 @@ function ChangeSheet({
 
 /* --- shared bits ---------------------------------------------------------- */
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* A label above a control. Renamed off `Field`, which is the surface in
+ * `src/design/ui`; eight components in six files were called that. */
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-2">
       <span className="text-caption text-ink-2">{label}</span>

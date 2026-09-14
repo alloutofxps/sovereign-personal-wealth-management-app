@@ -20,7 +20,7 @@ import { calculateRunway, describeDuration, describeRunway } from '@/core/foreca
 import type { ForecastData } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { familyClassFor } from '@/design/category';
-import { Card, Explain, Money } from '@/design/ui';
+import { Card, Explain, Field, Money, StatCell, StatStrip } from '@/design/ui';
 import { useExplain } from '@/features/explain/useExplain';
 
 export function RunwayCard({ data }: { data: ForecastData }) {
@@ -71,34 +71,46 @@ export function RunwayCard({ data }: { data: ForecastData }) {
   });
 
   return (
-    <Card
-      label="How long your money would last"
-      action={
-        <Explain topic="runway" label="how long your money would last" onOpen={explain.open} />
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="figure text-figure text-ink">
-              {describeDuration(scenario.days)}
-            </span>
-            <span className="text-caption text-ink-3">
-              {changed ? 'with what you have switched off' : 'spending as you are now'}
-            </span>
+    <>
+      {/* The runway is the number this pane exists for, so it gets the field —
+          and housing, because it is Today's cash position one step further
+          out and sharing Today's hue says that. */}
+      <Field family="housing">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-caption opacity-75">How long your money would last</span>
+            <Explain
+              topic="runway"
+              label="how long your money would last"
+              onOpen={explain.open}
+              className="text-[var(--tile-ink)] opacity-70"
+            />
           </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="text-caption text-ink-3">A month costs</span>
-            <Money value={scenario.monthlyNeed} size="lead" />
-          </div>
+          <div className="figure pt-1 text-figure">{describeDuration(scenario.days)}</div>
+          <span className="text-caption opacity-70">
+            {changed ? 'with what you have switched off' : 'spending as you are now'}
+          </span>
         </div>
 
-        <p className="max-w-[46ch] text-caption text-ink-2">
+        <p className="measure pt-3 text-caption opacity-80">
           {describeRunway(asYouAre, bareBones, (amount) => money.format(amount))}
         </p>
 
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="section-title text-ink">What could you go without?</h3>
+        <StatStrip className="pt-5">
+          <StatCell label="A month costs">
+            <Money value={scenario.monthlyNeed} size="lead" tone="neutral" decimals="hide" />
+          </StatCell>
+          <StatCell label="Money you could use">
+            <Money value={data.usableCash} size="lead" tone="neutral" decimals="hide" />
+          </StatCell>
+        </StatStrip>
+      </Field>
+
+      {/* A list, so a card. This and the field above were one card, which is
+          how a screen ends up with its hero figure and a switch list reading
+          as the same kind of object. */}
+      <Card label="What could you go without?">
+        <div className="flex flex-col gap-2">
           <p className="max-w-[44ch] text-caption text-ink-2">
             Nothing here changes your records.
           </p>
@@ -172,8 +184,8 @@ export function RunwayCard({ data }: { data: ForecastData }) {
             </ul>
           )}
         </div>
-      </div>
+      </Card>
       {explain.sheet}
-    </Card>
+    </>
   );
 }
