@@ -83,7 +83,7 @@ export function Toasts() {
           {t.action && (
             <button
               type="button"
-              className="press shrink-0 text-caption font-medium text-liquid"
+              className="target press shrink-0 text-caption font-medium text-liquid"
               onClick={() => {
                 t.action?.run();
                 dismiss(t.id);

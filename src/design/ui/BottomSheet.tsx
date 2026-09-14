@@ -5,8 +5,12 @@
  *
  *  · The drag handle owns the gesture, not the sheet body, so a scrollable
  *    list inside the sheet scrolls instead of dragging the sheet away.
- *  · Height is `dvh`, and the bottom padding carries `safe-area-inset-bottom`,
- *    so the last control never sits under the iOS home indicator.
+ *  · Height is a percentage of the wrapper, which is `fixed inset-0` and so
+ *    is the real viewport. It was `100dvh`, which is a status-bar inset short
+ *    in an iOS home-screen app — the same defect the viewport lock in
+ *    `tokens.css` exists to document. The bottom padding carries
+ *    `safe-area-inset-bottom`, so the last control never sits under the home
+ *    indicator.
  *  · Focus is trapped and handed back, because `aria-modal` only tells
  *    assistive technology the rest is inert. It does not stop Tab leaving.
  *  · The shell behind recedes, the way a presented view does on iOS.
@@ -58,6 +62,13 @@ const DISMISS_VELOCITY = 0.5;
 const UPWARD_RESISTANCE = 0.2;
 /** Long enough for the slide-out to finish before the node leaves the tree. */
 const EXIT_MS = 260;
+/**
+ * How long the shell takes to recede, in agreement with `#app-shell`'s own
+ * transition in `tokens.css`. `motion.test.ts` fails if the two drift, because
+ * the consequence of them drifting is a compositor layer that is either
+ * released while it is still being animated or never released at all.
+ */
+const RECEDE_MS = 380;
 
 /**
  * How many sheets are open.
@@ -68,8 +79,86 @@ const EXIT_MS = 260;
  */
 let openSheets = 0;
 
+/**
+ * Where the shell is being asked to go, as opposed to where it is.
+ *
+ * The attribute is written a frame late, so a queued frame must read this
+ * rather than the value it closed over — two sheets opening and closing inside
+ * one frame queue two callbacks, and the second has to win.
+ */
+let recedeTarget = false;
+
+/**
+ * Which recede is the current one.
+ *
+ * Everything deferred — the frame that starts the transform, the timer that
+ * releases the layer — checks this before acting, so a superseded call does
+ * nothing rather than doing something late. Measured: three sheets mounting
+ * and unmounting in one frame produced three release timers, of which a
+ * single `clearTimeout` could cancel one. The other two were free to remove
+ * the promotion from under the next recede.
+ */
+let recedeGeneration = 0;
+
+/**
+ * Move the shell back, or bring it forward.
+ *
+ * The promotion is a separate step from the movement on purpose, and the frame
+ * between them is the whole point of it: `will-change` asks the compositor to
+ * prepare a layer, and asking in the same frame as the transform that needs it
+ * is asking too late. See `[data-presenting]` in `tokens.css` for what the
+ * attribute switches off as well as on.
+ *
+ * Under `prefers-reduced-motion` there is no transform to prepare for, so the
+ * attribute is never set: somebody who asked for no motion should not be
+ * paying for a compositor layer to deliver it.
+ */
 function setShellReceded(receded: boolean): void {
-  document.getElementById('app-shell')?.setAttribute('data-receded', String(receded));
+  const shell = document.getElementById('app-shell');
+  if (!shell) return;
+
+  // Several sheets stacked ask for the same recede. Deduped on the intent and
+  // NOT on the attribute, because the attribute is written a frame late: a
+  // check against it short-circuits nothing and each ask then queues its own
+  // frame, each of which starts its own release timer. Only the last would be
+  // tracked in `releaseLayer`, so the untracked ones survive a `clearTimeout`
+  // and can strip the promotion out from under the next recede. Measured: six
+  // `data-presenting` writes for one sheet before this line.
+  if (recedeTarget === receded) return;
+  recedeTarget = receded;
+
+  const still =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (still) {
+    shell.setAttribute('data-receded', String(receded));
+    return;
+  }
+
+  const generation = (recedeGeneration += 1);
+  shell.setAttribute('data-presenting', '');
+
+  requestAnimationFrame(() => {
+    if (generation !== recedeGeneration) return;
+    // `recedeTarget`, not the argument: see the note on it above.
+    shell.setAttribute('data-receded', String(recedeTarget));
+
+    // Timed from inside the frame, because the release has to measure from
+    // when the movement starts and not from when the hint was set. Those are
+    // 16ms apart in a visible page and unbounded apart in one that is not:
+    // `requestAnimationFrame` does not fire in a hidden or occluded page and
+    // `setTimeout` does. Measured with a MutationObserver, with this timer
+    // outside the frame: the layer was released at 454ms and the transform
+    // started at 717ms — promoted for nothing, then animated unpromoted.
+    //
+    // A timer rather than `transitionend`, which fires once per property and
+    // not at all when the attribute is set to the value it already had.
+    setTimeout(() => {
+      if (generation !== recedeGeneration) return;
+      shell.removeAttribute('data-presenting');
+    }, RECEDE_MS + 60);
+  });
 }
 
 export function BottomSheet({
@@ -316,7 +405,9 @@ export function BottomSheet({
           'border-t-[0.5px] border-x-[0.5px] border-[var(--hairline-strong)]',
           '[transition:transform_380ms_var(--ease-sheet)]',
           entered ? 'translate-y-0' : 'translate-y-full',
-          size === 'tall' ? 'h-[calc(100dvh-3.5rem)]' : 'max-h-[calc(100dvh-3.5rem)]',
+          // Percentages, not `dvh`: the parent is `fixed inset-0`, so 100% of
+          // it is the web view and `100dvh` is a status bar less than that.
+          size === 'tall' ? 'h-[calc(100%-3.5rem)]' : 'max-h-[calc(100%-3.5rem)]',
         )}
       >
         {/* The handle owns the gesture, so content below can still scroll. */}

@@ -66,8 +66,14 @@ into the chapter barrel.
   through `<Money>` / `useMoney`, which take the symbol from config via a
   centralised `Intl.NumberFormat`. There is a test that enforces this.
 - The ledger is single-currency; `assertLedgerCurrency` is the one gate.
-- Both books (FINANCIAL and BUDGET) must balance independently. Invariants
-  I1–I10 run on every write.
+- Both books (FINANCIAL and BUDGET) must balance independently.
+  **`assertBalanced` is what runs on every write** — it refuses any entry whose
+  lines do not sum to zero in each book it touches. The ten-property engine,
+  I1–I10, is *not* in the app bundle and is not called from the running app:
+  it is the second opinion the property tests hold the ledger to, over
+  generated sequences of entries. This file claimed I1–I10 ran on every write
+  for six phases; the note at the foot of `src/core/ledger/index.ts` said
+  otherwise, in writing, the whole time. The code was right.
 - **Projections are derived on the fly, never stored.**
 - **Net worth is never projected forward.** The dashed line on that chart is a
   comparison against a past savings rate, not a forecast. This refusal is
@@ -215,6 +221,44 @@ should exist at all — most of them repeat what the content beneath already say
 
 ---
 
+## Motion
+
+CSS and the Web Animations API. No animation library: one cost 40 kB gzipped of
+the opening bundle to do what `BottomSheet`, `SwipeRow`, `Tabs` and `Toasts`
+now do in hand-written pointer physics, and a library has to guess what a drag
+means where these know.
+
+- **At most one orchestrated moment per screen, and it is the field's.** No
+  card, tile or row animates in — a fade-and-slide on every container is the
+  generated default and it costs the screen the one thing an entrance is for,
+  which is saying where to look first. Every entrance is scoped to `.field`
+  descendants, because there is never more than one field on a screen, so the
+  scope makes the budget unbreakable rather than something to remember.
+  `motion.test.ts` holds it.
+- **Every keyframe declares only a `from`.** A keyframe list with no 100% entry
+  takes the element's own computed style as the destination, so the resting
+  state lives in the component where a reader can see it, there is no second
+  copy in a stylesheet to drift from it, and every animation ends exactly where
+  the screen would be with motion off. It is also why the ring can sweep to an
+  offset computed from its own radius without the CSS knowing the number.
+- **Reduced motion has to zero the delays, not only the durations.** A part
+  held at `opacity: 0` by `animation-fill-mode: backwards` stays invisible for
+  its delay however short the animation has been made. Measured: without
+  `animation-delay: 0s !important` the second field part still waited 70ms and
+  the ring 120ms. A script-created animation is not reachable by that block at
+  all, which is a reason to prefer CSS rather than a footnote to it.
+- **The figures do not count up.** It was the brief's first suggestion and it
+  is the one animation that would put a number on screen that is not the
+  person's money. Proportions are honest to animate — a ring filling to a
+  position never claims a different position on the way — and digits are not.
+- **`will-change` goes on `[data-presenting]`, never on the element.** A
+  permanent one holds a full-screen compositor layer for the whole session, and
+  it is also what makes the shell the containing block for every `fixed`
+  descendant. `BottomSheet` sets the attribute one frame ahead of the
+  transform: a hint that arrives in the same frame has nothing left to prepare,
+  which is how this optimisation is usually written and then quietly does not
+  apply.
+
 ## PWA and native-readiness
 
 The app must stay wrappable (Capacitor / PWABuilder) without a rewrite.
@@ -223,16 +267,44 @@ The app must stay wrappable (Capacitor / PWABuilder) without a rewrite.
   set in `vercel.json` and `public/_headers`. A Google Fonts `<link>` — or any
   CDN — is blocked outright. Self-host or inline. This is also what keeps
   `crossOriginIsolated` true, without which SQLite's OPFS VFS has no fallback.
-- **No `vh` / `dvh` for layout.** In an iOS home-screen app with a translucent
+- **No `vh` / `dvh` anywhere.** In an iOS home-screen app with a translucent
   status bar, `100dvh` comes back one status-bar inset short of the real web
   view. `html`, `body` and `#app-shell` are pinned with `position: fixed;
   inset: 0`. The comment in `tokens.css` has the full story; keep it.
+
+  The guard used to check those three selectors, which were the three places
+  somebody had already fixed. Six `dvh` survived inside the shell, and one was
+  the same defect one level down: the sheet sized itself `calc(100dvh - 3.5rem)`
+  inside a parent that is `fixed inset-0` and therefore already the viewport,
+  so a tall sheet stopped a status bar lower than asked. `tokens.test.ts` now
+  reads every file in `src`, comments stripped.
 - **`backdrop-filter` unprefixed only.** Writing the standard and `-webkit-`
   properties as a pair makes the production minifier collapse them to the
   prefixed one alone, which Chromium does not support — the dock shipped with
   no blur at all. The build adds prefixes from its own targets.
 - **44×44pt minimum** on every interactive target, info buttons included. Pad
-  the hit area; do not grow the glyph.
+  the hit area; do not grow the glyph. `.target` in `tokens.css` does it with a
+  pseudo-element, so the layout box stays the glyph's size and no per-site
+  arithmetic is needed; `.target-y` grows only the vertical axis, for a control
+  inside another pressable thing where 44px sideways would reach into its
+  parent.
+
+  Two things this cost, both of them measured rather than noticed:
+
+  - **An expanded hit area needs a z-index.** Expanding means overflowing a
+    layout slot, and whatever comes next in the document owns the overflow.
+    `Explain` had a 44×44 box, a class that said 44, and a hit area of 44×37,
+    because the caption paragraph after it painted over the bottom seven
+    pixels. See A2 in `AUDIT.md`.
+  - **A scroll container clips it.** `overflow-x: auto` forces the other axis
+    to `auto` as well, so a pill strip cuts its own children's hit areas back
+    to the pills' drawn height. The fix is a `py`/`-my` pair on the container:
+    padding for the overflow to land in, negative margin to give it back to the
+    layout.
+
+  A class saying 44 is not a target measuring 44. `targets.test.ts` holds the
+  static half; the browser sweep in its header comment is what finds a new
+  kind.
 - **No hover-only affordances.** Anything reachable only on `:hover` is
   unreachable on a phone.
 - **Status bar follows the theme** — `default` under Daylight,

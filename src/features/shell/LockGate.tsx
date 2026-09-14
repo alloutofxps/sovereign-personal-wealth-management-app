@@ -105,7 +105,10 @@ function LockScreen({ onUnlocked }: { onUnlocked: () => void }) {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-base px-6">
+    // `fixed inset-0` rather than `min-h-dvh`, matching `Opening` in the
+    // shell: this is the whole screen, and `dvh` is a status bar short of it
+    // in an iOS home-screen app.
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 bg-base px-6">
       <div className="flex flex-col items-center gap-2 text-center">
         <div
           className="flex size-11 items-center justify-center rounded-full bg-raised"

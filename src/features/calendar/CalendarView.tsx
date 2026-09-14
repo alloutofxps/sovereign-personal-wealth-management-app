@@ -75,7 +75,7 @@ export function CalendarView() {
             type="button"
             aria-label="The month before"
             onClick={() => setAnchor((a) => shiftMonth(a, -1))}
-            className="flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
           >
             <Chevron direction="left" />
           </button>
@@ -91,7 +91,7 @@ export function CalendarView() {
             type="button"
             aria-label="The month after"
             onClick={() => setAnchor((a) => shiftMonth(a, 1))}
-            className="flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
           >
             <Chevron direction="right" />
           </button>
@@ -177,7 +177,9 @@ function DayCell({ day, onOpen }: { day: CalendarDay; onOpen: () => void }) {
        * gets a fill, because today is the one cell that needs finding.
        */
       className={clsx(
-        'flex min-h-[3.25rem] flex-col items-center gap-1 rounded-md px-1 py-1.5',
+        // 42px wide in a 46px pitch, so a 44px hit area lands inside the gap
+        // and no two days can claim the same pixel.
+        'target flex min-h-[3.25rem] flex-col items-center gap-1 rounded-md px-1 py-1.5',
         'transition-colors',
         day.isToday
           ? 'bg-liquid-wash'

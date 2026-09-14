@@ -64,6 +64,9 @@ const PAGE_SIZE = 100;
  * so *after a write*, because that is when the query briefly has no data.
  */
 const NOTHING: readonly EntryWithPostings[] = [];
+/* Same reason as `NOTHING`. The tags map reaches a memo's dependencies,
+ * and `?? new Map()` there is a new map every render. */
+const NO_TAGS: ReadonlyMap<EntryId, TagRecord[]> = new Map();
 
 export function TransactionsView() {
   const [, navigate] = useRoute();
@@ -105,7 +108,7 @@ export function TransactionsView() {
     useCallback(() => tagsForEntries(entryIdKey === '' ? [] : (entryIdKey.split(' ') as EntryId[])), [entryIdKey]),
     TAG_TABLES,
   );
-  const tagsById = onEntries.data ?? new Map();
+  const tagsById = onEntries.data ?? NO_TAGS;
 
   // Only the tags actually present on what is chosen, so "take a tag off"
   // never offers something that would do nothing.
@@ -193,7 +196,7 @@ export function TransactionsView() {
           <button
             type="button"
             onClick={() => selection.begin()}
-            className="self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+            className="target self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
           >
             Choose several at once
           </button>
@@ -211,7 +214,7 @@ export function TransactionsView() {
           {...(typed ? { trailingIcon: <ClearButton onClear={() => setTyped('')} /> } : {})}
         />
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto py-[6px] -my-[6px]">
           <Chip active={filterChips.length > 0} onClick={() => setFiltering(true)} leading={<FilterIcon />}>
             Filters
           </Chip>

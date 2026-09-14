@@ -118,7 +118,10 @@ export function RunwayCard({ data }: { data: ForecastData }) {
                       type="button"
                       onClick={() => toggle(category.id)}
                       aria-pressed={!off}
-                      className="flex w-full items-center justify-between gap-3 py-2.5 text-left"
+                      // 44px of real box rather than a 42px one with `.target` on it. These
+                      // rows are stacked with no gap, so an expanded hit area has
+                      // nowhere to expand into -- the row below owns the pixel.
+                      className="flex w-full items-center justify-between gap-3 py-[11px] text-left"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         {/* The switch. Verdigris when on, because the category

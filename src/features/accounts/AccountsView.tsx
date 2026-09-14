@@ -256,7 +256,7 @@ export function AccountsView() {
             <button
               type="button"
               onClick={() => toggle(group)}
-              className="flex items-baseline justify-between gap-3 text-left"
+              className="target flex items-baseline justify-between gap-3 text-left"
               aria-expanded={!isCollapsed}
             >
               <span className="flex items-baseline gap-2">
@@ -282,7 +282,7 @@ export function AccountsView() {
                       <button
                         type="button"
                         onClick={() => navigate('investments')}
-                        className="text-caption text-liquid"
+                        className="target text-caption text-liquid"
                       >
                         See what you hold
                       </button>
@@ -378,7 +378,7 @@ export function AccountsView() {
           <button
             type="button"
             onClick={() => navigate('pots')}
-            className="text-caption text-liquid"
+            className="target text-caption text-liquid"
           >
             Manage
           </button>
@@ -520,7 +520,7 @@ function AccountRow({
 
   return (
     <li className="flex flex-col gap-3 px-4 py-3.5">
-      <button type="button" onClick={onOpen} className="flex items-start justify-between gap-3 text-left">
+      <button type="button" onClick={onOpen} className="target flex items-start justify-between gap-3 text-left">
         <div className="min-w-0">
           <p className="truncate text-body text-ink">{account.name}</p>
           <p className="truncate pt-0.5 text-caption text-ink-3">

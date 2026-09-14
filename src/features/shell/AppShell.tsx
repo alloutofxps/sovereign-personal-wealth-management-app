@@ -131,6 +131,26 @@ type Startup =
   | { state: 'ready'; storage: StorageStatus; firstFlight: boolean }
   | { state: 'failed'; message: string };
 
+/**
+ * Did the person arrive here meaning to record something?
+ *
+ * The home-screen shortcut in the web manifest says "Record a payment" and
+ * opens `/?action=add`. It has said that since the manifest was written and
+ * nothing read it, so the shortcut opened the dashboard and the person was
+ * left to find the record button themselves.
+ *
+ * The query is stripped on the way past. Without that a refresh reopens the
+ * sheet, which is the same shortcut firing again from a URL the person never
+ * chose the second time.
+ */
+function wantsToRecord(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') !== 'add') return false;
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+  return true;
+}
+
 export function AppShell() {
   const [startup, setStartup] = useState<Startup>({ state: 'opening' });
 
@@ -195,7 +215,7 @@ function Shell({ storage, firstFlight }: { storage: StorageStatus; firstFlight: 
   // Behind the lock, not in front of it: the wizard writes to the ledger, and
   // nothing writes to the ledger before somebody has proved they own it.
   const [onboarding, setOnboarding] = useState(firstFlight);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(wantsToRecord);
   const update = useAppUpdate();
   const unreviewed = useLiveQuery(useCallback(() => countUnreviewed(), []), STAGING_TABLES);
 
@@ -297,7 +317,9 @@ function View({
  * milliseconds reads as a fault rather than as progress.
  */
 function ViewLoading() {
-  return <div className="min-h-[60dvh]" aria-hidden="true" />;
+  // A height, not the screen's height. A spacer that lives for forty
+  // milliseconds has no reason to know how tall the web view is.
+  return <div className="min-h-[22rem]" aria-hidden="true" />;
 }
 
 function Opening() {

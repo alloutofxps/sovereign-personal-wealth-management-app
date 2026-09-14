@@ -207,7 +207,7 @@ export function AccountDetailSheet({
                     setDraftName(account.name);
                     setRenaming(true);
                   }}
-                  className="self-start text-caption text-liquid"
+                  className="target self-start text-caption text-liquid"
                 >
                   Change what this is called
                 </button>

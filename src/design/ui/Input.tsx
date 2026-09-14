@@ -127,7 +127,7 @@ export function ClearButton({ onClear, label = 'Clear' }: { onClear: () => void;
       type="button"
       onClick={onClear}
       aria-label={label}
-      className="flex size-7 items-center justify-center rounded-full text-ink-3 transition-colors hover:text-ink-2 active:bg-raised"
+      className="target flex size-7 items-center justify-center rounded-full text-ink-3 transition-colors hover:text-ink-2 active:bg-raised"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
         <path

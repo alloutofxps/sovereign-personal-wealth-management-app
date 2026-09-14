@@ -46,6 +46,12 @@ import {
 import { ProtectStorage } from '@/features/storage/ProtectStorage';
 import { ImportSheet } from './ImportSheet';
 
+/* An empty queue is one value, not a new one per render. `rows` feeds four
+ * memos and the selection's id list, and `?? []` gave all five a fresh
+ * identity on every render the queue had no data -- which is every render
+ * straight after a filing, when the live query is between results. */
+const NO_ROWS: readonly StagedRow[] = [];
+
 export function TriageView() {
   const [, navigate] = useRoute();
   const locale = useAppConfig((s) => s.locale);
@@ -59,7 +65,7 @@ export function TriageView() {
   const [alwaysFile, setAlwaysFile] = useState(false);
   const [splitLines, setSplitLines] = useState<DraftLine[]>([]);
 
-  const rows = queue.data ?? [];
+  const rows = queue.data ?? NO_ROWS;
 
   // Selection is pruned against the live queue, so a row filed in another tab
   // cannot still be sitting in a batch about to be filed again here.
@@ -264,7 +270,7 @@ export function TriageView() {
           <button
             type="button"
             onClick={() => selection.begin()}
-            className="self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+            className="target self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
           >
             Choose several at once
           </button>

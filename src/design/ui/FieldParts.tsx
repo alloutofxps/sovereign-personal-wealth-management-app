@@ -144,7 +144,11 @@ export function PillRow<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className={clsx('no-bar flex gap-1.5 overflow-x-auto', className)}
+      // `py`/`-my` in a pair: a scroll container clips its children's
+      // overflow, so without the padding the pills' 44px hit areas would be
+      // cut back to the 34px the pills are drawn at. The negative margin
+      // gives the padding back to the layout, so nothing moves.
+      className={clsx('no-bar flex gap-1.5 overflow-x-auto py-[5px] -my-[5px]', className)}
     >
       {options.map((option) => {
         const active = option.value === value;
@@ -155,7 +159,7 @@ export function PillRow<T extends string>({
             onClick={() => onChange(option.value)}
             aria-pressed={active}
             className={clsx(
-              'press shrink-0 whitespace-nowrap rounded-pill px-3.5 py-2 text-caption font-medium',
+              'target press shrink-0 whitespace-nowrap rounded-pill px-3.5 py-2 text-caption font-medium',
               'transition-colors outline-none focus-visible:ring-1 focus-visible:ring-liquid',
               active
                 ? 'bg-ink text-base'

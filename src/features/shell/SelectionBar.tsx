@@ -64,7 +64,7 @@ export function SelectionBar({
               onClick={action.onAction}
               disabled={action.disabled === true || count === 0}
               className={clsx(
-                'h-10 rounded-md px-3.5 text-caption font-medium transition-colors',
+                'target h-10 rounded-md px-3.5 text-caption font-medium transition-colors',
                 'disabled:cursor-not-allowed disabled:opacity-40',
                 action.primary
                   ? 'bg-liquid text-base hover:bg-liquid-bright'

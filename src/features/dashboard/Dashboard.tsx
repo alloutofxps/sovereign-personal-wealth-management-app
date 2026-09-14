@@ -168,21 +168,21 @@ export function Dashboard({ onAdd, unreviewed = 0 }: { onAdd: () => void; unrevi
               <button
                 type="button"
                 onClick={() => navigate('budget')}
-                className="text-caption font-medium text-liquid"
+                className="target text-caption font-medium text-liquid"
               >
                 Budget
               </button>
               <button
                 type="button"
                 onClick={() => navigate('analytics')}
-                className="text-caption font-medium text-liquid"
+                className="target text-caption font-medium text-liquid"
               >
                 Where it went
               </button>
               <button
                 type="button"
                 onClick={() => navigate('transactions')}
-                className="text-caption font-medium text-liquid"
+                className="target text-caption font-medium text-liquid"
               >
                 See everything
               </button>

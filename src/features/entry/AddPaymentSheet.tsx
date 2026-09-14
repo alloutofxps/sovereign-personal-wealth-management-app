@@ -595,7 +595,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                     lines.length >= 2 ? lines : [newDraftLine(), newDraftLine()],
                   );
                 }}
-                className="text-caption text-liquid"
+                className="target text-caption text-liquid"
               >
                 {splitting ? 'It was all one thing' : 'Split across categories'}
               </button>

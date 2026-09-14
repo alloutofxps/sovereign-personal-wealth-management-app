@@ -97,7 +97,7 @@ export function BudgetGrid() {
           type="button"
           aria-label="The period before"
           onClick={period.previous}
-          className="flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
         >
           <Chevron direction="left" />
         </button>
@@ -110,7 +110,7 @@ export function BudgetGrid() {
             <button
               type="button"
               onClick={period.backToNow}
-              className="text-caption text-liquid"
+              className="target text-caption text-liquid"
             >
               Back to now
             </button>
@@ -121,7 +121,7 @@ export function BudgetGrid() {
           type="button"
           aria-label="The period after"
           onClick={period.next}
-          className="flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
         >
           <Chevron direction="right" />
         </button>
@@ -281,7 +281,7 @@ export function BudgetGrid() {
         <button
           type="button"
           onClick={() => setShowSetup(true)}
-          className="self-start text-caption text-liquid"
+          className="target self-start text-caption text-liquid"
         >
           Change how your budget is divided up
         </button>

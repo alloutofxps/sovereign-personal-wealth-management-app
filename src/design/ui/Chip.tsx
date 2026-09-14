@@ -56,7 +56,11 @@ export function Chip({
           onClick={onClick}
           aria-pressed={active}
           disabled={disabled}
-          className="flex items-center gap-1.5 outline-none focus-visible:underline"
+          // `h-full`, because the button was as tall as its text inside a
+          // 32px chip: the top and bottom seven pixels of something that
+          // plainly looks pressable did not answer. `.target` takes the rest
+          // of the way to 44, where the row it sits in leaves the room.
+          className="target flex h-full items-center gap-1.5 outline-none focus-visible:underline"
         >
           {leading}
           <span>{children}</span>
@@ -76,7 +80,10 @@ export function Chip({
           onClick={onDismiss}
           aria-label={`Remove this filter`}
           className={clsx(
-            'flex size-5 items-center justify-center rounded-full transition-colors',
+            // `target-y` and not `target`: the chip itself is pressable, and a
+            // 44px-wide area on a 20px cross reaches back across the label, so
+            // tapping the word would remove the filter. Vertical is free.
+            'target-y flex size-5 items-center justify-center rounded-full transition-colors',
             active ? 'text-liquid hover:bg-liquid-dim/30' : 'text-ink-3 hover:text-ink-2',
           )}
         >

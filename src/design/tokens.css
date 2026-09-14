@@ -562,13 +562,24 @@
     color: var(--color-ink);
   }
 
+  /* A duration of nothing is not the same as no motion.
+   *
+   * This block set durations and left the delays alone, which is fine while
+   * nothing in the app is staggered and wrong the moment something is: a part
+   * held at `opacity: 0` by `animation-fill-mode: backwards` stays invisible
+   * for its delay however short the animation itself has been made. The
+   * entrance below staggers four parts across 200ms, so without the two delay
+   * lines somebody who asked for no motion would get a screen that assembles
+   * itself in silence instead of one that is simply there. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
       scroll-behavior: auto !important;
     }
   }
@@ -783,6 +794,158 @@
     transition-duration: 120ms;
     transition-timing-function: var(--ease-press);
   }
+
+  /* -------------------------------------------------------------------------
+   * THE HIT AREA
+   * -------------------------------------------------------------------------
+   * 44x44 on a control drawn smaller than that, without moving anything.
+   *
+   * The glyph's size and the target's size are two different measurements and
+   * the whole difficulty is that one class usually sets both. A 22px info
+   * circle grown to 44px is a shouting icon; a 22px target is one nobody can
+   * press with a thumb. So the target is a pseudo-element: hit-testing lands
+   * on it and routes to the button, and the box the layout measures is still
+   * the glyph's.
+   *
+   * `max(100%, 44px)` rather than a flat 44px, so putting this on something
+   * already larger cannot shrink its target.
+   *
+   * Two things to know before using it:
+   *
+   *  · It overflows. On a control inside another pressable thing -- a dismiss
+   *    cross on a filter chip -- the overflow lands on the parent's own target
+   *    and the child wins, so tapping the chip's label would remove the chip.
+   *    Use `target-y` there, which grows the axis with nothing in it.
+   *  · An ancestor with `overflow: hidden` clips it, and a clipped hit area
+   *    fails silently. `targets.test.ts` measures the result in a real layout
+   *    rather than trusting the class to have worked.
+   * ---------------------------------------------------------------------- */
+  .target,
+  .target-y {
+    position: relative;
+    /* Not decoration. An expanded hit area overflows its layout slot, and a
+       later sibling in normal flow paints over the overflow — which is how
+       `Explain` spent two phases with a box of 44x44 and a hit area of
+       44x37, the bottom seven pixels covered by the caption beneath it. */
+    z-index: 1;
+  }
+
+  .target::after,
+  .target-y::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    height: max(100%, 44px);
+  }
+
+  .target::after {
+    width: max(100%, 44px);
+  }
+
+  /* Vertical only. The horizontal axis is left alone because whatever is
+     beside it is close enough that 44px would reach into it. */
+  .target-y::after {
+    width: 100%;
+  }
+
+  /* -------------------------------------------------------------------------
+   * THE ONE MOMENT
+   * -------------------------------------------------------------------------
+   * A screen gets one orchestrated entrance and it belongs to the field. No
+   * card, tile or row animates in: a fade-and-slide on every container is the
+   * generated default, and it costs the screen the one thing an entrance is
+   * for, which is saying where to look first.
+   *
+   * The budget is not a matter of taste here, it is structural. There is
+   * exactly one field per screen, so scoping every entrance to `.field`
+   * descendants makes "one moment per screen" something the rule cannot
+   * express a violation of, rather than something to remember. `motion.test.ts`
+   * holds the scope.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY EVERY KEYFRAME HERE HAS ONLY A `from`
+   *
+   * A keyframe list with no 100% entry takes the element's own computed style
+   * as the destination. That is worth more than the two lines it saves:
+   *
+   *  · The resting state is written once, in the component, where a reader
+   *    looking at the markup can see it. There is no second copy in a
+   *    stylesheet to drift from it.
+   *  · Every animation therefore ends exactly where the screen would have been
+   *    with motion switched off. An entrance cannot leave a part somewhere the
+   *    layout did not put it.
+   *  · It composes with whatever the element already had. The ring's final
+   *    offset is a presentation attribute computed from its own radius, and
+   *    the sweep below animates to it without knowing what it is.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THIS IS CSS AND NOT THE WEB ANIMATIONS API
+   *
+   * Both were on the table. CSS won every part of it, and the deciding reason
+   * is the paragraph above: a script animation has to be told where to finish,
+   * which means reading a computed value and writing it back — a layout read
+   * on first paint, and a second copy of the resting state. It also has to
+   * check `prefers-reduced-motion` itself, because the block above cannot
+   * reach a script-created animation.
+   *
+   * The figures deliberately do not count up. It was the brief's first
+   * suggestion and it is the one thing here that would put a number on screen
+   * that is not the person's money — €1,240 arriving through €300 and €800 is
+   * three false balances to save a beat, in an app whose only real asset is
+   * that its numbers can be trusted. The parts move; the digits are right from
+   * the first frame. The proportions are honest to animate because a ring
+   * filling to a position never claims a different position on the way.
+   * ---------------------------------------------------------------------- */
+
+  /* The parts of the field, in the order a person reads them. */
+  @keyframes field-part-in {
+    from {
+      opacity: 0;
+      transform: translateY(9px);
+    }
+  }
+
+  .field > * {
+    animation: field-part-in 400ms var(--ease-sheet) backwards;
+  }
+
+  .field > :nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .field > :nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  /* Everything past the third arrives together. A stagger that keeps counting
+     stops reading as an order and starts reading as a queue. */
+  .field > :nth-child(n + 4) {
+    animation-delay: 200ms;
+  }
+
+  /* The arc draws itself from empty to wherever it belongs. `--ring-span` is
+     the circumference, set by `Ring` from its own radius.
+
+     Only inside a field, and that clause is the whole budget: Envelopes puts a
+     ring on every tile, and twelve dials sweeping at once is the
+     fade-and-slide-on-every-card mistake with better geometry.
+
+     There was a matching `bar-grow` here for `MiniBar`. Measured before
+     keeping it: there are two MiniBars in the app, one in a sheet and one on a
+     card, and `.field .bar-fill` matches nothing on any screen. A rule for a
+     case that does not exist is not forward-looking, it is dead. */
+  @keyframes ring-sweep {
+    from {
+      stroke-dashoffset: var(--ring-span);
+    }
+  }
+
+  .field .ring-arc {
+    animation: ring-sweep 620ms var(--ease-sheet) 120ms backwards;
+  }
+
 }
 
 @layer utilities {
@@ -827,9 +990,25 @@
  * whole screen recedes together, tab bar included, the way a presented view
  * does on iOS.
  *
- * `will-change` is scoped to the moment a sheet is presenting rather than
- * declared permanently — see phase 7 — because a permanent one keeps a
- * full-screen compositor layer alive for the entire session.
+ * ---------------------------------------------------------------------------
+ * WHY `will-change` IS ON AN ATTRIBUTE AND NOT ON THE ELEMENT
+ *
+ * It was declared here permanently, which is the one way to write it that is
+ * always wrong. `will-change: transform` allocates a compositor layer the size
+ * of the screen and holds it for the whole session — memory that is doing
+ * nothing on every screen where no sheet is open, which is most of them.
+ *
+ * It is also the reason the containing-block trap above exists at all: it is
+ * `will-change` that makes the shell the containing block for every
+ * `position: fixed` descendant. Scoped to `[data-presenting]`, that promotion
+ * now appears and disappears mid-interaction — which is harmless only because
+ * `inset: 0` already made the shell's rectangle and the viewport the same box.
+ * That fix is what makes this one safe.
+ *
+ * `BottomSheet` sets the attribute one frame ahead of `data-receded`. A hint
+ * that arrives in the same frame as the transform it is hinting about has
+ * nothing left to prepare, which is the usual way this optimisation is
+ * written and then quietly does not apply.
  * ======================================================================== */
 #app-shell {
   position: fixed;
@@ -839,7 +1018,27 @@
     transform 380ms var(--ease-sheet),
     border-radius 380ms ease,
     opacity 380ms ease;
+}
+
+#app-shell[data-presenting] {
   will-change: transform;
+}
+
+/* The dock's blur, for the length of the movement only.
+ *
+ * `backdrop-filter` is the most expensive thing on this screen to composite,
+ * and inside an ancestor that is scaling it has to be resolved again on every
+ * frame against a backdrop that moved. Dropping it for the 380ms of the
+ * recede costs nothing a person can see — by then the dock is behind a
+ * backdrop, at 85% opacity, 6.5% smaller — and it is the difference between
+ * compositing a full-screen blur 23 times and not.
+ *
+ * The opaque background is the `@supports` fallback's own value, so the dock
+ * reads as a solid surface for the duration rather than as flat translucency
+ * with the colour of whatever is behind it showing through. */
+#app-shell[data-presenting] .glass {
+  backdrop-filter: none;
+  background: var(--color-surface);
 }
 
 #app-shell[data-receded='true'] {

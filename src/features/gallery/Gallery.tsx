@@ -64,7 +64,7 @@ export function Gallery() {
   const [cleared, setCleared] = useState(0);
 
   return (
-    <div className="min-h-dvh bg-base pb-24">
+    <div className="min-h-full bg-base pb-24">
       <Header />
 
       <main className="mx-auto flex w-full max-w-[42rem] flex-col gap-10 px-4 pt-6">

@@ -57,7 +57,12 @@ export default defineConfig({
         // same file ends up in there twice, so the glob stands aside for the
         // four the plugin already owns. The favicon and the Apple touch icon
         // are not among them, and stay matched here.
-        globIgnores: ['manifest.webmanifest', 'icons/icon-*.png', 'icons/maskable-*.png'],
+        globIgnores: [
+          'manifest.webmanifest',
+          'icons/icon-*.png',
+          'icons/maskable-*.png',
+          'icons/monochrome-*.png',
+        ],
         // The SQLite binary is roughly 900 KB and the default ceiling is two,
         // so raise it explicitly rather than discovering the miss in the wild.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
@@ -79,8 +84,12 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#08090A',
-        theme_color: '#08090A',
+        // Daylight is the default theme, so these are Daylight's ground --
+        // the same value `index.html` gives `theme-color` before the pre-paint
+        // script has anything to switch. They were `#08090A`, which is the
+        // pre-redesign ground and is in neither theme.
+        background_color: '#edf0ea',
+        theme_color: '#edf0ea',
         categories: ['finance', 'productivity'],
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -91,10 +100,22 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'maskable',
           },
+          {
+            src: 'icons/monochrome-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'monochrome',
+          },
         ],
+        /* Both of these pointed at query strings and nothing in the app has
+         * ever read one, so both opened the dashboard. `action=add` is
+         * honoured now — see `wantsToRecord` in `AppShell` — because the
+         * record sheet is a boolean the shell already owns. The other is a
+         * route, so it goes through the router the way every other link in
+         * the app does. */
         shortcuts: [
-          { name: 'Add transaction', url: '/?action=add' },
-          { name: 'Triage queue', url: '/?view=triage' },
+          { name: 'Record a payment', url: '/?action=add' },
+          { name: 'Things to review', url: '/#/triage' },
         ],
       },
       devOptions: { enabled: false },

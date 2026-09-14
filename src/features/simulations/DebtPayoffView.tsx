@@ -63,7 +63,7 @@ export function DebtPayoffView() {
 
       <Card label="What you put towards it each month" accent="liquid">
         <div className="flex flex-col gap-3">
-          <button type="button" onClick={() => setEditing(true)} className="text-left">
+          <button type="button" onClick={() => setEditing(true)} className="target text-left">
             <Money value={monthly} size="figure" tone="liquid" />
           </button>
           <p className="text-caption text-ink-2">
@@ -186,7 +186,7 @@ function PlanCard({
   note: string;
 }) {
   return (
-    <button type="button" onClick={onSelect} aria-pressed={selected} className="text-left">
+    <button type="button" onClick={onSelect} aria-pressed={selected} className="target text-left">
       <div
         className={clsx(
           'flex h-full flex-col gap-2 rounded-lg border p-4 transition-colors',

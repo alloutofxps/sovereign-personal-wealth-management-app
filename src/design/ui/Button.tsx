@@ -21,8 +21,11 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  // 44px minimum target on md/lg — the iOS touch guideline, not a rounded 40.
-  sm: 'h-9 px-3 text-caption rounded-md gap-1.5',
+  // md and lg are 44px and 52px of real box. `sm` is 36px because a row of
+  // three of them at 44 is a wall, so it carries `.target` instead: the box
+  // stays 36 and the hit area is 44, which is the distinction the brief is
+  // making when it says pad the target and leave the glyph alone.
+  sm: 'target h-9 px-3 text-caption rounded-md gap-1.5',
   md: 'h-11 px-4 text-body rounded-md gap-2',
   lg: 'h-[3.25rem] px-5 text-lead rounded-lg gap-2',
 };

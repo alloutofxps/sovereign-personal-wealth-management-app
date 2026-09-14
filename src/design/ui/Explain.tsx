@@ -41,8 +41,12 @@ export function Explain({ topic, label, onOpen, className }: ExplainProps) {
       onClick={() => onOpen(topic)}
       aria-label={`More about ${label}`}
       className={clsx(
-        // The target, not the glyph: 44px square, centred on a 22px circle.
-        'press -m-[11px] flex size-11 shrink-0 items-center justify-center',
+        // The target, not the glyph. This was a real 44px box pulled back in
+        // by `-m-[11px]`, which measured 44x37 on screen: the box overflowed
+        // its 22px slot and the caption paragraph after it painted over the
+        // bottom seven pixels. `.target` puts the area in a pseudo-element
+        // with a z-index, so nothing in normal flow can cover it.
+        'target press flex size-[22px] shrink-0 items-center justify-center',
         'text-ink-3 transition-colors [@media(hover:hover)]:hover:text-ink-2',
         'outline-none focus-visible:text-ink',
         className,

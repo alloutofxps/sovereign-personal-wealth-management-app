@@ -22,7 +22,7 @@
  * ======================================================================== */
 
 import clsx from 'clsx';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface RingProps {
   /** 0 to 1. Values above 1 are clamped: an arc cannot lap itself legibly. */
@@ -94,6 +94,11 @@ export function Ring({
         strokeDasharray={circumference}
         strokeDashoffset={circumference * (1 - filled)}
         transform={`rotate(-90 ${centre} ${centre})`}
+        // Named and given its own span so the entrance in tokens.css can sweep
+        // it from empty without being told where to stop. Inside a field only;
+        // see THE ONE MOMENT there.
+        className="ring-arc"
+        style={{ '--ring-span': circumference } as CSSProperties}
         // Strokes are specified in the drawing's own units, so without this
         // they scale with the viewBox and land heavier on a wider phone.
         vectorEffect="non-scaling-stroke"

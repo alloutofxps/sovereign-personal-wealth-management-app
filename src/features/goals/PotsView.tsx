@@ -135,7 +135,7 @@ function PotCard({
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <button type="button" onClick={onEdit} className="text-left">
+            <button type="button" onClick={onEdit} className="target text-left">
               <h3 className="truncate text-body font-medium text-ink">{pot.name}</h3>
             </button>
             <p className="pt-0.5 text-caption text-ink-3">

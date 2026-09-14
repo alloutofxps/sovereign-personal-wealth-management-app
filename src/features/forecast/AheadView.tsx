@@ -91,13 +91,13 @@ export function AheadView() {
       ) : pane === 'calendar' ? (
         <CalendarView />
       ) : pane === 'analytics' ? (
-        <Suspense fallback={<div className="min-h-[50dvh]" aria-hidden="true" />}>
+        <Suspense fallback={<div className="min-h-[22rem]" aria-hidden="true" />}>
           <AnalyticsView />
         </Suspense>
       ) : pane === 'debt' ? (
         <DebtPayoffView />
       ) : (
-        <Suspense fallback={<div className="min-h-[50dvh]" aria-hidden="true" />}>
+        <Suspense fallback={<div className="min-h-[22rem]" aria-hidden="true" />}>
           <WhatIfView />
         </Suspense>
       )}

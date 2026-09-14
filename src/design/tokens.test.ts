@@ -349,4 +349,40 @@ describe('the shell is pinned to the viewport by its edges', () => {
       /h-dvh|min-h-dvh|h-screen/,
     );
   });
+
+  /* The three selectors above were the three places somebody had already
+   * fixed. Six `dvh` survived inside the shell because nothing was looking
+   * anywhere else, and one of them was the same defect one level down: the
+   * sheet sized itself `calc(100dvh - 3.5rem)` inside a parent that is
+   * `fixed inset-0` and therefore already the real viewport, so a tall sheet
+   * stopped a status bar lower than it was asked to.
+   *
+   * So the guard reads every file instead. Comments are stripped first,
+   * because the reasoning about `dvh` has to stay written down. */
+  it('uses no viewport unit anywhere in src', () => {
+    const withoutComments = (text: string) =>
+      text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          walk(full);
+        } else if (/\.(tsx?|css)$/.test(entry) && !/\.test\.tsx?$/.test(entry)) {
+          const text = withoutComments(readFileSync(full, 'utf8'));
+          text.split('\n').forEach((row, index) => {
+            if (/\b\d+(?:\.\d+)?(?:d|s|l)?v(?:h|w|min|max)\b|\b(?:min-)?[hw]-(?:dvh|svh|lvh|screen)\b/.test(row)) {
+              offenders.push(`${full.slice(SRC.length)}:${index + 1}  ${row.trim().slice(0, 70)}`);
+            }
+          });
+        }
+      }
+    };
+    walk(SRC);
+
+    expect(offenders, 'a viewport unit is a status-bar inset short in an iOS home-screen app').toEqual(
+      [],
+    );
+  });
 });
