@@ -232,7 +232,7 @@ export function Switch<T extends string>({
               'rounded-md border px-3 py-2 text-caption transition-colors',
               value === option.value
                 ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                : 'border-line bg-raised text-ink-2 hover:border-line-strong',
+                : 'border-line bg-raised text-ink-2 [@media(hover:hover)]:hover:border-line-strong',
             )}
           >
             {option.label}

@@ -126,7 +126,7 @@ function Reader({ chapter }: { chapter: Chapter }) {
         <button
           type="button"
           onClick={() => navigate('manual')}
-          className="press-row -mx-1 rounded-md px-1 text-caption text-ink-3 hover:text-ink-2"
+          className="press-row -mx-1 rounded-md px-1 text-caption text-ink-3 [@media(hover:hover)]:hover:text-ink-2"
         >
           ← All chapters
         </button>

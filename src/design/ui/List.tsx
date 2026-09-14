@@ -95,7 +95,7 @@ export function ListItem({
             // A row is wide, so the same scale reads as a much larger
             // movement than it does on a button. `press-row` is gentler.
             'press-row transition-colors outline-none',
-            selected ? 'bg-liquid-wash' : 'active:bg-raised hover:bg-raised/60',
+            selected ? 'bg-liquid-wash' : 'active:bg-raised [@media(hover:hover)]:hover:bg-raised/60',
             'focus-visible:ring-1 focus-visible:ring-liquid focus-visible:ring-inset',
           )}
         >

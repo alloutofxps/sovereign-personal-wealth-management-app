@@ -474,7 +474,7 @@ function LockChoice({
         'flex flex-col gap-0.5 rounded-md border px-3 py-2.5 text-left transition-colors ' +
         (selected
           ? 'border-liquid-dim bg-liquid-wash'
-          : 'border-line bg-raised hover:border-line-strong')
+          : 'border-line bg-raised [@media(hover:hover)]:hover:border-line-strong')
       }
     >
       <span className={selected ? 'text-body text-liquid' : 'text-body text-ink'}>{title}</span>

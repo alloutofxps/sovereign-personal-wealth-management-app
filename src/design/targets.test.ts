@@ -5,11 +5,24 @@
  * under 44px. None of them looked wrong: they were the sizes somebody had
  * chosen, and the hit area is invisible.
  *
- * This is the static half of that sweep. It reads each pressable tag, works
- * out the box it pins on itself, and requires `.target` or `.target-y` on
- * anything that pins itself small. It cannot measure a hit area -- the suite
- * runs under node with no DOM, and the two things the browser sweep found that
- * no static check could are worth writing down:
+ * This is the static half of that sweep, and the half is worth being precise
+ * about. It reads each pressable tag, works out the box it *pins* on itself,
+ * and requires `.target` or `.target-y` on anything that pins itself small.
+ *
+ * It therefore does not see a control whose height comes from its text — a tab,
+ * an inline link — because there is no number in the markup to compare against
+ * 44. Flagging those would mean estimating a line height, and an estimate
+ * standing in for a measurement is what M1 in AUDIT.md exists to warn about.
+ * Applying `.target` to all 54 of them unconditionally was the alternative and
+ * is worse: the utility brings a full-size pseudo-element, and on a container
+ * with nested interactive children it would cover them. A measured 44px is not
+ * worth an unmeasured dead button.
+ *
+ * What covers those is the browser sweep in the comment below, plus a direct
+ * assertion on any structure a fix depends on — see the segmented control at
+ * the foot of this file.
+ *
+ * The two things the browser sweep found that no static check could:
  *
  *   · `Explain` had a 44×44 box, a class saying 44, and a hit area of 44×37,
  *     because the negative margin made it overflow its slot and the caption
@@ -105,22 +118,18 @@ function isPressable(name: string, body: string): boolean {
 /** These are not pressable boxes and `Input` does not model them. */
 const NOT_A_PRESSABLE_BOX = /type\s*=\s*["'{]?\s*(checkbox|radio|range|file|hidden)\b/;
 
-/**
- * The one shape that cannot reach 44 and the reason it cannot.
+/* There is no exemption list, and that is deliberate.
  *
- * A member of a segmented control is bounded by the height of the control it
- * is inside. `Tabs` is a 38px track — 30px tabs in 4px of padding — and it is
- * a scroll container, so a hit area cannot overflow it either: overflow clips
- * at the padding box, which puts a hard ceiling of 38px on any target in
- * there. Reaching 44 means the strip becomes 52px, which is a visible change
- * to the app's most prominent navigation control and not a phase 7 decision.
+ * `Tabs` was on one for a day. A member of a segmented control is bounded by
+ * the height of the control it sits in, and the control is a scroll container,
+ * so the hit area was clipped at 38px and the only apparent way out was a
+ * taller strip. The way out was to move the scrolling to a wrapper: the track
+ * keeps its 38px box and the wrapper carries the 3px of padding a 44px target
+ * needs. Nothing in the app cannot reach 44.
  *
- * Measured: 30×N, against WCAG 2.2 AA's 24×24 floor (2.5.8, met) and AAA's
- * 44×44 (2.5.5, not met). A mis-tap selects a neighbouring pane, which is
- * reversible and visible.
+ * So an empty exemption list would be worse than none, because the next thing
+ * added to it would inherit a precedent that was itself a missed fix.
  */
-const KNOWN_CEILING = [join('design', 'ui', 'Tabs.tsx')];
-
 describe('every pressable target is 44px or asks for a hit area', () => {
   const offenders: string[] = [];
   let pressables = 0;
@@ -133,7 +142,6 @@ describe('every pressable target is 44px or asks for a hit area', () => {
       if (NOT_A_PRESSABLE_BOX.test(body)) continue;
       pressables += 1;
       if (/\btarget(?:-y)?\b/.test(body)) continue;
-      if (KNOWN_CEILING.some((known) => relative.endsWith(known))) continue;
 
       const height = pinned(body, 'y');
       const width = pinned(body, 'x');
@@ -157,6 +165,57 @@ describe('every pressable target is 44px or asks for a hit area', () => {
   });
 });
 
+/* ===========================================================================
+ * THE SEGMENTED CONTROL
+ * ---------------------------------------------------------------------------
+ * `Tabs` reaches 44px by a structure rather than by a number, so the number is
+ * not what there is to check. Three things hold it up, and losing any one of
+ * them puts the strip silently back to a 30px target:
+ *
+ *  · The scroll container is a WRAPPER, not the track. `overflow-x: auto`
+ *    forces the other axis to `auto` too, so whichever element scrolls clips
+ *    its children vertically at its own padding box.
+ *  · That wrapper carries 3px of vertical padding for the hit area to overflow
+ *    into, and -3px of margin so the padding costs the layout nothing.
+ *  · The track carries `w-max min-w-full`, because a background on the scroll
+ *    container used to cover the scrolled-out tabs for free and now has to be
+ *    asked to.
+ * ======================================================================== */
+
+describe('the segmented control keeps the structure its 44px depends on', () => {
+  const TABS = readFileSync(join(SRC, 'design', 'ui', 'Tabs.tsx'), 'utf8');
+
+  it('puts the scrolling on a wrapper rather than on the track', () => {
+    const scroller = TABS.indexOf('ref={scrollRef}');
+    const track = TABS.indexOf('role="tablist"');
+    expect(scroller, 'the wrapper is gone').toBeGreaterThan(-1);
+    expect(track, 'the track is gone').toBeGreaterThan(-1);
+    expect(scroller, 'the track must be inside the scroller').toBeLessThan(track);
+
+    // And the track must not scroll, or it clips again.
+    const trackTag = TABS.slice(track, TABS.indexOf('>', TABS.indexOf('className', track)));
+    expect(trackTag).not.toMatch(/overflow-x-auto/);
+  });
+
+  it('gives the wrapper the padding a 44px target needs, and takes it back', () => {
+    const scroller = TABS.slice(TABS.indexOf('ref={scrollRef}'), TABS.indexOf('role="tablist"'));
+    expect(scroller).toMatch(/overflow-x-auto/);
+    // 30px tab + 4px of track padding either side = 38px; 44 needs 3px more.
+    expect(scroller, 'no room for the hit area to overflow into').toMatch(/py-\[3px\]/);
+    expect(scroller, 'the padding has to cost the layout nothing').toMatch(/-my-\[3px\]/);
+  });
+
+  it('keeps the track’s fill under the tabs when they scroll', () => {
+    const track = TABS.slice(TABS.indexOf('role="tablist"'), TABS.indexOf('{indicator'));
+    expect(track, 'w-max is what makes the fill as wide as the tabs').toMatch(/w-max/);
+    expect(track, 'min-w-full is what keeps flex-1 sharing the space').toMatch(/min-w-full/);
+  });
+
+  it('asks for the hit area on the tab itself', () => {
+    expect(TABS.slice(TABS.indexOf('role="tab"'))).toMatch(/'target press relative/);
+  });
+});
+
 describe('nothing is reachable only with a pointer', () => {
   /**
    * A `hover:` variant that changes *visibility* hides an affordance from
@@ -175,6 +234,38 @@ describe('nothing is reachable only with a pointer', () => {
         });
     }
     expect(offenders, 'an affordance behind :hover does not exist on a phone').toEqual([]);
+  });
+
+  /**
+   * A tap leaves the element in `:hover` on iOS until something else is
+   * touched, so the last thing pressed stays lit. `Numpad` found that and its
+   * comment says so; `[@media(hover:hover)]` is the gate, and 57 declarations
+   * across 37 files did not have it.
+   *
+   * Every hover style, not only the background fills. A sticky underline or a
+   * sticky text colour is the same mechanism with a quieter symptom, and a rule
+   * with an exception for the quiet ones is a rule nobody can check.
+   *
+   * Asserted empty rather than pinned to a count. A guard that says "no more
+   * than seventeen" reads green while nothing is fixed.
+   */
+  it('gates every hover style behind a device that has a pointer', () => {
+    const offenders: string[] = [];
+    for (const file of files(SRC)) {
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .forEach((row, index) => {
+          // Hide the gated ones and the media query's own text, then see what
+          // `hover:` is left standing on its own.
+          const bare = row
+            .replace(/\[@media\(hover:hover\)\]:hover:/g, ' ')
+            .replace(/@media\s*\(\s*hover\s*:\s*hover\s*\)/g, ' ');
+          if (bare.includes('hover:')) {
+            offenders.push(`${file.slice(SRC.length)}:${index + 1}  ${row.trim().slice(0, 58)}`);
+          }
+        });
+    }
+    expect(offenders, 'an ungated hover style sticks after a tap on iOS').toEqual([]);
   });
 
   it('keeps the swipe row’s buttons reachable by focus rather than by pointer', () => {

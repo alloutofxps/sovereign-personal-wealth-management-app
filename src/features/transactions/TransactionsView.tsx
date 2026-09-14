@@ -196,7 +196,7 @@ export function TransactionsView() {
           <button
             type="button"
             onClick={() => selection.begin()}
-            className="target self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+            className="target self-start pt-1 text-caption text-liquid [@media(hover:hover)]:hover:text-liquid-bright"
           >
             Choose several at once
           </button>

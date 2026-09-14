@@ -383,7 +383,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                   'flex-1 rounded-sm px-3 py-2 text-caption font-medium transition-colors',
                   kind === flow
                     ? 'bg-raised text-ink'
-                    : 'text-ink-3 hover:text-ink-2',
+                    : 'text-ink-3 [@media(hover:hover)]:hover:text-ink-2',
                 )}
               >
                 {FLOW_LABELS[flow]}
@@ -490,7 +490,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
             <button
               type="button"
               onClick={() => setStep('amount')}
-              className="text-liquid underline-offset-4 hover:underline"
+              className="text-liquid underline-offset-4 [@media(hover:hover)]:hover:underline"
             >
               <Money value={amount} size="lead" tone="neutral" />
             </button>
@@ -511,7 +511,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
               'flex flex-1 items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors',
               fronted
                 ? 'border-liquid-dim bg-liquid-wash'
-                : 'border-line bg-raised hover:border-line-strong',
+                : 'border-line bg-raised [@media(hover:hover)]:hover:border-line-strong',
             )}
           >
             <span
@@ -569,7 +569,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                         'rounded-md border px-3 py-2.5 text-left text-body transition-colors',
                         claimKind === k
                           ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                          : 'border-line bg-raised text-ink hover:border-line-strong',
+                          : 'border-line bg-raised text-ink [@media(hover:hover)]:hover:border-line-strong',
                       )}
                     >
                       {CLAIM_KIND_LABELS[k]}
@@ -645,7 +645,7 @@ export function AddPaymentSheet({ open, onClose }: AddPaymentSheetProps) {
                     'flex items-center justify-between rounded-md border px-3.5 py-3 text-body transition-colors',
                     paidWith === m.key
                       ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                      : 'border-line bg-raised text-ink hover:border-line-strong',
+                      : 'border-line bg-raised text-ink [@media(hover:hover)]:hover:border-line-strong',
                   )}
                 >
                   <span>{m.label}</span>

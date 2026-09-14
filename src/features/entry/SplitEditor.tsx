@@ -118,7 +118,7 @@ export function SplitEditor({
                     type="button"
                     onClick={() => onChange(lines.filter((l) => l.key !== line.key))}
                     aria-label={`Remove part ${index + 1}`}
-                    className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:text-caution"
+                    className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors [@media(hover:hover)]:hover:text-caution"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                       <path

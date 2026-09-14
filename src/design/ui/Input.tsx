@@ -80,7 +80,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             'placeholder:text-ink-3',
             'transition-colors outline-none',
             'focus-visible:border-liquid focus-visible:ring-1 focus-visible:ring-liquid',
-            error ? 'border-caution' : 'border-line-strong hover:border-ink-4',
+            error ? 'border-caution' : 'border-line-strong [@media(hover:hover)]:hover:border-ink-4',
             leadingIcon && 'pl-10',
             trailingIcon && 'pr-10',
             className,
@@ -127,7 +127,7 @@ export function ClearButton({ onClear, label = 'Clear' }: { onClear: () => void;
       type="button"
       onClick={onClear}
       aria-label={label}
-      className="target flex size-7 items-center justify-center rounded-full text-ink-3 transition-colors hover:text-ink-2 active:bg-raised"
+      className="target flex size-7 items-center justify-center rounded-full text-ink-3 transition-colors [@media(hover:hover)]:hover:text-ink-2 active:bg-raised"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
         <path

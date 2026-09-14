@@ -45,7 +45,7 @@ export function Chip({
         active
           ? 'border-liquid-dim bg-liquid-wash text-liquid'
           : 'border-[var(--hairline)] bg-raised text-ink-2',
-        interactive && !active && 'hover:border-line-strong hover:text-ink',
+        interactive && !active && '[@media(hover:hover)]:hover:border-line-strong [@media(hover:hover)]:hover:text-ink',
         disabled && 'opacity-50',
         className,
       )}
@@ -84,7 +84,7 @@ export function Chip({
             // 44px-wide area on a 20px cross reaches back across the label, so
             // tapping the word would remove the filter. Vertical is free.
             'target-y flex size-5 items-center justify-center rounded-full transition-colors',
-            active ? 'text-liquid hover:bg-liquid-dim/30' : 'text-ink-3 hover:text-ink-2',
+            active ? 'text-liquid [@media(hover:hover)]:hover:bg-liquid-dim/30' : 'text-ink-3 [@media(hover:hover)]:hover:text-ink-2',
           )}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">

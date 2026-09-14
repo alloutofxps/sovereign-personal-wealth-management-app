@@ -229,7 +229,7 @@ function Row({
       type="button"
       onClick={onClick}
       aria-expanded={expandable ? expanded : undefined}
-      className={clsx(shared, 'transition-colors hover:bg-raised active:bg-raised')}
+      className={clsx(shared, 'transition-colors [@media(hover:hover)]:hover:bg-raised active:bg-raised')}
     >
       {body}
     </button>

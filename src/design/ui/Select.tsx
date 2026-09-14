@@ -94,7 +94,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
             'text-body text-ink transition-colors outline-none',
             'focus-visible:border-liquid focus-visible:ring-1 focus-visible:ring-liquid',
             'disabled:text-ink-3',
-            error ? 'border-caution' : 'border-line-strong hover:border-ink-4',
+            error ? 'border-caution' : 'border-line-strong [@media(hover:hover)]:hover:border-ink-4',
             className,
           )}
           {...rest}

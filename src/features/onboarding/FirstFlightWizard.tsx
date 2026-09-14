@@ -89,7 +89,7 @@ export function FirstFlightWizard({ onFinished }: { onFinished: () => void }) {
           type="button"
           onClick={() => void finish()}
           disabled={leaving}
-          className="shrink-0 rounded-md px-2 py-1 text-caption text-ink-3 hover:text-ink-2"
+          className="shrink-0 rounded-md px-2 py-1 text-caption text-ink-3 [@media(hover:hover)]:hover:text-ink-2"
         >
           {last ? 'Close' : 'Not now'}
         </button>

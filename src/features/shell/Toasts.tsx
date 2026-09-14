@@ -96,7 +96,7 @@ export function Toasts() {
             type="button"
             aria-label="Dismiss"
             onClick={() => dismiss(t.id)}
-            className="press shrink-0 text-ink-3 hover:text-ink-2"
+            className="press shrink-0 text-ink-3 [@media(hover:hover)]:hover:text-ink-2"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
               <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

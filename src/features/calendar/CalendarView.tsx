@@ -75,7 +75,7 @@ export function CalendarView() {
             type="button"
             aria-label="The month before"
             onClick={() => setAnchor((a) => shiftMonth(a, -1))}
-            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors [@media(hover:hover)]:hover:bg-raised [@media(hover:hover)]:hover:text-ink"
           >
             <Chevron direction="left" />
           </button>
@@ -91,7 +91,7 @@ export function CalendarView() {
             type="button"
             aria-label="The month after"
             onClick={() => setAnchor((a) => shiftMonth(a, 1))}
-            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+            className="target flex size-9 items-center justify-center rounded-md text-ink-2 transition-colors [@media(hover:hover)]:hover:bg-raised [@media(hover:hover)]:hover:text-ink"
           >
             <Chevron direction="right" />
           </button>
@@ -184,7 +184,7 @@ function DayCell({ day, onOpen }: { day: CalendarDay; onOpen: () => void }) {
         day.isToday
           ? 'bg-liquid-wash'
           : hasEvents
-            ? 'hover:bg-raised'
+            ? '[@media(hover:hover)]:hover:bg-raised'
             : '',
         !day.inMonth && 'opacity-35',
         day.isPast && !day.isToday && 'opacity-60',

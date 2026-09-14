@@ -313,7 +313,7 @@ function Choice({
         'rounded-md border px-3 py-2.5 text-left text-body transition-colors',
         selected
           ? 'border-liquid-dim bg-liquid-wash text-liquid'
-          : 'border-line bg-raised text-ink hover:border-line-strong',
+          : 'border-line bg-raised text-ink [@media(hover:hover)]:hover:border-line-strong',
       )}
     >
       {children}

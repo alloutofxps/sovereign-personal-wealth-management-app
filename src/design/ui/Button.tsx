@@ -14,10 +14,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT: Record<ButtonVariant, string> = {
   // Emerald means "this releases or confirms capital". Used sparingly.
-  primary: 'bg-liquid text-base font-medium hover:bg-liquid-bright active:bg-liquid-bright',
-  secondary: 'bg-raised text-ink border-[0.5px] border-[var(--hairline-strong)] hover:bg-overlay',
-  ghost: 'text-ink-2 hover:text-ink hover:bg-raised',
-  quiet: 'text-liquid hover:text-liquid-bright',
+  primary: 'bg-liquid text-base font-medium [@media(hover:hover)]:hover:bg-liquid-bright active:bg-liquid-bright',
+  secondary: 'bg-raised text-ink border-[0.5px] border-[var(--hairline-strong)] [@media(hover:hover)]:hover:bg-overlay',
+  ghost: 'text-ink-2 [@media(hover:hover)]:hover:text-ink [@media(hover:hover)]:hover:bg-raised',
+  quiet: 'text-liquid [@media(hover:hover)]:hover:text-liquid-bright',
 };
 
 const SIZE: Record<ButtonSize, string> = {

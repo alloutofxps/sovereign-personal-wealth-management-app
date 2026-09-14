@@ -227,7 +227,7 @@ export function PaymentDetailsSheet({
                 <button
                   type="button"
                   onClick={() => setEditingNote(true)}
-                  className="text-caption text-liquid hover:text-liquid-bright"
+                  className="text-caption text-liquid [@media(hover:hover)]:hover:text-liquid-bright"
                 >
                   {note ? 'Change the note' : 'Add a note'}
                 </button>

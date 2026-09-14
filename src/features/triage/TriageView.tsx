@@ -270,7 +270,7 @@ export function TriageView() {
           <button
             type="button"
             onClick={() => selection.begin()}
-            className="target self-start pt-1 text-caption text-liquid hover:text-liquid-bright"
+            className="target self-start pt-1 text-caption text-liquid [@media(hover:hover)]:hover:text-liquid-bright"
           >
             Choose several at once
           </button>
@@ -529,7 +529,7 @@ function RowShell({
         aria-pressed={chosen}
         className={clsx(
           'block w-full text-left transition-colors',
-          chosen ? 'bg-liquid-wash' : 'hover:bg-raised',
+          chosen ? 'bg-liquid-wash' : '[@media(hover:hover)]:hover:bg-raised',
         )}
       >
         {children}
@@ -635,7 +635,7 @@ function Choice({
       onClick={onClick}
       className={clsx(
         'flex flex-col gap-1 rounded-md border border-line bg-raised px-3.5 py-3 text-left',
-        'transition-colors hover:border-line-strong',
+        'transition-colors [@media(hover:hover)]:hover:border-line-strong',
       )}
     >
       <span className="text-body text-ink">{title}</span>

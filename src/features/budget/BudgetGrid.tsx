@@ -97,7 +97,7 @@ export function BudgetGrid() {
           type="button"
           aria-label="The period before"
           onClick={period.previous}
-          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors [@media(hover:hover)]:hover:bg-raised [@media(hover:hover)]:hover:text-ink"
         >
           <Chevron direction="left" />
         </button>
@@ -121,7 +121,7 @@ export function BudgetGrid() {
           type="button"
           aria-label="The period after"
           onClick={period.next}
-          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+          className="target flex size-10 items-center justify-center rounded-md text-ink-2 transition-colors [@media(hover:hover)]:hover:bg-raised [@media(hover:hover)]:hover:text-ink"
         >
           <Chevron direction="right" />
         </button>

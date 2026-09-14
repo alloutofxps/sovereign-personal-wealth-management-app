@@ -18,7 +18,7 @@ npm run dev
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck, bundle, generate the service worker |
 | `npm run typecheck` | `tsc --noEmit` under full strict |
-| `npm test` | Vitest — 963 tests in 46 files |
+| `npm test` | Vitest. The engines by property over generated entries, the copy per branch of every sentence it builds, and the design system against its own rules — contrast, token existence, the motion budget, hit areas, hover gating, no prose in a component |
 | `npm run lint` | ESLint, including the import-layering rule |
 | `npm run icons` | Regenerate `public/icons/*` and the favicon from the vector mark |
 
@@ -111,12 +111,15 @@ Imports point leftwards only, and ESLint enforces it.
 | `src/data/**` | SQLite WASM in a worker over OPFS, repositories, migrations, a live-query bus. |
 | `src/app/**` | Hooks and selectors joining core to data. |
 | `src/design/**` | Tokens and primitives. Knows nothing about finance. |
-| `src/charts/**` | SVG, hand-drawn, no chart library. |
+| `src/charts/**` | SVG, written out by hand. `d3-scale` for scales and `d3-shape` for path maths; no charting components. |
 | `src/features/**` | Screens and sheets. |
 
 Analytics, investments, accounts, budget, the field manual and the gallery each
-stay out of the opening bundle, which is **150 kB gzipped** against a 185.5 kB
-budget.
+stay out of the opening bundle, which is held to **185.5 kB gzipped**. That
+number is a decision rather than a measurement: it is what a phone on a bad
+connection can fetch before somebody gives up, and it is the reason there is no
+animation library, no charting components and no date library here — a scale
+function and a path generator, and the rest is markup.
 
 ## Design
 
@@ -176,11 +179,10 @@ number on screen that is not your money.
 
 - Every swipe action is also a real focusable button. A gesture alone is
   unreachable by keyboard and by switch control.
-- 44×44 on every interactive target that can have it — as a hit area, not a
+- 44×44 on every interactive target, with no exceptions — as a hit area, not a
   bigger glyph, so a 22px information button stays 22px and answers across 44.
-  The one exception is a member of a segmented control, which cannot exceed the
-  height of the control it is inside; those are 30px, above the 24px WCAG 2.2
-  AA floor and below the 44px this asks for.
+  Measured by hit-testing outwards from each control's centre, because a class
+  that says 44 is not a target that measures 44.
 - `focus-visible` rings throughout; sheets trap focus and hand it back.
 - `role="progressbar"` on pacing bars, live regions on counts that change.
 - Text inputs never below 16px, or iOS zooms the viewport on focus.

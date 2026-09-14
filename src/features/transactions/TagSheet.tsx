@@ -69,7 +69,7 @@ export function TagSheet({
                 type="button"
                 disabled={busy}
                 onClick={() => onRemove(tag)}
-                className="flex items-center justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3 text-left hover:border-line-strong disabled:opacity-50"
+                className="flex items-center justify-between gap-3 rounded-md border border-line bg-raised px-3.5 py-3 text-left [@media(hover:hover)]:hover:border-line-strong disabled:opacity-50"
               >
                 <span className="truncate text-body text-ink">{tag.name}</span>
                 <span className="shrink-0 text-caption text-ink-3">Take it off</span>
@@ -120,7 +120,7 @@ export function TagSheet({
                     onClick={() => onApply(tag.name)}
                     className={clsx(
                       'rounded-pill border border-line bg-raised px-3 py-1.5 text-caption text-ink',
-                      'hover:border-line-strong disabled:opacity-50',
+                      '[@media(hover:hover)]:hover:border-line-strong disabled:opacity-50',
                     )}
                   >
                     {tag.name}

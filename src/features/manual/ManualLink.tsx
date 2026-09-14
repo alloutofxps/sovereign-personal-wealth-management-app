@@ -36,7 +36,7 @@ export function ManualLink({
     <button
       type="button"
       onClick={() => navigate('manual', chapter)}
-      className="target self-start text-caption text-liquid underline-offset-4 hover:underline"
+      className="target self-start text-caption text-liquid underline-offset-4 [@media(hover:hover)]:hover:underline"
     >
       {children} →
     </button>

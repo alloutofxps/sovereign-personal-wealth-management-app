@@ -151,7 +151,7 @@ export function Choice({
         'flex w-full flex-col gap-0.5 rounded-md border px-3.5 py-3 text-left transition-colors',
         selected
           ? 'border-liquid-dim bg-liquid-wash'
-          : 'border-line bg-raised hover:border-line-strong',
+          : 'border-line bg-raised [@media(hover:hover)]:hover:border-line-strong',
       )}
     >
       <span className={clsx('text-body', selected ? 'text-liquid' : 'text-ink')}>{title}</span>

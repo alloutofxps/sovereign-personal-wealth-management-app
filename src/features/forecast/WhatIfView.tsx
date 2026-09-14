@@ -100,7 +100,7 @@ export function WhatIfView() {
                   'rounded-pill border px-3 py-1.5 text-caption transition-colors ' +
                   (branch.id === active
                     ? 'border-liquid-dim bg-liquid-wash text-liquid'
-                    : 'border-line bg-raised text-ink-2 hover:border-line-strong')
+                    : 'border-line bg-raised text-ink-2 [@media(hover:hover)]:hover:border-line-strong')
                 }
               >
                 {branchLabel(branch)}
@@ -109,7 +109,7 @@ export function WhatIfView() {
             <button
               type="button"
               onClick={() => setNaming(true)}
-              className="rounded-pill border border-line px-3 py-1.5 text-caption text-ink-3 hover:border-line-strong"
+              className="rounded-pill border border-line px-3 py-1.5 text-caption text-ink-3 [@media(hover:hover)]:hover:border-line-strong"
             >
               + Another
             </button>
@@ -488,7 +488,7 @@ function Choice({
         'rounded-md border px-3 py-2.5 text-left text-body transition-colors ' +
         (selected
           ? 'border-liquid-dim bg-liquid-wash text-liquid'
-          : 'border-line bg-raised text-ink hover:border-line-strong')
+          : 'border-line bg-raised text-ink [@media(hover:hover)]:hover:border-line-strong')
       }
     >
       {children}

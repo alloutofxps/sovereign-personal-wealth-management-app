@@ -305,7 +305,7 @@ export function SettingsView() {
                   variant="primary"
                   block
                   disabled={working}
-                  className="bg-hot text-base hover:bg-hot"
+                  className="bg-hot text-base [@media(hover:hover)]:hover:bg-hot"
                   onClick={() => void startAgain()}
                 >
                   {working ? 'Clearing…' : 'Yes, delete it all'}
@@ -398,7 +398,7 @@ function Appearance() {
                   'press flex flex-col gap-1.5 rounded-lg border p-1.5 transition-colors',
                   choice === theme.value
                     ? 'border-liquid bg-liquid-wash'
-                    : 'border-line hover:border-line-strong',
+                    : 'border-line [@media(hover:hover)]:hover:border-line-strong',
                 )}
               >
                 <Swatch theme={theme.value} resolved={resolved} />

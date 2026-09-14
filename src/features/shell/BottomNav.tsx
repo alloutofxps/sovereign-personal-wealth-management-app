@@ -185,7 +185,7 @@ function NavButton({
       className={clsx(
         'press relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.4rem] py-2',
         'transition-colors',
-        active ? 'text-liquid' : 'text-ink-3 hover:text-ink-2',
+        active ? 'text-liquid' : 'text-ink-3 [@media(hover:hover)]:hover:text-ink-2',
       )}
     >
       {tab.icon}

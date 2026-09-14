@@ -228,7 +228,7 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
                     key={option.value}
                     type="button"
                     onClick={() => setChosen(option.value)}
-                    className="rounded-pill border border-line-strong px-3 py-1.5 text-caption text-ink transition-colors hover:border-liquid hover:text-liquid"
+                    className="rounded-pill border border-line-strong px-3 py-1.5 text-caption text-ink transition-colors [@media(hover:hover)]:hover:border-liquid [@media(hover:hover)]:hover:text-liquid"
                   >
                     {option.label}
                   </button>

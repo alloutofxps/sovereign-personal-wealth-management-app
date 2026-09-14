@@ -58,7 +58,18 @@ export function useWhatIf(
   base: { today: string; days: number; startingCash: Minor; buffer: Minor } | null,
   actualEvents: readonly ProjectedEvent[],
 ): LiveQueryResult<WhatIfData | null> {
-  const eventKey = actualEvents.map((e) => `${e.date}:${e.amount}`).join('|');
+  /*
+   * A key over the real events, so a re-render with an equal-but-new array
+   * does not re-run a database read.
+   *
+   * All four fields, not two. It joined `date:amount`, and `name` and `kind`
+   * both travel through `project()` into `ProjectionPoint.events` for the
+   * tooltip — so renaming a bill without moving its date or amount left the
+   * what-if labelling it with the old name.
+   */
+  const eventKey = actualEvents
+    .map((e) => `${e.date}:${e.amount}:${e.kind}:${e.name}`)
+    .join('|');
 
   const query = useCallback(async (): Promise<WhatIfData | null> => {
     if (branchId === null || base === null) return null;

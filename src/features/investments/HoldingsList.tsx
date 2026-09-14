@@ -66,7 +66,7 @@ export function HoldingsList({
               <button
                 type="button"
                 onClick={() => onOpen(holding)}
-                className="press flex w-full items-center gap-3 rounded-lg py-3 pl-1 pr-1 text-left transition-colors hover:bg-raised"
+                className="press flex w-full items-center gap-3 rounded-lg py-3 pl-1 pr-1 text-left transition-colors [@media(hover:hover)]:hover:bg-raised"
               >
                 {/* The ticker, as a square. It is how people actually refer to
                     what they hold, so it leads rather than the name. */}

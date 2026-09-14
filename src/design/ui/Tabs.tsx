@@ -30,7 +30,31 @@
  * below it, `flex-1` still shares the space out evenly whenever there *is*
  * enough, and the strip overflows into a horizontal scroll only when there is
  * not. The selected tab is scrolled back into view on every change, so the
+ * The selected tab is scrolled back into view on every change, so the
  * current pane is never the one hidden off the edge.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THE SCROLL CONTAINER IS A WRAPPER AND NOT THE TRACK
+ *
+ * A tab is 30px tall inside a 38px track, and a 44px hit area on it needs 3px
+ * past each edge of that track. It could not have them: `overflow-x: auto`
+ * forces the other axis to `auto` too, so the scroll container clips its
+ * children vertically at its own padding box, and the scroll container *was*
+ * the track. Padding the track instead would have grown the visible pill,
+ * because a background paints the padding box.
+ *
+ * So the scrolling moved out to a wrapper with nothing drawn on it. The track
+ * keeps its box, its hairline, its fill and its `p-1`; the wrapper carries
+ * 3px of padding for the hit areas to overflow into and -3px of margin to hand
+ * that padding back to the layout. The strip is still 38px on the screen and
+ * every tab now answers across 44.
+ *
+ * `w-max min-w-full` on the track is what keeps both cases right. Fitting
+ * labels: `min-w-full` makes the track the wrapper's width and `flex-1` shares
+ * it out as before. Overflowing labels: `w-max` makes the track as wide as its
+ * content, so the fill runs under every tab rather than stopping at the edge
+ * of the viewport — which is what a background on the scroll container itself
+ * had been doing for nothing.
  * ======================================================================== */
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -61,7 +85,10 @@ export function Tabs<T extends string = string>({
 }: TabsProps<T>) {
   const groupId = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  /** The visible track. `offsetLeft` on a tab is measured against this. */
   const stripRef = useRef<HTMLDivElement>(null);
+  /** The wrapper, which is what actually scrolls. */
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null);
 
   /**
@@ -97,16 +124,18 @@ export function Tabs<T extends string = string>({
    * Does nothing at all when everything already fits, which is most strips.
    */
   useEffect(() => {
-    const strip = stripRef.current;
+    // The wrapper scrolls, not the track. `offsetLeft` is still measured
+    // against the track, which is the tab's offset parent.
+    const scroller = scrollRef.current;
     const index = tabs.findIndex((tab) => tab.value === value);
     const button = refs.current[index];
-    if (!strip || !button || strip.scrollWidth <= strip.clientWidth) return;
+    if (!scroller || !button || scroller.scrollWidth <= scroller.clientWidth) return;
 
     const left = button.offsetLeft;
     const right = left + button.offsetWidth;
-    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
-    else if (right > strip.scrollLeft + strip.clientWidth) {
-      strip.scrollLeft = right - strip.clientWidth + 8;
+    if (left < scroller.scrollLeft) scroller.scrollLeft = left - 8;
+    else if (right > scroller.scrollLeft + scroller.clientWidth) {
+      scroller.scrollLeft = right - scroller.clientWidth + 8;
     }
   }, [tabs, value]);
 
@@ -140,63 +169,75 @@ export function Tabs<T extends string = string>({
 
   return (
     <div
-      ref={stripRef}
-      role="tablist"
-      aria-label={label}
-      onKeyDown={onKeyDown}
+      ref={scrollRef}
       className={clsx(
-        'relative flex gap-1 rounded-pill border-[0.5px] border-[var(--hairline)] bg-sunken p-1',
         // Scrolls only when the labels genuinely do not fit; see the note at
         // the top of this file. The bar itself is hidden — the half-visible
         // tab at the edge is the affordance, the way it is on iOS.
         'no-bar overflow-x-auto',
+        // The 3px each way that a 44px hit area needs past a 30px tab in a
+        // 4px-padded track, given back to the layout by the negative margin.
+        // It is on this element and not the track because a background paints
+        // the padding box, and the track has one.
+        'py-[3px] -my-[3px]',
         className,
       )}
     >
-      {indicator && (
-        <span
-          aria-hidden="true"
-          className={clsx(
-            'absolute top-1 bottom-1 left-0 rounded-pill bg-liquid',
-            'motion-safe:[transition:transform_320ms_var(--ease-snap),width_320ms_var(--ease-snap)]',
-          )}
-          style={{ transform: `translate3d(${indicator.x}px,0,0)`, width: indicator.w }}
-        />
-      )}
-
-      {tabs.map((tab, index) => {
-        const selected = tab.value === value;
-        return (
-          <button
-            key={tab.value}
-            ref={(el) => {
-              refs.current[index] = el;
-            }}
-            type="button"
-            role="tab"
-            id={`${groupId}-tab-${tab.value}`}
-            aria-selected={selected}
-            aria-controls={`${groupId}-panel-${tab.value}`}
-            // Only the selected tab is reachable by Tab; arrows do the rest.
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(tab.value)}
+      <div
+        ref={stripRef}
+        role="tablist"
+        aria-label={label}
+        onKeyDown={onKeyDown}
+        className={clsx(
+          'relative flex w-max min-w-full gap-1 p-1',
+          'rounded-pill border-[0.5px] border-[var(--hairline)] bg-sunken',
+        )}
+      >
+        {indicator && (
+          <span
+            aria-hidden="true"
             className={clsx(
-              'press relative z-10 flex-1 whitespace-nowrap rounded-pill px-3 py-1.5 text-caption outline-none',
-              'transition-colors focus-visible:ring-1 focus-visible:ring-liquid',
-              selected ? 'text-base' : 'text-ink-2 hover:text-ink',
+              'absolute top-1 bottom-1 left-0 rounded-pill bg-liquid',
+              'motion-safe:[transition:transform_320ms_var(--ease-snap),width_320ms_var(--ease-snap)]',
             )}
-          >
-            <span className="relative flex items-center justify-center gap-1.5">
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className={clsx('tnum', selected ? 'text-base/70' : 'text-ink-3')}>
-                  {tab.count}
-                </span>
+            style={{ transform: `translate3d(${indicator.x}px,0,0)`, width: indicator.w }}
+          />
+        )}
+
+        {tabs.map((tab, index) => {
+          const selected = tab.value === value;
+          return (
+            <button
+              key={tab.value}
+              ref={(el) => {
+                refs.current[index] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`${groupId}-tab-${tab.value}`}
+              aria-selected={selected}
+              aria-controls={`${groupId}-panel-${tab.value}`}
+              // Only the selected tab is reachable by Tab; arrows do the rest.
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(tab.value)}
+              className={clsx(
+                'target press relative z-10 flex-1 whitespace-nowrap rounded-pill px-3 py-1.5 text-caption outline-none',
+                'transition-colors focus-visible:ring-1 focus-visible:ring-liquid',
+                selected ? 'text-base' : 'text-ink-2 [@media(hover:hover)]:hover:text-ink',
               )}
-            </span>
-          </button>
-        );
-      })}
+            >
+              <span className="relative flex items-center justify-center gap-1.5">
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className={clsx('tnum', selected ? 'text-base/70' : 'text-ink-3')}>
+                    {tab.count}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

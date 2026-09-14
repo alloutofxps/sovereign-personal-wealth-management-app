@@ -209,7 +209,7 @@ function Choice({
       onClick={onChoose}
       aria-pressed={chosen}
       className={`flex flex-1 flex-col gap-0.5 rounded-md border px-3 py-2.5 text-left transition-colors ${
-        chosen ? 'border-liquid bg-liquid-wash/40' : 'border-line bg-raised hover:border-line-strong'
+        chosen ? 'border-liquid bg-liquid-wash/40' : 'border-line bg-raised [@media(hover:hover)]:hover:border-line-strong'
       }`}
     >
       <span className={`text-body ${chosen ? 'text-liquid' : 'text-ink'}`}>{label}</span>

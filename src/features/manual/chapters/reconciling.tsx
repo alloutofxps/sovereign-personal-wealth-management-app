@@ -181,7 +181,7 @@ function ReconcilingLab() {
                     ? 'cursor-default border-line-faint bg-sunken opacity-60'
                     : on
                       ? 'border-liquid-dim bg-liquid-wash'
-                      : 'border-line bg-raised hover:border-line-strong',
+                      : 'border-line bg-raised [@media(hover:hover)]:hover:border-line-strong',
                 )}
               >
                 <span

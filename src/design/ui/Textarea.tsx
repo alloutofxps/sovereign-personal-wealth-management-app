@@ -68,7 +68,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
           'placeholder:text-ink-3',
           'transition-colors outline-none',
           'focus-visible:border-liquid focus-visible:ring-1 focus-visible:ring-liquid',
-          error ? 'border-caution' : 'border-line-strong hover:border-ink-4',
+          error ? 'border-caution' : 'border-line-strong [@media(hover:hover)]:hover:border-ink-4',
           className,
         )}
         {...rest}

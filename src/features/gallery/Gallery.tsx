@@ -265,7 +265,7 @@ export function Gallery() {
               <button
                 key={category}
                 type="button"
-                className="flex items-center justify-between rounded-md px-3 py-3 text-left transition-colors hover:bg-raised"
+                className="flex items-center justify-between rounded-md px-3 py-3 text-left transition-colors [@media(hover:hover)]:hover:bg-raised"
               >
                 <span className="text-body text-ink">{category}</span>
                 {index === 0 && <CheckIcon className="text-liquid" />}

@@ -67,8 +67,8 @@ export function SelectionBar({
                 'target h-10 rounded-md px-3.5 text-caption font-medium transition-colors',
                 'disabled:cursor-not-allowed disabled:opacity-40',
                 action.primary
-                  ? 'bg-liquid text-base hover:bg-liquid-bright'
-                  : 'border border-line-strong bg-surface text-ink hover:bg-overlay',
+                  ? 'bg-liquid text-base [@media(hover:hover)]:hover:bg-liquid-bright'
+                  : 'border border-line-strong bg-surface text-ink [@media(hover:hover)]:hover:bg-overlay',
               )}
             >
               {action.label}
@@ -82,7 +82,7 @@ export function SelectionBar({
 
 function BarButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="text-caption text-ink-2 hover:text-ink">
+    <button type="button" onClick={onClick} className="text-caption text-ink-2 [@media(hover:hover)]:hover:text-ink">
       {children}
     </button>
   );
