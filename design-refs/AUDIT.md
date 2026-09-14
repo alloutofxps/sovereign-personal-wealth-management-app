@@ -144,15 +144,15 @@ it says so and says why.
 
 | **P15** ✅ | design system | `features/forecast/RunwayCard.tsx`, `features/forecast/ForecastView.tsx:9` | The forecast pane's field sits **552px down the screen**, below the whole chart, and its own screen's source records a decision *against* having a field at all. | Measured the distance from the top of the scroll container to the field on all nine routes that have one: eight land between 70px and 179px — below the heading and nothing else. Forecast is **552px**, the last block on the page. `ForecastView.tsx:9` says, in writing: *"There is no field and no hero figure here on purpose. A forecast has two numbers that matter and neither is more important than the other… Promoting one of them to a 48pt anchor would be picking a winner the arithmetic does not pick."* | `CLAUDE.md` says a field is "exactly one per screen, **at the top**, carrying the number that screen exists for". This one is neither at the top nor the number the screen exists for — the chart is. **I introduced this in phase 4e and overrode a reasoned decision recorded in the file I was changing, without reading it.** Per the standing rule on the brief and the code disagreeing, it is flagged rather than resolved. | Two options, and it is the commissioner's call. **(a)** Take the field off the forecast pane: the screen keeps its two co-equal figures and `RunwayCard` goes back to being a card, restoring the recorded decision and leaving eight fields. **(b)** Keep it and move it above the chart, which asserts the runway is the pane's subject and needs the note in `ForecastView` rewritten to say why. I recommend (a) — the note's argument is sound, and it was written by somebody looking at this screen. **Resolved: (a).** The field is off the forecast pane and `RunwayCard` is a card again. The split into two surfaces stays, because that half was right — the runway figure and the switch list were one card, and a hero and a list are not the same kind of object. Eight routes own a field now; forecast is in `NO_FIELD` with the note's own argument as its reason. |
 
-### Severity 3 — backlog, not fixed
+### Severity 3 — all four resolved or withdrawn
 
 | ID | Area | What is wrong | How it was established |
 | --- | --- | --- | --- |
-| **P9** | design system | Three `storage` Explain buttons render on `#/settings`, under two different labels ("where your data lives" ×2, "keeping your records"). | Opened every Explain on the route; four sheets, three of them the same topic. |
-| **P10** | interlinking | `cards` and `two-books` are the only two manual chapters with no in-context `ManualLink` from any screen; they are reachable only from the contents page. | Extracted every `chapter=` prop (`checking`, `pots`, `safe-to-spend`, `selling`) and diffed against `CHAPTERS`. |
-| **P11** | interlinking | Accounts has no Explain at all, though `net-worth` is its whole subject and the topic is surfaced from Home. `#/analytics` and `#/debt` have none either. | Enumerated `aria-label^="More about"` per route: accounts 0, analytics 0, debt 0. |
+| **P9** ✅ | design system | Three `storage` Explain buttons render on `#/settings`, under two different labels ("where your data lives" ×2, "keeping your records"). | Opened every Explain on the route; four sheets, three of them the same topic. **Resolved: one door.** `SettingsView`'s went with P6 (it had no access to the figure). `ProtectStorage`'s goes now, and `DataAndSecurity`'s stays — because `ProtectStorage` only renders while persistence has *not* been granted, so keeping its button instead would have made the explanation unreachable the moment the browser said yes. Its now-unused `useExplain` and `usedBytes` state went with it. |
+| **P10** ❌ **withdrawn — not a defect** | interlinking | *Claimed:* `cards` and `two-books` are the only two manual chapters with no in-context link. | The finding came from extracting every literal `chapter="…"` prop and diffing against `CHAPTERS`. **That instrument could not see the dynamic case.** `ExplainSheet.tsx:85` renders `<ManualLink chapter={showing.manual}>Read the whole story</ManualLink>` for every topic that names a chapter, and the registry gives `cards` → `cards` and `two-books` → `two-books`. Both are reachable in context, one step deeper: through the explanation that introduces them — `cards` from `SettleUpSheet` and onboarding, `two-books` from `PaymentDetailsSheet`. Withdrawn rather than "fixed" with links the app did not need. A grep is an instrument; see M2. |
+| **P11** ◐ **part done, part larger than it looked** | interlinking | Accounts has no Explain at all, though `net-worth` is its whole subject and the topic is surfaced from Home. `#/analytics` and `#/debt` have none either. | Enumerated `aria-label^="More about"` per route: accounts 0, analytics 0, debt 0. **Accounts resolved:** a `net-worth` Explain sits in the field, wired with the three figures its worked example reads — `totalAssets`, `totalDebts`, `netWorth`, all of which that screen already computes. The static cross-check of all 28 topics against their call sites now reports **0 starved worked examples**. **Analytics and Payoff are not resolved and should not be forced:** none of the 28 existing topics is about where money went or about paying debt down, so both need a *new* explanation written — title, short line, three `how` steps and a `worked()` built from live figures, in the copy standard's register, with a test per branch. That is a copy task, not an interlinking one, and it is flagged rather than absorbed. |
 | **P12** ✅ | a11y contrast | A disabled button's label computes to **2.60:1** in Daylight (`opacity-40` on `text-ink` over `bg-raised`) and 3.35:1 in Midnight. WCAG 1.4.3 exempts inactive controls, so this is not a violation — but it is a pair `tokens.test.ts` does not assert, and 2.60 is hard to read. | Composited `ink × 0.4 + raised × 0.6` from the live token values in both themes and computed the ratio. **Resolved:** the colour is unchanged and the exemption is now in writing. `tokens.test.ts` composites four disabled pairs in both themes — `Button` at 40% on raised, surface and base, and `Chip` at 50% — asserts each is between 2:1 and AA, and asserts the 40% and 50% treatments stay distinguishable. It was exempt because nobody had asked; it is exempt by decision now, and a change to the opacity or an ink token fails the test. |
-| **P13** | a11y | The three Quick-assign options explain *why* they are unavailable in a `<span>` that is not associated with the disabled button (`aria-describedby`). | Read the rendered sheet: `Option` renders title, detail and `Button disabled`, with no association. |
+| **P13** ✅ | a11y | The three Quick-assign options explain *why* they are unavailable in a `<span>` that is not associated with the disabled button (`aria-describedby`). | Read the rendered sheet: `Option` renders title, detail and `Button disabled`, with no association. **Resolved:** every button there says "Do this" and nothing else; the title and the reason now carry ids and the button an `aria-describedby` naming both, so the announcement is never just "Do this, dimmed". |
 
 ### Severity 4 — backlog
 
@@ -221,6 +221,50 @@ has 17), 6 manual chapters ✓ (`CHAPTERS`), 6 chart components ✓
 `NetWorthTimeline`, `SankeyFlow`, `SpendDonut` = **7**, one more than the
 inventory's 6, because `SpendDonut` was added in phase 5).
 
+### The rendering gate
+
+The G1 analysis said no test in this repository mounted a React component, and
+that the three severity 1s all went through that hole. Two files close part of
+it, and it is worth being exact about which part.
+
+**`features/dashboard/safeToSpendWiring.test.tsx`** — `renderToStaticMarkup`,
+no new dependency, `react-dom` was already here. Calls
+`calculateSafeToSpend`, hands the result to `SafeToSpendCard`, and asserts the
+card prints the engine's figure formatted by the one formatter the app may use.
+Nothing is hand-written on either side, so it cannot drift from either. It
+closes **engine-to-screen wiring** — the class `ForecastBand`'s scrubber lived
+in for months while its engine was correct — and it closes nothing else:
+server rendering runs no effects, so it cannot see focus, hook order, a stale
+closure or geometry. The header says so.
+
+Verified by breaking it twice: point the card at `committed` instead of
+`safeToSpend`, and have it format a figure itself. Both fail.
+
+**`features/renderingGate.test.tsx`** — `@testing-library/react` +
+`happy-dom`, two dev dependencies that do not ship. **Three tests, one per
+severity 1**, not a suite:
+
+| | Asserts | Broken to check it fires |
+| --- | --- | --- |
+| P2 | A sheet opened **cold** moves focus inside, pulls focus back in from behind the backdrop, wraps Tab at the last control, and takes its name from its own title | Deps back to `[open]` → fails |
+| P1 | The first-run overlay has a name, takes focus on arrival, and Tab from a control behind it comes back in | Name removed → fails. Focus move removed → fails |
+| P3 | An empty ledger claims nothing on any surface — no "You are there", no "already there", no "Reached" | Milestone pill fix reverted → fails |
+
+One result worth recording: **reverting the P3 *engine* fix does not fail the
+screen test.** The view checks `isUnknown` before it looks at `reached`, so it
+is defended independently of the engine. That is the right layering and it
+means the two need their own tests rather than one standing in for the other —
+the engine arm is in `forecast.test.ts` and was verified there.
+
+It also moved house on the way in. Written in `src/design`, eslint refused it:
+design may not import from features. The rule was right and the file's address
+was wrong.
+
+**What is still not covered:** everything geometric, everything about the real
+browser's cascade, and every failure path. `happy-dom` does no layout, so the
+44×44 sweep, the hit-area probes and the contrast-in-situ checks stay browser
+measurements — with M2's calibration rule attached.
+
 ### Re-audit: how each fix was confirmed
 
 Measured after fixing, in the browser, not inferred from the diff.
@@ -271,6 +315,63 @@ dock record button    box 44x44   hit 44x44
 Recorded because the phase 7 number — 401 swept, 0 under 44 — was taken with
 the walking probe, and anybody re-running it under a scaled pane will get a
 different answer from the same app. The exhaustive scan is the one to trust.
+
+### Closing state — the final sweep, against the fixed app
+
+Everything below re-measured after every fix, not carried forward.
+
+| | Result | How |
+| --- | --- | --- |
+| **Parity** | **289 lines · 202 pass · 0 genuine failures** | 23 probe false positives (16 module paths written `core/x/y` where the source imports `@/core/x`, all 15 files confirmed on disk; 1 JSX expression; 6 strings reworded by approved phase-3 work, each with its surviving affordance named) and 64 lines with no checkable token. One line moved from fail to pass — Accounts' missing Explain was a real gap and is closed. |
+| **Accessible names** | **0 unnamed** interactive elements on all sixteen routes | Computed the name the way AT does — aria-label → aria-labelledby → label[for] → wrapping label → title, with text content naming a button and not a control. Was 1 (`input[file].sr-only`) at the start of the audit, 25 before phase 4d. |
+| **Fields** | **8 routes at exactly one, 8 at none, 0 at two** | `document.querySelectorAll('main .field').length` per route. Three at the start of phase 4e; nine after it; eight after P15 took the forecast one off. |
+| **Hot accent** | **0 painted** in the seeded state, never more than one per screen | Scanned every element on every route for `--color-hot`; the three real uses are each conditional on a decision being needed. |
+| **Category hues** | Each of the six families resolves to **exactly one ink** | Collected `--tile-ink` from every `.cat-*` element across all sixteen routes. |
+| **Layout** | **Zero problems**, 16 routes × 3 widths (375 / 390 / 430) × 2 themes | Per route: page horizontal overflow, text clipped by its own box while `overflow: hidden`, any element painting outside the main column excluding legitimate scroll descendants, and the dock covering the last element at full scroll. |
+| **Explanation wiring** | **0 starved worked examples** across all 28 topics | Cross-checked each topic's `figures.*` reads against every `useExplain({…})` in the file that surfaces it. Was 2 at the start of the audit. |
+| **Worked example arithmetic** | 8 of 8 checked agree with the figure beside them | Includes the new one: Accounts' field reads €233,742.72 and its explanation says "You hold €474,980.47 and owe €241,237.75, which leaves €233,742.72". |
+| **Write path** | `assertBalanced` on every one | `saveEntry` is still the only function that inserts into `entries`/`postings`, and `assertBalanced` is its first statement. |
+| **Gates** | typecheck clean · **1012 tests in 51 files** · lint clean but one warning | The warning is `useWhatIf`'s `base`, which is a false positive: all four of that object's fields are listed individually on purpose. |
+| **First paint** | **150.20 kB gzipped**, 35.30 kB inside the budget | Walked the chunk graph from `index.html` through static imports only. |
+| **Chunk quarantine** | Clean | Manual still a separate chunk, absent from the opening bundle. |
+| **Cross-origin** | Nothing in `dist/` fetches from another origin | Every file scanned for nine request forms. |
+| **Debt list** | 0 strings across 0 files | |
+
+### What is genuinely left
+
+Four things, all recorded, none hidden.
+
+1. **A new explanation for Where it went, and one for Payoff.** P11's remainder.
+   None of the 28 existing topics is about where money went or about paying debt
+   down, so each needs a title, a short line, three `how` steps and a `worked()`
+   built from live figures, in the copy standard's register, with a test per
+   branch. A copy task, flagged rather than absorbed into an audit.
+2. **A5 — seventeen…** now 57, all gated; see the phase 7 carries. *Closed.*
+3. **P12's numbers are pinned, not improved.** A disabled label is 2.60:1 in
+   Daylight. WCAG exempts it and the exemption is now in writing with the
+   figure, so raising it is a decision somebody can take deliberately.
+4. **233 exports are referenced nowhere outside their own file.** Almost all are
+   props interfaces and in-file helpers that carry an unnecessary `export`;
+   two genuinely dead ones were deleted. Tidying the rest is cosmetic and was
+   not done.
+
+### The rendering gate's remaining blind spots
+
+Worth stating at the end rather than implying the hole is closed. `happy-dom`
+does no layout, so of the ten classes in G1:
+
+| | Closed by | |
+| --- | --- | --- |
+| Rendered output | the gate | partially — structure and focus, not appearance |
+| Execution over time | the gate | effects run, so hook order and cleanup are reachable |
+| Closure freshness | the gate | reachable, not yet asserted anywhere |
+| Engine-to-screen wiring | the SSR test | |
+| Meaning of generated sentences | per-branch copy tests | |
+| Computed geometry and cascade | **nothing** | browser measurement only, with M2's calibration rule |
+| The accessibility tree | the gate | names and focus; not a real AT's announcement |
+| Whole-app properties | `fields.test.ts`, `targets.test.ts`, the browser sweeps | |
+| Outside the module graph | **nothing** | the manifest, headers, icons and docs are still unguarded |
+| Failure paths | **nothing** | see below |
 
 ### Could not be established in this environment
 

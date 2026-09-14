@@ -393,6 +393,57 @@ Every affordance that exists today stays. Add more, remove none.
 
 ---
 
+## Measuring
+
+Two rules, both bought at a price. `AUDIT.md` carries the worked examples as
+M1 and M2; these are the rules that came out of them.
+
+### A recorded cause is a hypothesis until it is measured
+
+A diagnosis written into a comment, a commit message or a brief reads exactly
+like a fact a year later. The milestone-label collision was recorded as
+vertical crowding, survived three reviews, was promoted into a standing
+instruction, and was wrong — the overlap was 1.58px horizontal and every label
+sat at the same x. The cheapest moment to test a recorded cause is immediately
+before relying on it.
+
+### An instrument is a hypothesis too — calibrate against a value fixed by construction
+
+**Before trusting a sweep, include something whose answer cannot be wrong.**
+
+The 44×44 probe walks outwards from an element's centre until a hit test stops
+landing on it. Re-run after the phase 8 fixes it reported 123 of 217 controls
+under 44px — and every single value was 41 or 42, including the `Explain`
+button, **whose hit area is 44 because `.target` is `max(100%, 44px)`**. A
+control that cannot be short reading short is a measurement of the ruler.
+
+```
+                       box      walking probe    exhaustive per-pixel scan
+Explain info button    22x22    42x41            44x44
+dock record button     44x44    42x41            44x44
+```
+
+The cause was the Browser pane scaling an emulated viewport, so integer CSS
+offsets land on fractional device pixels. Phase 7's "401 swept, 0 under 44"
+was taken with the walking probe and was right by luck.
+
+Three things follow, and they generalise past pixels:
+
+- **Include a known value in every sweep.** It turns "is the app right?" into
+  "is the ruler right?" first, and it is free.
+- **A uniform error is about the method; a scattered one is about the
+  subject.** 123 failures all at 41–42 was not 123 defects, and the shape of
+  the distribution said so before the calibration did.
+- **Record which instrument produced a number.** Two probes here disagree by
+  2–3px and only one is right. A figure in a report without its instrument
+  cannot be reproduced or challenged.
+
+A third instance, same lesson, cheaper: phase 8 reported that two manual
+chapters had no in-context link, from a grep for `chapter="…"`. Both are
+reachable — `ExplainSheet` renders `chapter={showing.manual}`, which a search
+for a literal attribute cannot see. The finding was withdrawn rather than
+"fixed". **A grep is an instrument.**
+
 ## Code style
 
 - Comments explain **why**, not what. Match the density and voice of the file

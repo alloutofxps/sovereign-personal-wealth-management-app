@@ -35,7 +35,8 @@ import { useMoney } from '@/app/money/useMoney';
 import { useFx } from '@/app/fx/useFx';
 import { useRoute } from '@/app/router';
 import { usePortfolio } from '@/app/investments/usePortfolio';
-import { Button, Card, Field, Money } from '@/design/ui';
+import { Button, Card, Explain, Field, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 import { PayCardSheet, PaybackSheet } from './SettleUpSheet';
 import { WriteOffSheet } from './WriteOffSheet';
 import { DebtTermsSheet } from './DebtTermsSheet';
@@ -147,6 +148,12 @@ export function AccountsView() {
   );
   const worth = minor(have - owe);
 
+  /* The three figures `net-worth`'s worked example reads, from the screen
+   * that computes them. Surfacing a topic without the figures it needs is
+   * how the same explanation ends up answering worse from one button than
+   * another; see P6 in AUDIT.md. */
+  const explain = useExplain({ totalAssets: have, totalDebts: owe, netWorth: worth });
+
   const pots = data?.pots ?? [];
   const termsFor = (id: AccountId) => (terms.data ?? []).find((row) => row.id === id);
 
@@ -189,7 +196,17 @@ export function AccountsView() {
       <Field family="housing">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-caption opacity-75">Everything, net</div>
+            <div className="flex items-center gap-1">
+              <span className="text-caption opacity-75">Everything, net</span>
+              {/* The explanation of net worth was reachable from Home and not
+                  from the screen whose whole subject it is. */}
+              <Explain
+                topic="net-worth"
+                label="what you are worth"
+                onOpen={explain.open}
+                className="text-[var(--tile-ink)] opacity-70"
+              />
+            </div>
             <div className="pt-1">
               <Money value={worth} size="anchor" tone="inherit" />
             </div>
@@ -477,6 +494,8 @@ export function AccountsView() {
         account={editingTerms}
         balance={editingTerms ? amountFor(editingTerms.id) : minor(0)}
       />
+
+      {explain.sheet}
     </div>
   );
 }

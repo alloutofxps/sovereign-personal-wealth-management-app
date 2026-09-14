@@ -20,8 +20,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { persistenceState, requestPersistence } from '@/data/persistence';
 import { toast } from '@/app/toast';
-import { Button, Card, Explain } from '@/design/ui';
-import { useExplain } from '@/features/explain/useExplain';
+import { Button, Card } from '@/design/ui';
 
 /** Where the prompt is being shown, which decides how it explains itself. */
 export type ProtectStorageContext = 'settings' | 'after-import';
@@ -47,11 +46,8 @@ function dismissedBefore(): boolean {
  */
 export function ProtectStorage({ context }: { context: ProtectStorageContext }) {
   const [needed, setNeeded] = useState(false);
-  /** What the records actually take, so the explanation can say so. */
-  const [usedBytes, setUsedBytes] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState(context === 'after-import' && dismissedBefore());
-  const explain = useExplain(usedBytes === null ? {} : { storageUsedBytes: usedBytes });
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +55,6 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
     void persistenceState().then((state) => {
       if (cancelled) return;
       setNeeded(!state.persisted);
-      setUsedBytes(state.usedBytes);
     });
     return () => {
       cancelled = true;
@@ -88,7 +83,13 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
     <Card
       label="Keeping your records"
       accent="caution"
-      action={<Explain topic="storage" label="keeping your records" onOpen={explain.open} />}
+      /* No `storage` Explain here.
+       *
+       * There were three on the settings screen and now there is one, on
+       * `DataAndSecurity`'s card, which is always rendered. This card only
+       * appears while persistence has not been granted, so keeping its button
+       * instead would have made the explanation unreachable the moment the
+       * browser said yes. Same explanation, one door. */
     >
       <div className="flex flex-col gap-3">
         <p className="text-caption text-ink-2">
@@ -128,7 +129,6 @@ export function ProtectStorage({ context }: { context: ProtectStorageContext }) 
           It only asks your browser not to delete anything.
         </p>
       </div>
-    {explain.sheet}
     </Card>
   );
 }

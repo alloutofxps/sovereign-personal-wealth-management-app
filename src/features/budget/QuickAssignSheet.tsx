@@ -10,7 +10,7 @@
  * "three components" when what is on offer is one choice out of three.
  * ======================================================================== */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { minor, type Minor } from '@/core/money';
 import { quickAssignToTargets } from '@/core/budget';
 import type { BudgetRow } from '@/app/budget/useBudget';
@@ -171,12 +171,35 @@ function Option({
   busy: boolean;
   onClick: () => void;
 }) {
+  /*
+   * Every button here says "Do this", and what it would do — and why it
+   * cannot — is in the two lines above it. On screen that association is
+   * obvious and to a screen reader it did not exist: three buttons called
+   * "Do this", two of them disabled for reasons sitting in unrelated spans.
+   *
+   * `aria-describedby` on both lines puts the title and the reason into the
+   * button's own announcement, so "Do this" is never the whole of it.
+   */
+  const id = useId();
+  const titleId = `${id}-title`;
+  const detailId = `${id}-detail`;
+
   return (
     <div className="flex flex-col gap-2 py-4 first:pt-1">
-      <span className="text-body text-ink">{title}</span>
-      <span className="max-w-[46ch] text-caption text-ink-2">{detail}</span>
+      <span id={titleId} className="text-body text-ink">
+        {title}
+      </span>
+      <span id={detailId} className="max-w-[46ch] text-caption text-ink-2">
+        {detail}
+      </span>
       <div className="pt-0.5">
-        <Button variant="secondary" size="sm" disabled={disabled || busy} onClick={onClick}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={disabled || busy}
+          onClick={onClick}
+          aria-describedby={`${titleId} ${detailId}`}
+        >
           {busy ? 'Working…' : 'Do this'}
         </Button>
       </div>
