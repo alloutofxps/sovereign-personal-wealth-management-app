@@ -323,6 +323,14 @@ export function SettingsView() {
         </Card>
       </section>
 
+      {/* A colophon, at the foot, where one goes. */}
+      <footer className="flex flex-col items-center gap-1 pt-2 text-center">
+        <p className="text-caption text-ink-2">Sovereign, by Pratik Parashar.</p>
+        <p className="text-micro text-ink-3">
+          No servers were harmed in the making of this app. A great many tokens were.
+        </p>
+      </footer>
+
       <FxRatesSheet open={editingRates} onClose={() => setEditingRates(false)} />
       {explain.sheet}
     </div>
