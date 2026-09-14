@@ -78,7 +78,11 @@ export function BudgetGrid() {
     ? mulDivRound(minor(data.cycle.elapsedDays), 10_000, minor(data.cycle.totalDays))
     : 0;
   const pill = data
-    ? describeReadyToAssign(data.plan.readyToAssign, (amount) => money.format(amount))
+    ? describeReadyToAssign(
+        data.plan.readyToAssign,
+        (amount) => money.format(amount),
+        data.plan.heldInEnvelopes,
+      )
     : null;
 
   /*

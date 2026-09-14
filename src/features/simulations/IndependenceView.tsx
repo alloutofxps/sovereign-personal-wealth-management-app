@@ -3,7 +3,13 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { basisPoints, bpToPercent, minor, type Minor } from '@/core/money';
-import { describeMilestone, describeWhen, projectFire, type Milestone } from '@/core/simulate';
+import {
+  describeMilestone,
+  describeWhen,
+  isUnknown,
+  projectFire,
+  type Milestone,
+} from '@/core/simulate';
 import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useIndependenceAssumptions, type IndependenceAssumptions } from '@/app/config/store';
@@ -81,7 +87,11 @@ export function IndependenceView() {
           <div className="min-w-0">
             <span className="text-caption opacity-75">{full.label}</span>
             <div className="figure pt-1 text-figure">
-              {full.reached ? 'You are there' : describeWhen(full.months)}
+              {isUnknown(full)
+                ? 'Not yet known'
+                : full.reached
+                  ? 'You are there'
+                  : describeWhen(full.months)}
             </div>
           </div>
 
@@ -209,7 +219,16 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
               milestone.reached ? 'bg-liquid-wash text-liquid' : 'bg-raised text-ink-2',
             )}
           >
-            {milestone.reached ? 'Reached' : describeWhen(milestone.months)}
+            {/* `isUnknown` first. With nothing recorded the target is nought,
+                so `monthsToReach` answers 0 and `describeWhen(0)` says
+                "already there" — the same false claim the hero used to make,
+                in a smaller pill. Found by re-running the audit after fixing
+                the hero. */}
+            {isUnknown(milestone)
+              ? 'Nothing to go on'
+              : milestone.reached
+                ? 'Reached'
+                : describeWhen(milestone.months)}
           </span>
         </div>
 

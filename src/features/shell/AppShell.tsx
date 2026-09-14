@@ -237,7 +237,9 @@ function Shell({ storage, firstFlight }: { storage: StorageStatus; firstFlight: 
      * `#app-shell` in tokens.css has the whole story.
      * -------------------------------------------------------------------- */
     <div id="app-shell" className="flex flex-col overflow-hidden bg-base">
-      {!storage.durable && <StorageWarning explanation={storage.explanation} />}
+      {storageWarning(storage) !== null && (
+        <StorageWarning explanation={storageWarning(storage)!} />
+      )}
 
       <main
         className="scroll-y mx-auto w-full max-w-[42rem] flex-1 px-4 pb-[calc(6rem+var(--safe-bottom))] pt-[var(--safe-top)]"
@@ -352,6 +354,30 @@ function Failed({ message }: { message: string }) {
       </button>
     </div>
   );
+}
+
+/**
+ * What the bar should say, or null for nothing to say.
+ *
+ * Two different failures and they are not the same sentence. `durable` false
+ * means SQLite fell back to memory and this session's records go when the tab
+ * does — the worker's own `explanation` covers that case well. `persisted`
+ * false means the records are on disk and the browser has not promised to keep
+ * them, which is the failure a real person is most likely to meet and the one
+ * this bar used to stay silent about.
+ *
+ * The second message names the fix and where to find it, because a warning
+ * that only worries is a warning people learn to scroll past.
+ */
+function storageWarning(storage: StorageStatus): string | null {
+  if (!storage.durable) return storage.explanation;
+  if (!storage.persisted) {
+    return (
+      'Your records are on this device but your browser has not promised to keep them, ' +
+      'so it may clear them if space runs short. Settings can ask it to.'
+    );
+  }
+  return null;
 }
 
 function StorageWarning({ explanation }: { explanation: string }) {

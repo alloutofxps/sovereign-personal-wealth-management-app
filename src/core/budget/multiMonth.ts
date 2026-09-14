@@ -222,7 +222,22 @@ export function planBudget(input: BudgetInput): BudgetPlan {
 export function describeReadyToAssign(
   readyToAssign: Minor,
   format: (amount: Minor) => string,
+  /**
+   * What the envelopes are holding. Nought with nought left to assign is not
+   * the same state as nought with everything assigned, and the difference is
+   * the whole of what this sentence is for.
+   */
+  heldInEnvelopes: Minor = minor(0),
 ): { tone: 'liquid' | 'deficit'; headline: string; detail: string } {
+  if (readyToAssign === 0 && heldInEnvelopes === 0) {
+    return {
+      tone: 'liquid',
+      headline: 'Nothing to give a job yet',
+      detail:
+        'When money arrives it turns up here first, waiting for you to say what it is for.',
+    };
+  }
+
   if (readyToAssign === 0) {
     return {
       tone: 'liquid',

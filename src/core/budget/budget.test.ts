@@ -321,10 +321,31 @@ describe('what happens when an envelope goes under', () => {
 describe('what the ready-to-assign pill says', () => {
   const format = (amount: number) => `€${(amount / 100).toFixed(2)}`;
 
-  it('treats zero as the goal rather than an absence', () => {
-    const said = describeReadyToAssign(minor(0), format as never);
+  /*
+   * Nought means two different things and the sentence used to say one of
+   * them. On a fresh database — no income, no envelopes, nothing assigned —
+   * Envelopes read "€0.00 left to give a job / Every unit of your money has a
+   * purpose. This is the goal.", congratulating somebody on an achievement
+   * they had not had the chance to attempt. Measured on screen in phase 8.
+   *
+   * So the branch now asks what the envelopes are holding. Both readings of
+   * nought get a test, and the wording of each is checked against the other's
+   * so they cannot collapse back into one.
+   */
+  it('treats zero as the goal when the envelopes are holding the money', () => {
+    const said = describeReadyToAssign(minor(0), format as never, minor(120_000));
     expect(said.tone).toBe('liquid');
+    expect(said.headline).toBe('€0.00 left to give a job');
     expect(said.detail).toMatch(/This is the goal/);
+  });
+
+  it('does not congratulate a budget nobody has started', () => {
+    const said = describeReadyToAssign(minor(0), format as never, minor(0));
+    expect(said.tone).toBe('liquid');
+    expect(said.headline).toBe('Nothing to give a job yet');
+    // The achievement wording belongs to the other reading of nought.
+    expect(said.detail).not.toMatch(/goal|purpose/i);
+    expect(said.detail).toMatch(/when money arrives/i);
   });
 
   it('invites the person to do something with a surplus', () => {

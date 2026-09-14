@@ -232,6 +232,21 @@ export function BottomSheet({
    * hidden behind the backdrop, with no way to tell where they have landed.
    * -------------------------------------------------------------------- */
 
+  /*
+   * `present` is in the dependencies and that is the load-bearing part.
+   *
+   * On the render where `open` first becomes true, `present` is still false —
+   * it is set by the mount effect above, one render later — so the portal is
+   * not in the tree and `sheetRef.current` is null. With `[open]` alone this
+   * effect returned here and never ran again, which meant that on a cold open
+   * there was no focus move AND NO TAB HANDLER: `aria-modal` told assistive
+   * technology the rest of the page was inert while the browser was still
+   * free to move focus into it.
+   *
+   * Measured before the fix, three sheets, cold open then re-open inside the
+   * 260ms exit window while the portal was still mounted: false → true every
+   * time. `present` flips exactly when the element exists.
+   */
   useEffect(() => {
     if (!open) return;
     const sheet = sheetRef.current;
@@ -281,7 +296,7 @@ export function BottomSheet({
       // Hand focus back to whatever opened the sheet.
       previouslyFocused?.focus?.();
     };
-  }, [open]);
+  }, [open, present]);
 
   /* --- the drag ----------------------------------------------------------
    *
@@ -292,6 +307,15 @@ export function BottomSheet({
    * -------------------------------------------------------------------- */
 
   const drag = useRef({ active: false, startY: 0, lastY: 0, lastAt: 0, velocity: 0, offset: 0 });
+  /**
+   * Whether the pointer moved far enough for this to have been a drag.
+   *
+   * The handle is both the gesture's target and the keyboard's close button,
+   * so a press that goes nowhere has to close the sheet and a press that
+   * travels must not. Four pixels is below the threshold of a deliberate
+   * movement and above the jitter of a thumb on glass.
+   */
+  const travelled = useRef(false);
 
   const paint = useCallback((offset: number) => {
     const sheet = sheetRef.current;
@@ -305,8 +329,9 @@ export function BottomSheet({
     }
   }, []);
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (!dismissible || event.button !== 0) return;
+    travelled.current = false;
     const sheet = sheetRef.current;
     if (!sheet) return;
 
@@ -322,11 +347,14 @@ export function BottomSheet({
     };
   };
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     const state = drag.current;
     if (!state.active) return;
 
     const raw = event.clientY - state.startY;
+    // Past this it was a drag, so the click that follows is not a press
+    // of the close button.
+    if (Math.abs(raw) > 4) travelled.current = true;
     // Down tracks the finger exactly. Up is damped, because the sheet has
     // nowhere further to go and the resistance is how that is communicated.
     state.offset = raw >= 0 ? raw : raw * UPWARD_RESISTANCE;
@@ -341,7 +369,7 @@ export function BottomSheet({
     paint(state.offset);
   };
 
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+  const endDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const state = drag.current;
     if (!state.active) return;
     state.active = false;
@@ -410,33 +438,57 @@ export function BottomSheet({
           size === 'tall' ? 'h-[calc(100%-3.5rem)]' : 'max-h-[calc(100%-3.5rem)]',
         )}
       >
-        {/* The handle owns the gesture, so content below can still scroll. */}
-        <div
+        {/* The handle owns the gesture, so content below can still scroll.
+         *
+         * It is a real button, not a div, because the gesture it carries is
+         * otherwise the only way out of the sheet that is not Escape — and a
+         * swipe is unreachable by keyboard and by switch control. Same rule as
+         * `SwipeRow`'s actions. The visual treatment is unchanged: what changes
+         * is that the thing which already looked like the way out can now be
+         * focused and pressed. */}
+        <button
+          type={'button'}
+          aria-label={dismissible ? 'Close' : undefined}
+          disabled={!dismissible}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onClick={() => {
+            if (!dismissible) return;
+            // A tap that did not travel is a press of the close button; a tap
+            // that did is the end of a drag, which `endDrag` has already
+            // decided about.
+            if (travelled.current) return;
+            onClose();
+          }}
           className={clsx(
-            'shrink-0 px-5 pt-3',
+            // `target` because the handle is now a real control and it is
+            // 16px tall: the bar is drawn small on purpose and the hit area
+            // has to be 44. It overflows upwards into the backdrop, which
+            // also closes the sheet, and downwards into the title, which is
+            // not interactive.
+            'target block w-full shrink-0 px-5 pt-3',
             dismissible ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-default',
           )}
         >
           {dismissible && (
             <div className="mx-auto h-1 w-9 rounded-full bg-ink-4" aria-hidden="true" />
           )}
-          {title && (
-            <div className="pt-3">
-              <h2 id={labelId} className="text-lead font-medium tracking-[-0.01em] text-ink">
-                {title}
-              </h2>
-              {description && (
-                <p id={descriptionId} className="pt-1 text-caption text-ink-2">
-                  {description}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        </button>
+
+        {title && (
+          <div className="px-5 pt-3">
+            <h2 id={labelId} className="text-lead font-medium tracking-[-0.01em] text-ink">
+              {title}
+            </h2>
+            {description && (
+              <p id={descriptionId} className="pt-1 text-caption text-ink-2">
+                {description}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="scroll-y min-h-0 flex-1 px-5 pt-4 pb-2">{children}</div>
 

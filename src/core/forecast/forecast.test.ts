@@ -4,7 +4,13 @@ import { minor, basisPoints, type Minor } from '@/core/money';
 import { describeProjection, project, type ProjectedEvent } from './projection';
 import { calculateRunway, describeDuration, describeRunway, guessOptional } from './runway';
 import { comparePayoff, orderFor, simulatePayoff, totalMinimum, type DebtAccount } from '@/core/simulate/debt';
-import { monthsToReach, projectFire, targetFor } from '@/core/simulate/fire';
+import {
+  describeMilestone,
+  isUnknown,
+  monthsToReach,
+  projectFire,
+  targetFor,
+} from '@/core/simulate/fire';
 
 const m = (major: number): Minor => minor(Math.round(major * 100));
 const fmt = (a: Minor) => `${(a / 100).toFixed(2)}`;
@@ -254,6 +260,62 @@ describe('when you could stop', () => {
 
   it('says so rather than looping forever when a target is out of reach', () => {
     expect(monthsToReach(m(100), m(1_000_000), minor(0), basisPoints(0))).toBeNull();
+  });
+
+  /*
+   * The worst thing this app has said to anybody.
+   *
+   * With nothing recorded, a year costs nothing; a target is a year's spending
+   * divided by the withdrawal rate, so every target is nothing; and `reached`
+   * was `invested >= target`, which is `0 >= 0`. Measured on a fresh database
+   * in phase 8: "When you could stop / Enough to stop, living as you do now /
+   * You are there", above "What it takes €0".
+   *
+   * Arithmetically correct and false about the person's money, which is the
+   * same shape as `describeFeeDrag`. Both branches get a test.
+   */
+  it('does not call an empty ledger financial independence', () => {
+    const r = projectFire({
+      invested: minor(0),
+      monthlyContribution: minor(0),
+      annualSpending: minor(0),
+      realReturn: basisPoints(500),
+      withdrawalRate: basisPoints(400),
+    });
+    expect(r.milestones.every((milestone) => milestone.target === 0)).toBe(true);
+    expect(
+      r.milestones.some((milestone) => milestone.reached),
+      'nothing invested against nothing needed is not "reached"',
+    ).toBe(false);
+    expect(r.milestones.every(isUnknown)).toBe(true);
+  });
+
+  it('says there is nothing to work from rather than naming a figure of nought', () => {
+    const r = projectFire({
+      invested: minor(0),
+      monthlyContribution: minor(0),
+      annualSpending: minor(0),
+      realReturn: basisPoints(500),
+      withdrawalRate: basisPoints(400),
+    });
+    const said = describeMilestone(r.milestones[0]!, fmt);
+    expect(said).toMatch(/nothing recorded/i);
+    // The reached wording belongs to a milestone that has a figure.
+    expect(said).not.toMatch(/You are there/);
+  });
+
+  it('still reports a real target as reached', () => {
+    const r = projectFire({
+      invested: m(2_000_000),
+      monthlyContribution: minor(0),
+      annualSpending: m(30_000),
+      realReturn: basisPoints(500),
+      withdrawalRate: basisPoints(400),
+    });
+    const full = r.milestones.find((x) => x.kind === 'full')!;
+    expect(isUnknown(full)).toBe(false);
+    expect(full.reached).toBe(true);
+    expect(describeMilestone(full, fmt)).toMatch(/You are there/);
   });
 
   it('grows the trajectory year on year', () => {

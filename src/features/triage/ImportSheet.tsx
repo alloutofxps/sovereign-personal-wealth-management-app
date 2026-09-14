@@ -178,6 +178,7 @@ export function ImportSheet({ open, onClose }: { open: boolean; onClose: () => v
             <input
               ref={fileInput}
               type="file"
+            aria-label="Choose a CSV statement to bring in"
               accept=".csv,.txt,.tsv,text/csv,text/plain"
               className="sr-only"
               onChange={(e) => {

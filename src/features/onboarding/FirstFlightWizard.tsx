@@ -21,7 +21,7 @@
  * export has, because the fact travels in `meta` with everything else.
  * ======================================================================== */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { markOnboardingComplete } from '@/data/repositories/onboardingRepo';
 import { Button } from '@/design/ui';
@@ -81,8 +81,69 @@ export function FirstFlightWizard({ onFinished }: { onFinished: () => void }) {
     }
   }, [onFinished]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  /* Move focus in on mount and on every step change, and keep Tab inside.
+   * Same contract as `BottomSheet`; see the note on the element below. */
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, [index]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const items = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null);
+      if (items.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-base" role="dialog" aria-modal="true">
+    /*
+     * A named, focused, trapped dialog — it was none of the three.
+     *
+     * Measured on a fresh database: the element carried `class`, `role` and
+     * `aria-modal` and nothing else, `document.activeElement` was `BODY`, and
+     * the first three tabbable elements in the document were `Add a bill`,
+     * `Add a payment` and `Home` — all of them on the dashboard *behind* an
+     * opaque `fixed inset-0` overlay that had just told assistive technology
+     * the rest of the page was inert. This is the first screen anybody sees.
+     *
+     * Focus moves to the dialog itself rather than to its first control, and
+     * again on every step, because each step replaces the whole body: landing
+     * on the container is what gets the new step read out.
+     */
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex flex-col bg-base outline-none"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Setting Sovereign up"
+      tabIndex={-1}
+    >
       <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-3 pt-[calc(0.75rem+var(--safe-top))]">
         <Progress index={index} total={STEPS.length} />
         <button

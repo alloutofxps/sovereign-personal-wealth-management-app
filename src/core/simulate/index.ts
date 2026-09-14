@@ -12,6 +12,7 @@ export type { FireInput, FireResult, Milestone, MilestoneKind, TrajectoryPoint }
 export {
   MILESTONE_LABELS,
   describeMilestone,
+  isUnknown,
   describeWhen,
   monthsToReach,
   projectFire,

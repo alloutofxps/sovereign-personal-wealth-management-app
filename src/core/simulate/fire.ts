@@ -147,7 +147,13 @@ export function projectFire(input: FireInput): FireResult {
       kind === 'coast'
         ? monthsToReach(input.invested, target, input.monthlyContribution, input.realReturn)
         : monthsToReach(input.invested, target, input.monthlyContribution, input.realReturn),
-    reached: input.invested >= target,
+    // `0 >= 0` is not "reached". With nothing recorded a year costs nothing,
+    // so every target is nothing, and the screen told somebody with an empty
+    // ledger they could stop working. See `isUnknown`.
+    // `0 >= 0` is not "reached". With nothing recorded a year costs nothing,
+    // so every target is nothing, and the screen told somebody with an empty
+    // ledger they could stop working. See `isUnknown`.
+    reached: target > 0 && input.invested >= target,
     percent: target <= 0 ? 0 : Math.min(100, Math.round((input.invested / target) * 100)),
   });
 
@@ -202,6 +208,18 @@ function buildTrajectory(input: FireInput): TrajectoryPoint[] {
 }
 
 /** "in about 12 years", "in about 8 months" — the way people say it. */
+/**
+ * A milestone with no target is not a milestone that has been reached.
+ *
+ * With nothing recorded, a year costs nothing, so the figure you need to live
+ * off is nothing, and `invested >= target` is `0 >= 0`. The screen said
+ * "Enough to stop, living as you do now — You are there" to somebody with an
+ * empty ledger. Arithmetically true and the worst thing the app could say.
+ */
+export function isUnknown(milestone: Milestone): boolean {
+  return milestone.target <= 0;
+}
+
 export function describeWhen(months: number | null): string {
   if (months === null) return 'not at this rate';
   if (months === 0) return 'already there';
@@ -214,6 +232,9 @@ export function describeMilestone(
   milestone: Milestone,
   format: (amount: Minor) => string,
 ): string {
+  if (isUnknown(milestone)) {
+    return 'There is nothing recorded to work this out from yet. Say what a year costs you and this fills in.';
+  }
   if (milestone.reached) {
     return `You are there. ${format(milestone.target)} was the figure.`;
   }

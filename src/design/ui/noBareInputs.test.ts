@@ -77,6 +77,40 @@ function sourceFiles(dir: string, found: string[] = []): string[] {
   return found;
 }
 
+/**
+ * Is this tag inside a `<label>`?
+ *
+ * Looks back for an opening `<label` with no `</label>` between it and here.
+ * Crude, and the alternative is a JSX parser for one question.
+ */
+function wrappedInLabel(source: string, at: number): boolean {
+  const before = source.slice(0, at);
+  const open = before.lastIndexOf('<label');
+  if (open === -1) return false;
+  return !before.slice(open).includes('</label>');
+}
+
+/** From `<` to the `>` that closes it, ignoring any inside braces or quotes. */
+function wholeTag(source: string, start: number): string {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = start; i < source.length; i += 1) {
+    const c = source[i]!;
+    if (quote !== null) {
+      if (c === quote) quote = null;
+    } else if (c === "'" || c === '"' || c === '`') {
+      quote = c;
+    } else if (c === '{') {
+      depth += 1;
+    } else if (c === '}') {
+      depth -= 1;
+    } else if (c === '>' && depth === 0) {
+      return source.slice(start, i + 1);
+    }
+  }
+  return source.slice(start);
+}
+
 const relative = (file: string) => file.slice(SRC.length + 1).split(sep).join('/');
 
 describe('text entry goes through the primitive', () => {
@@ -108,6 +142,73 @@ describe('text entry goes through the primitive', () => {
       offenders,
       'Use <Input> or <Textarea>. A bare field has no label association: the ' +
         'label beside it is a span, so a screen reader announces an unnamed box',
+    ).toEqual([]);
+  });
+});
+
+/* ===========================================================================
+ * AND THE EXEMPT ONES STILL NEED A NAME
+ * ---------------------------------------------------------------------------
+ * The exemption above is from `Input`, not from WCAG 4.1.2. It was written
+ * about the primitive — `Input` models a text field and none of a slider, a
+ * tick or a file picker fits that shape — and it was read as an exemption from
+ * everything.
+ *
+ * Phase 8 swept the accessible name of every interactive element on all
+ * sixteen routes and inside eleven sheets, computing it the way assistive
+ * technology does: aria-label, then aria-labelledby, then label[for], then a
+ * wrapping label, then title. Exactly two controls came back with nothing:
+ *
+ *   settings/DataAndSecurity.tsx  <input type="file" class="sr-only">
+ *   triage/ImportSheet.tsx        <input type="file" class="sr-only">
+ *
+ * Both `sr-only`: invisible and fully exposed to AT, so the name is not a
+ * nicety — it is the whole of what the control announces.
+ * ======================================================================== */
+
+describe('every input carries a name, exempt from the primitive or not', () => {
+  const files = sourceFiles(SRC).filter((file) => !PRIMITIVES.some((p) => file.endsWith(p)));
+
+  it('finds no input without a name a screen reader could read', () => {
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      const code = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+
+      for (const match of code.matchAll(/<input\b/g)) {
+        // The whole tag, brace-aware. A non-greedy match to the first `>`
+        // stops inside `onChange={(e) => …}` and hides every attribute after
+        // it, which is how five named controls looked unnamed on the first
+        // run of this check.
+        const tag = wholeTag(code, match.index);
+        // These three have no accessible name of their own and need none: a
+        // submit or reset button is named by its value, and a hidden input is
+        // not exposed at all.
+        if (/\btype\s*=\s*["']?(submit|reset|hidden)\b/.test(tag)) continue;
+
+        const named =
+          /aria-label\s*=/.test(tag) ||
+          /aria-labelledby\s*=/.test(tag) ||
+          // An `id` can only be naming it through a `label[for]`, which is the
+          // association `Input` itself uses.
+          /\bid\s*=/.test(tag) ||
+          /placeholder\s*=/.test(tag) ||
+          // A `<label>` wrapping the control names it, which is the
+          // association the runtime sweep counted and these five use.
+          wrappedInLabel(code, match.index);
+
+        if (!named) {
+          const line = code.slice(0, match.index).split('\n').length;
+          offenders.push(`${relative(file)}:${line}  ${tag.replace(/\s+/g, ' ').slice(0, 56)}`);
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      'An input with no aria-label, no id and no placeholder announces as an ' +
+        'unnamed control. `sr-only` makes it worse, not exempt.',
     ).toEqual([]);
   });
 });

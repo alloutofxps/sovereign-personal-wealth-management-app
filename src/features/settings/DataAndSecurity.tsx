@@ -43,12 +43,18 @@ export function DataAndSecurity() {
 /* --- export and restore --------------------------------------------------- */
 
 function YourDataCard() {
-  const explain = useExplain();
   const fileInput = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<PersistenceState | null>(null);
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [exporting, setExporting] = useState(false);
   const [lockWith, setLockWith] = useState<'passphrase' | 'phrase'>('passphrase');
+  /* The `storage` worked example reads `storageUsedBytes`; this component is
+   * the one that has it. Two of the three call sites passed nothing, so the
+   * same explanation showed the person their own megabytes from one button and
+   * the general case from the others. */
+  const explain = useExplain(
+    state?.usedBytes == null ? {} : { storageUsedBytes: state.usedBytes },
+  );
   const [phrase, setPhrase] = useState('');
   const [phraseGood, setPhraseGood] = useState(false);
   const [restoring, setRestoring] = useState<File | null>(null);
@@ -157,6 +163,7 @@ function YourDataCard() {
         <input
           ref={fileInput}
           type="file"
+            aria-label="Choose a Sovereign export to restore"
           accept=".svrgn,.sqlite3,.db,application/octet-stream"
           className="sr-only"
           onChange={(e) => {

@@ -223,10 +223,11 @@ export function SettingsView() {
       <Appearance />
 
       {/* --- your data ---------------------------------------------------- */}
-      <Section
-        title="Your data"
-        action={<Explain topic="storage" label="where your data lives" onOpen={explain.open} />}
-      >
+      {/* No `storage` Explain on this header. There were three on this one
+          screen, and this was the one with no access to the byte count its
+          worked example reads — so it answered worse than the two below it,
+          which are `DataAndSecurity` and `ProtectStorage`. */}
+      <Section title="Your data">
         <Row
           family="leisure"
           name="Where it is kept"
