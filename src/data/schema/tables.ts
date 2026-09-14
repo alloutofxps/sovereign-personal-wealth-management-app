@@ -73,16 +73,6 @@ export const loanPayments = sqliteTable('loan_payments', {
   createdAt: text('created_at').notNull(),
 });
 
-/** What somebody was worth on a day. Derived; kept so history stays cheap. */
-export const netWorthSnapshots = sqliteTable('net_worth_snapshots', {
-  id: text('id').primaryKey(),
-  date: text('date').notNull(),
-  totalAssets: integer('total_assets').notNull(),
-  totalLiabilities: integer('total_liabilities').notNull(),
-  netWorth: integer('net_worth').notNull(),
-  createdAt: text('created_at').notNull(),
-});
-
 /**
  * What an illiquid thing is reckoned to be worth, and when somebody last said so.
  *
@@ -372,7 +362,6 @@ export const TABLES = [
   'target_allocations',
   'fx_rates',
   'loan_payments',
-  'net_worth_snapshots',
   'reconciliations',
 ] as const;
 export type TableName = (typeof TABLES)[number];

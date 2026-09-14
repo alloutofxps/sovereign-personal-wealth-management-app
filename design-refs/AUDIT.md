@@ -142,7 +142,7 @@ it says so and says why.
 | **P7** | storage | `features/shell/AppShell.tsx:240` | The top-of-app storage warning is gated on `!storage.durable`, which means "SQLite fell back to an in-memory VFS". It **never checks `storage.persisted`**, which is the field that says the browser has not promised to keep the data. | `navigator.storage.persisted()` returned `false` on this machine and `[role=status]` was empty on every route. `openDatabase` in `data/client.ts:105` computes `persisted` correctly on the main thread, and `SettingsView:233` and `ProtectStorage:61` both read it — so the value is right and the most prominent warning ignores it. Not theoretical: **the seeded database was destroyed between two sessions today**, with no warning at any point, and the commissioner's own note records it happening twice before. | Eviction is the failure a real user is most likely to hit, and the only places that mention it are Settings and the after-import card. Somebody who never imports and never opens Settings is never told their financial history is evictable. | Widen the bar to `!durable \|\| !persisted` with wording per case, or surface `ProtectStorage` on first run. |
 | **P8** | copy | `core/budget/multiMonth.ts:222` | `describeReadyToAssign` has three branches — surplus, deficit, exactly nought — and no branch for "there is nothing here yet". On a fresh database the Envelopes field reads **"€0.00 left to give a job / Every unit of your money has a purpose. This is the goal."** | Measured on a fresh database: that is the literal text of the `#/budget` field with zero income, zero envelopes and zero assignments. | It congratulates somebody on an achievement they have not had the chance to attempt. Same shape as `describeFeeDrag`: a sentence whose branches do not cover the data, arithmetically correct and wrong to read. | A fourth branch for an untouched budget, with a test per branch as the copy standard requires. |
 
-| **P15** | design system | `features/forecast/RunwayCard.tsx`, `features/forecast/ForecastView.tsx:9` | The forecast pane's field sits **552px down the screen**, below the whole chart, and its own screen's source records a decision *against* having a field at all. | Measured the distance from the top of the scroll container to the field on all nine routes that have one: eight land between 70px and 179px — below the heading and nothing else. Forecast is **552px**, the last block on the page. `ForecastView.tsx:9` says, in writing: *"There is no field and no hero figure here on purpose. A forecast has two numbers that matter and neither is more important than the other… Promoting one of them to a 48pt anchor would be picking a winner the arithmetic does not pick."* | `CLAUDE.md` says a field is "exactly one per screen, **at the top**, carrying the number that screen exists for". This one is neither at the top nor the number the screen exists for — the chart is. **I introduced this in phase 4e and overrode a reasoned decision recorded in the file I was changing, without reading it.** Per the standing rule on the brief and the code disagreeing, it is flagged rather than resolved. | Two options, and it is the commissioner's call. **(a)** Take the field off the forecast pane: the screen keeps its two co-equal figures and `RunwayCard` goes back to being a card, restoring the recorded decision and leaving eight fields. **(b)** Keep it and move it above the chart, which asserts the runway is the pane's subject and needs the note in `ForecastView` rewritten to say why. I recommend (a) — the note's argument is sound, and it was written by somebody looking at this screen. |
+| **P15** ✅ | design system | `features/forecast/RunwayCard.tsx`, `features/forecast/ForecastView.tsx:9` | The forecast pane's field sits **552px down the screen**, below the whole chart, and its own screen's source records a decision *against* having a field at all. | Measured the distance from the top of the scroll container to the field on all nine routes that have one: eight land between 70px and 179px — below the heading and nothing else. Forecast is **552px**, the last block on the page. `ForecastView.tsx:9` says, in writing: *"There is no field and no hero figure here on purpose. A forecast has two numbers that matter and neither is more important than the other… Promoting one of them to a 48pt anchor would be picking a winner the arithmetic does not pick."* | `CLAUDE.md` says a field is "exactly one per screen, **at the top**, carrying the number that screen exists for". This one is neither at the top nor the number the screen exists for — the chart is. **I introduced this in phase 4e and overrode a reasoned decision recorded in the file I was changing, without reading it.** Per the standing rule on the brief and the code disagreeing, it is flagged rather than resolved. | Two options, and it is the commissioner's call. **(a)** Take the field off the forecast pane: the screen keeps its two co-equal figures and `RunwayCard` goes back to being a card, restoring the recorded decision and leaving eight fields. **(b)** Keep it and move it above the chart, which asserts the runway is the pane's subject and needs the note in `ForecastView` rewritten to say why. I recommend (a) — the note's argument is sound, and it was written by somebody looking at this screen. **Resolved: (a).** The field is off the forecast pane and `RunwayCard` is a card again. The split into two surfaces stays, because that half was right — the runway figure and the switch list were one card, and a hero and a list are not the same kind of object. Eight routes own a field now; forecast is in `NO_FIELD` with the note's own argument as its reason. |
 
 ### Severity 3 — backlog, not fixed
 
@@ -151,14 +151,21 @@ it says so and says why.
 | **P9** | design system | Three `storage` Explain buttons render on `#/settings`, under two different labels ("where your data lives" ×2, "keeping your records"). | Opened every Explain on the route; four sheets, three of them the same topic. |
 | **P10** | interlinking | `cards` and `two-books` are the only two manual chapters with no in-context `ManualLink` from any screen; they are reachable only from the contents page. | Extracted every `chapter=` prop (`checking`, `pots`, `safe-to-spend`, `selling`) and diffed against `CHAPTERS`. |
 | **P11** | interlinking | Accounts has no Explain at all, though `net-worth` is its whole subject and the topic is surfaced from Home. `#/analytics` and `#/debt` have none either. | Enumerated `aria-label^="More about"` per route: accounts 0, analytics 0, debt 0. |
-| **P12** | a11y contrast | A disabled button's label computes to **2.60:1** in Daylight (`opacity-40` on `text-ink` over `bg-raised`) and 3.35:1 in Midnight. WCAG 1.4.3 exempts inactive controls, so this is not a violation — but it is a pair `tokens.test.ts` does not assert, and 2.60 is hard to read. | Composited `ink × 0.4 + raised × 0.6` from the live token values in both themes and computed the ratio. |
+| **P12** ✅ | a11y contrast | A disabled button's label computes to **2.60:1** in Daylight (`opacity-40` on `text-ink` over `bg-raised`) and 3.35:1 in Midnight. WCAG 1.4.3 exempts inactive controls, so this is not a violation — but it is a pair `tokens.test.ts` does not assert, and 2.60 is hard to read. | Composited `ink × 0.4 + raised × 0.6` from the live token values in both themes and computed the ratio. **Resolved:** the colour is unchanged and the exemption is now in writing. `tokens.test.ts` composites four disabled pairs in both themes — `Button` at 40% on raised, surface and base, and `Chip` at 50% — asserts each is between 2:1 and AA, and asserts the 40% and 50% treatments stay distinguishable. It was exempt because nobody had asked; it is exempt by decision now, and a change to the opacity or an ink token fails the test. |
 | **P13** | a11y | The three Quick-assign options explain *why* they are unavailable in a `<span>` that is not associated with the disabled button (`aria-describedby`). | Read the rendered sheet: `Option` renders title, detail and `Button disabled`, with no association. |
 
 ### Severity 4 — backlog
 
 | ID | What is wrong | How it was established |
 | --- | --- | --- |
-| **P14** | `CLAUDE.md` says `--color-hot` marks "the record button, and the single dot". The record button is **emerald** (`rgb(79,209,165)` = `--color-liquid`), which is coherent with `Button`'s own note that emerald means "releases or confirms capital". The doc names a use the app does not have. | Measured the dock button's computed `background-color`; grepped every hot usage in `src` — three, all correct: the budget cover action, the triage dot, the reset confirm. |
+| **P14** ✅ | `CLAUDE.md` says `--color-hot` marks "the record button, and the single dot". The record button is **emerald** (`rgb(79,209,165)` = `--color-liquid`), which is coherent with `Button`'s own note that emerald means "releases or confirms capital". The doc names a use the app does not have. | Measured the dock button's computed `background-color`; grepped every hot usage in `src` — three, all correct: the budget cover action, the triage dot, the reset confirm. **Resolved:** the rule now says "at most **once** per screen, on the single thing that needs a decision", names the three real uses, and says plainly that the record button is not one of them and why emerald is right there. A rule that misdescribes the app misleads every future reader of it. |
+
+### Dead code, removed
+
+| | What | Why it was dead | What was done |
+| --- | --- | --- | --- |
+| **P16** ✅ | `net_worth_snapshots` — a table in `ddl.ts`, an index, a drizzle model, and a name in the live-query table list | Nothing has ever read or written it. v15 created it so "a ten-year timeline does not mean aggregating ten years of postings on every paint", and the app went the other way: `netWorthHistory` derives the line from the journal, which is what the rule about deriving rather than storing asks for. | Removed from the DDL, the models and the table list, so a fresh database never gets it. **The migration stays and cannot go:** v15 has shipped, a database at v14 still has to pass through it to reach v16, and editing a step that has already run somewhere changes history rather than the future. v15 now carries a note saying the table it creates is vestigial and that nothing reads it in an upgraded database either. |
+| **P17** ✅ | `analyticsToday`, exported from `AnalyticsView.tsx` | Referenced nowhere. | Deleted, with its now-unused import. |
 
 ### What passed, with the evidence
 
@@ -419,6 +426,60 @@ base-layer rule on the elements themselves, so bare controls were never at risk
 — and checking it is what turned up A1, which is considerably worse. Both cases
 point the same way: the cheapest moment to test a recorded cause is immediately
 before relying on it.
+
+---
+
+### M2. An instrument is a hypothesis too, and this one was wrong for two phases
+
+**Method, found in phase 8 while confirming phase 8's own fixes.**
+
+M1 says a recorded *cause* is a hypothesis until it is measured. This is the
+same lesson one level down: **a recorded measurement is a hypothesis about the
+instrument.**
+
+The 44×44 sweep used through phases 7 and 8 walks outwards from an element's
+centre, one pixel at a time, and stops when a hit test no longer lands on it.
+Re-run after the phase 8 fixes it reported **123 of 217 controls under 44px** —
+which would have been a catastrophic regression, except that every single value
+was 41 or 42, and the list included the `Explain` information button, **whose
+hit area is 44 by construction** (`.target` is `max(100%, 44px)`).
+
+A uniform 2–3px shortfall across every control, including one that cannot be
+short, is a reading about the ruler. The cause is the Browser pane scaling an
+emulated viewport to fit: integer CSS offsets map to fractional device pixels
+and the boundary lands inside. Established by measuring the same two controls
+at an unscaled viewport with an exhaustive per-pixel scan instead of a walk:
+
+```
+                       box      walking probe    exhaustive scan
+Explain info button    22x22    42x41            44x44
+dock record button     44x44    42x41            44x44
+```
+
+**What this costs.** Phase 7 reported "401 interactive elements swept, 0 under
+44px" and phase 8's audit carried that number forward. It was taken with the
+walking probe. The conclusion happens to have been right — the exhaustive scan
+agrees on the two controls it was checked against — but it was right by luck,
+and anybody re-running the sweep under a scaled pane would have got a different
+answer from the same app and had no way to tell which run to believe.
+
+**Three things follow.**
+
+1. **Calibrate against a known value before trusting a sweep.** A control whose
+   answer is fixed by construction is free to include and turns "is the app
+   right?" into "is the ruler right?" first. The Explain button is that control
+   here.
+2. **A uniform error is a signal about the method; a scattered one is a signal
+   about the subject.** 123 failures at 41–42 is not 123 defects. The shape of
+   the distribution said so before the calibration did.
+3. **Record which instrument produced a number.** The two probes disagree by
+   2–3px and only one of them is right. A number in a report without its
+   instrument cannot be reproduced or challenged.
+
+This is the second time in this project that a measurement was trusted because
+it was written down. The first was the milestone-label cause in M1. Neither was
+malicious and neither was careless — both were a reasonable thing to believe,
+recorded, and then relied on.
 
 ---
 

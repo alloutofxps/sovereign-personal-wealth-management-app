@@ -241,6 +241,74 @@ for (const [name, theme] of [
       }
     });
 
+    /* -------------------------------------------------------------------
+     * THE DISABLED STATE, EXEMPT IN WRITING RATHER THAN BY OMISSION
+     * -------------------------------------------------------------------
+     * Everything above is a colour against a ground. A *state* is different:
+     * `Button` disables with `opacity-40`, so the label is composited rather
+     * than chosen, and no test had ever computed the result. Phase 8 did:
+     * 2.60:1 in Daylight, which is below even the 3:1 non-text floor.
+     *
+     * WCAG 1.4.3 exempts inactive controls, so this is not a violation and
+     * the colour is not being changed. The fault was that it was exempt
+     * because nobody had asked. Pinning the measured value is what makes the
+     * exemption a decision: change the opacity or move an ink token and this
+     * fails, and somebody has to look at the number again.
+     *
+     * `Chip` disables at 50% rather than 40%, which is why it is listed
+     * separately instead of being assumed to match.
+     * ---------------------------------------------------------------- */
+    it('records what a disabled label actually computes to, and on what', () => {
+      const composite = (fg: string, bg: string, alpha: number): string => {
+        const mix = (a: number, b: number) => Math.round(a * alpha + b * (1 - alpha));
+        const parse = (h: string): [number, number, number] => {
+          const v = h.replace('#', '');
+          const full = v.length === 3 ? v.split('').map((c) => c + c).join('') : v;
+          return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16)) as [
+            number,
+            number,
+            number,
+          ];
+        };
+        const [fr, fg2, fb] = parse(fg);
+        const [br, bg2, bb] = parse(bg);
+        return `#${[mix(fr, br), mix(fg2, bg2), mix(fb, bb)]
+          .map((c) => c.toString(16).padStart(2, '0'))
+          .join('')}`;
+      };
+
+      const ink = hex(theme, '--color-ink');
+      const pairs = [
+        // Button, disabled at 40%, on each ground its variants sit on.
+        ['secondary button on raised', composite(ink, hex(theme, '--color-raised'), 0.4), hex(theme, '--color-raised')],
+        ['ghost button on surface', composite(ink, surface, 0.4), surface],
+        ['ghost button on base', composite(ink, base, 0.4), base],
+        // Chip disables at 50%, not 40%.
+        ['chip on raised', composite(ink, hex(theme, '--color-raised'), 0.5), hex(theme, '--color-raised')],
+      ] as const;
+
+      const measured = pairs.map(([what, fg, bg]) => ({
+        what,
+        ratio: Math.round(contrast(fg, bg) * 100) / 100,
+      }));
+
+      // Every one of these is below AA for text. That is the exemption, stated
+      // with its numbers so a regression is visible and a fix is possible.
+      for (const { what, ratio } of measured) {
+        expect(ratio, `${what} should not have become worse than 2:1`).toBeGreaterThan(2);
+        expect(
+          ratio,
+          `${what} now clears AA — if that is deliberate, this exemption can go`,
+        ).toBeLessThan(AA_TEXT);
+      }
+
+      // And the 40% and 50% treatments must stay distinguishable, because the
+      // two components disable at different strengths on purpose.
+      const button = measured.find((m) => m.what === 'secondary button on raised')!.ratio;
+      const chip = measured.find((m) => m.what === 'chip on raised')!.ratio;
+      expect(chip).toBeGreaterThan(button);
+    });
+
     /*
      * `ink-4` is the odd one out and stays that way on purpose. It is the
      * muted half of a paired bar and the fill of a dim track — never type. So

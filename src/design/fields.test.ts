@@ -22,14 +22,17 @@
  * arithmetic was measured in the browser with
  * `document.querySelectorAll('.field').length` on each of the sixteen routes:
  *
- *   nine routes    exactly 1
- *   seven routes   0, every one of them in NO_FIELD below
+ *   eight routes   exactly 1
+ *   eight routes   0, every one of them in NO_FIELD below
+ *
+ * Forecast was the ninth until phase 8 measured its field at 552px down the
+ * screen and `ForecastView`'s own note turned out to have argued against it
+ * from the start. It is in `NO_FIELD` now, with that argument as the reason.
  *
  * The nine, with the hue each one takes:
  *
  *   Today            housing     the app's spine
  *   What you're worth housing    the same money, totalled
- *   Ahead · forecast housing     Today's cash one step further out
  *   Envelopes        food        the `two-books` chapter's hue
  *   Pots             health      the `pots` chapter's hue
  *   Payoff           obligation  the `cards` chapter's hue, and the brief's
@@ -60,7 +63,6 @@ const FIELD_OWNER: Partial<Record<Route, string>> = {
   investments: join('features', 'investments', 'InvestmentsView.tsx'),
   budget: join('features', 'budget', 'BudgetGrid.tsx'),
   pots: join('features', 'goals', 'PotsView.tsx'),
-  forecast: join('features', 'forecast', 'RunwayCard.tsx'),
   analytics: join('features', 'analytics', 'AnalyticsView.tsx'),
   debt: join('features', 'simulations', 'DebtPayoffView.tsx'),
   independence: join('features', 'simulations', 'IndependenceView.tsx'),
@@ -82,6 +84,11 @@ const NO_FIELD: Partial<Record<Route, string>> = {
   transactions:
     'The whole record. There is no one number — the subject is the list itself, and the ' +
     'top affordance is the search box.',
+  forecast:
+    'Two figures that matter and neither more than the other: where the balance lands, and ' +
+    'how low it goes on the way. The note at the top of `ForecastView` made this argument ' +
+    'before phase 4e put a field here anyway, and phase 8 measured the result at 552px down ' +
+    'the screen — below the chart, which is what the pane is actually about.',
   calendar:
     'Two figures of the same kind, arriving and going out. The screen exists for *when* ' +
     'things land, not for how much, and promoting either one would claim one of two equals ' +

@@ -252,18 +252,21 @@ export const DDL: readonly string[] = [
      created_at        TEXT NOT NULL
    );`,
 
-  `CREATE TABLE IF NOT EXISTS net_worth_snapshots (
-     id                TEXT PRIMARY KEY,
-     date              TEXT NOT NULL UNIQUE,
-     total_assets      INTEGER NOT NULL,
-     total_liabilities INTEGER NOT NULL,
-     net_worth         INTEGER NOT NULL,
-     created_at        TEXT NOT NULL
-   );`,
-
   `CREATE INDEX IF NOT EXISTS idx_loan_payments_account ON loan_payments(account_id, payment_number ASC);`,
   `CREATE INDEX IF NOT EXISTS idx_loan_payments_entry ON loan_payments(entry_id);`,
-  `CREATE INDEX IF NOT EXISTS idx_nw_snapshots_date ON net_worth_snapshots(date ASC);`,
+
+  /* There was a `net_worth_snapshots` table and its index here.
+   *
+   * Nothing ever read or wrote it. v15 created it to keep a ten-year timeline
+   * from aggregating ten years of postings on every paint, and the app went
+   * the other way instead: `core/analytics/netWorthHistory` derives the line
+   * from the journal, which is what this project's rule about deriving rather
+   * than storing asks for.
+   *
+   * v15 still creates it, because a migration that has shipped cannot be
+   * edited — see the note there. So it may exist, empty, in a database that
+   * has been upgraded, and a fresh one will not have it. Nothing looks either
+   * way. */
 
   // v14. Historical exchange rates, quote-per-base.
   `CREATE TABLE IF NOT EXISTS fx_rates (

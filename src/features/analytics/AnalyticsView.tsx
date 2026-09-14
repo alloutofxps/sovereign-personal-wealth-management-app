@@ -10,7 +10,6 @@
  * ======================================================================== */
 
 import { useState } from 'react';
-import { toIsoDate } from '@/core/liquidity';
 import { describePace } from '@/core/analytics';
 import {
   HORIZON_LABELS,
@@ -296,4 +295,4 @@ function RhythmCard({ data }: { data: NonNullable<ReturnType<typeof useAnalytics
 }
 
 /** Today, so the view and the query agree on what "this month" means. */
-export const analyticsToday = () => toIsoDate(new Date());
+

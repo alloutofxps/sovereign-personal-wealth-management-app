@@ -57,6 +57,21 @@ const LOAN_PAYMENTS = `CREATE TABLE IF NOT EXISTS loan_payments (
  * the journal, and the history engine does exactly that. The table exists so a
  * ten-year timeline does not mean aggregating ten years of postings on every
  * paint, and so a month that has closed keeps the figure it closed at.
+ *
+ * ---------------------------------------------------------------------------
+ * THAT IS NOT WHAT HAPPENED, AND THIS TABLE IS VESTIGIAL
+ *
+ * Nothing ever read or wrote it. `core/analytics/netWorthHistory` derives the
+ * line from postings, which is what this project's rule about deriving rather
+ * than storing asks for, so the caching this table was for never arrived.
+ *
+ * Phase 8 removed it from `ddl.ts`, from the drizzle models and from the
+ * live-query table list, so a fresh database never gets it. These statements
+ * stay because a migration that has shipped cannot be edited: a database
+ * sitting at v14 still has to pass through v15 to reach v16, and changing the
+ * steps it takes on the way changes history rather than the future. So the
+ * table may exist, empty, in an upgraded database. Nothing reads it there
+ * either.
  */
 const SNAPSHOTS = `CREATE TABLE IF NOT EXISTS net_worth_snapshots (
    id                TEXT PRIMARY KEY,

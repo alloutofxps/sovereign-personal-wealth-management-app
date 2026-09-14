@@ -97,10 +97,23 @@ Never reassign a category's hue. Never use a category colour to mean "good" or
 
 ### The hot accent budget
 
-`--color-hot` appears **at most twice per screen**: the record button, and the
-single dot marking the one thing that needs a decision. A third occurrence is a
-bug. It is a fill and a marker — **never small text**, because it does not clear
-AA as type on any of our grounds.
+`--color-hot` appears **at most once per screen**, on the single thing that
+needs a decision. A second occurrence is a bug. It is a fill and a marker —
+**never small text**, because it does not clear AA as type on any of our
+grounds.
+
+It is used in exactly three places, and each is the one decision on its screen:
+the square that covers the worst overspent envelope (`BudgetGrid`), the dot on
+"anything needing you" (`TriageBar`), and the confirm button on the reset
+(`SettingsView`) — not the row that opens it, because a destination is not a
+danger.
+
+**The record button is not one of them.** This rule said it was for six phases;
+phase 8 measured the dock's button at `rgb(79, 209, 165)`, which is
+`--color-liquid`, and `Button`'s own note says why that is right — emerald means
+"this releases or confirms capital". Recording something is not a decision the
+app is asking you to make, it is the app's ordinary verb. The rule described a
+design the app never had.
 
 ### Describe every instance; name only the one that needs a decision
 
@@ -156,7 +169,7 @@ everything is what makes a screen read as a kit of identical boxes.
 with a `Card` carrying their hero figure, which is one surface doing two jobs —
 the state the three-surface hierarchy was introduced to fix.
 
-Nine routes have one now. The other seven are on a list, each with an argument
+Eight routes have one. The other eight are on a list, each with an argument
 rather than a label, and `fields.test.ts` fails if a route is on neither list,
 if an owner stops drawing one, or if one appears anywhere else.
 
@@ -164,12 +177,20 @@ The question every screen has to answer is **is there one number this screen
 exists for**, and "no" is a real answer:
 
 - **Yes:** Today, What you're worth, Invested, Envelopes, Pots, Payoff, Ahead's
-  forecast and where-it-went panes, When you could stop.
-- **No:** Review (a queue — the count is a property of the stack, and a field
-  pushes the first row off the fold), the whole record (a list), the calendar
-  (two figures of the same kind; the screen is about *when*), What if (a list of
-  sketches with no figure until one is open), Categories (a structure),
-  Settings, and the manual (prose).
+  where-it-went pane, When you could stop.
+- **No:** Ahead's forecast pane (two figures that matter and neither more than
+  the other — where the balance lands and how low it goes; the note at the top
+  of `ForecastView` makes the argument), Review (a queue — the count is a
+  property of the stack, and a field pushes the first row off the fold), the
+  whole record (a list), the calendar (two figures of the same kind; the screen
+  is about *when*), What if (a list of sketches with no figure until one is
+  open), Categories (a structure), Settings, and the manual (prose).
+
+**Position is evidence.** Phase 4e put a field on the forecast pane over that
+note, and phase 8 measured it 552px down the screen, below the whole chart,
+where the other eight land between 70px and 179px. A field below the fold is a
+card with a field's paint on it, and measuring where it sits is how you find
+out. It was removed.
 
 A field where the answer is no is worse than none: it promotes one figure out of
 several equals, or puts a number above a screen whose subject is not a number.
@@ -178,9 +199,8 @@ several equals, or puts a number above a screen whose subject is not a number.
 of the field manual already carries, so the contents page and the screens agree:
 `two-books` → food → Envelopes, `pots` → health → Pots, `cards` → obligation →
 Payoff, `selling` → transport → Invested, `safe-to-spend` → housing → Today.
-Ahead's forecast shares Today's housing because it is the same cash one step
-further out; When you could stop shares Invested's transport because it is that
-screen's own future.
+When you could stop shares Invested's transport, because it is that screen's
+own future.
 
 `family="none"` exists for exactly one case and must stay rare: where it went,
 whose field sits directly above a Sankey in which every ribbon is already one of
