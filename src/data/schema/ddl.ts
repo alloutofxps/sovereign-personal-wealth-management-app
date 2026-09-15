@@ -198,6 +198,10 @@ export const DDL: readonly string[] = [
      value      INTEGER NOT NULL,
      cost_basis INTEGER,
      notes      TEXT,
+     -- v20. Who is speaking: 'user' for a figure somebody typed, 'register'
+     -- for what the holdings added up to. Their absence let one be read as
+     -- the other, which wrote off the difference as a loss. See v20.
+     kind       TEXT NOT NULL DEFAULT 'user' CHECK (kind IN ('user', 'register')),
      entry_id   TEXT REFERENCES entries(id),
      created_at TEXT NOT NULL
    );`,
@@ -348,7 +352,9 @@ export const DDL: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS idx_security_prices_lookup ON security_prices(security_id, date DESC);`,
 
   `CREATE INDEX IF NOT EXISTS idx_valuations_account_date ON valuations(account_id, date DESC);`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_account_day ON valuations(account_id, date);`,
+  // v20. `kind` is in the key so a figure somebody typed and a register mark
+  // written the same day cannot overwrite one another.
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_account_day_kind ON valuations(account_id, date, kind);`,
 
   // v18. Labels that cut across categories. Joined to entries and to nothing
   // else: no posting, no amount, no envelope. See migrations/v18.ts.

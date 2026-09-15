@@ -13,6 +13,7 @@ export type {
   Security,
 } from './holdingsMath';
 export {
+  describeHoldingEntry,
   QUANTITY_EXPONENT,
   QUANTITY_SCALE,
   formatQuantity,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { basisPoints, minor } from '@/core/money';
+import { type Minor, basisPoints, minor } from '@/core/money';
 import {
   ASSUMED_GROSS_RETURN_BP,
   LOW_COST_BASELINE_BP,
@@ -14,6 +14,8 @@ import {
   formatShare,
   marketValue,
   parseQuantity,
+  QUANTITY_SCALE,
+  describeHoldingEntry,
   reconcileTarget,
   totalsOf,
   valueOf,
@@ -472,6 +474,76 @@ describe('reconciling an account against what it holds', () => {
     expect(result.delta).toBe(0);
   });
 
+  /*
+   * The phantom crash.
+   *
+   * Walked from a wiped database: an account given EUR 3,458 by hand, then one
+   * holding worth EUR 1,777.50 typed in. The balance was reset to the
+   * register's incomplete total and the difference written off — dated today,
+   * so the screen read "down EUR 1,681 this month" and the net-worth history
+   * kept it. One correct action, a permanent invented loss.
+   *
+   * There is no safe guess here. The gap is either cash in the account or a
+   * holding not typed in yet, and the two want opposite treatment. So the
+   * engine refuses, and says it is refusing.
+   *
+   * VERIFIED by breaking it: restoring `uninvested = 0` for the null case
+   * fails all four expectations below.
+   */
+  it('refuses to guess the first time, rather than writing off the difference', () => {
+    const result = reconcileTarget({
+      registerValue: minor(177_750),
+      ledgerValue: minor(345_800),
+      lastRegisterValue: null,
+    });
+
+    expect(result.needsReconciling, 'the difference is unexplained').toBe(true);
+    expect(result.delta, 'nothing may be written').toBe(0);
+    expect(result.target, 'the figure the person gave stands').toBe(345_800);
+    expect(result.uninvestedCash, 'the residual is reported for somebody to confirm').toBe(168_050);
+  });
+
+  it('reports a register that has outrun the balance rather than clamping it', () => {
+    // Prices rose past the hand-typed figure. Still not the engine's call.
+    const result = reconcileTarget({
+      registerValue: minor(357_800),
+      ledgerValue: minor(345_800),
+      lastRegisterValue: null,
+    });
+
+    expect(result.needsReconciling).toBe(true);
+    expect(result.delta).toBe(0);
+    expect(result.uninvestedCash, 'signed, so a caller can tell which way').toBe(-12_000);
+  });
+
+  it('moves the account when the cash is stated rather than guessed', () => {
+    // What the flow does at the end: register plus the cash somebody typed.
+    const result = reconcileTarget({
+      registerValue: minor(301_750),
+      ledgerValue: minor(345_800),
+      lastRegisterValue: null,
+      statedCash: minor(44_050),
+    });
+
+    expect(result.needsReconciling).toBe(false);
+    expect(result.target).toBe(345_800);
+    expect(result.delta, 'the figure they gave was right all along').toBe(0);
+    expect(result.uninvestedCash).toBe(44_050);
+  });
+
+  it('keeps stated cash through the next price move', () => {
+    // Reconciled above at register 301_750 with 44_050 cash. VWCE then rises.
+    const result = reconcileTarget({
+      registerValue: minor(311_750),
+      ledgerValue: minor(345_800),
+      lastRegisterValue: minor(301_750),
+    });
+
+    expect(result.uninvestedCash, 'the cash survives').toBe(44_050);
+    expect(result.delta, 'only the holdings moved').toBe(10_000);
+    expect(result.target).toBe(355_800);
+  });
+
   it('does not invent negative cash when the balance has fallen behind', () => {
     const result = reconcileTarget({
       registerValue: minor(100_000),
@@ -482,5 +554,73 @@ describe('reconciling an account against what it holds', () => {
     // The residual is negative, so it is ignored rather than subtracted again.
     expect(result.uninvestedCash).toBe(-30_000);
     expect(result.target).toBe(100_000);
+  });
+});
+
+/* ===========================================================================
+ * THE SENTENCE ABOVE THE BUTTON
+ * ---------------------------------------------------------------------------
+ * It read "This will **add** 15 shares of VWCE valued at EUR 1,777.50 to your
+ * Trading 212." Every figure was right and the verb was wrong: recording what
+ * an account holds re-states what the account is worth, and the first time it
+ * happens the figure somebody typed is replaced outright. Somebody reading
+ * "add" against a EUR 3,458 account expects EUR 5,235.50 and gets EUR
+ * 1,777.50.
+ *
+ * `describeFeeDrag` again, so the same rule applies: the wording turns on a
+ * plural, on whether a cost was given, and on a sign, and each branch is
+ * written to fail against the old sentence.
+ * ======================================================================== */
+
+describe('what recording a holding says it will do', () => {
+  const euros = (amount: Minor) => `€${(amount / 100).toFixed(2)}`;
+  const base = {
+    quantity1e8: 15 * QUANTITY_SCALE,
+    symbol: 'vwce',
+    marketValue: minor(177_750),
+    costBasis: minor(170_000),
+    accountName: 'Trading 212',
+    replacesTypedValue: false,
+  };
+
+  it('says the typed figure is replaced, on the first holding in an account', () => {
+    const said = describeHoldingEntry({ ...base, replacesTypedValue: true }, euros);
+
+    expect(said).toContain('Trading 212 is worth €1777.50');
+    expect(said).toContain('replacing the figure you typed');
+    // The word that made the old sentence wrong.
+    expect(said, 'the account is not gaining €1,777.50').not.toMatch(/\badd\b/i);
+  });
+
+  it('says it records, not adds, once the account already holds something', () => {
+    const said = describeHoldingEntry(base, euros);
+
+    expect(said).toContain('This records 15 shares of VWCE');
+    expect(said).toContain('in Trading 212');
+    expect(said).not.toMatch(/\badd\b/i);
+    expect(said, 'and it is not replacing anything now').not.toContain('replacing');
+  });
+
+  it('upper-cases the symbol whatever was typed', () => {
+    expect(describeHoldingEntry(base, euros)).toContain('VWCE');
+  });
+
+  it('says share rather than shares when there is one', () => {
+    const said = describeHoldingEntry({ ...base, quantity1e8: QUANTITY_SCALE }, euros);
+    expect(said).toContain('1 share of VWCE');
+    expect(said).not.toContain('1 shares');
+  });
+
+  it('names the direction the holding has moved', () => {
+    expect(describeHoldingEntry(base, euros)).toContain('up €77.50');
+    expect(
+      describeHoldingEntry({ ...base, costBasis: minor(200_000) }, euros),
+    ).toContain('down €222.50');
+  });
+
+  it('says nothing about a gain when no cost was given', () => {
+    const said = describeHoldingEntry({ ...base, costBasis: minor(0) }, euros);
+    expect(said).not.toContain('cost');
+    expect(said).not.toMatch(/\bup\b|\bdown\b/);
   });
 });

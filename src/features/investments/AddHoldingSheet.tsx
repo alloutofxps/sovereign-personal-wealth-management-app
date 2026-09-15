@@ -12,6 +12,7 @@ import { basisPoints, minor } from '@/core/money';
 import type { AccountId, LedgerAccount } from '@/core/ledger';
 import {
   ASSET_CLASS_MEANINGS,
+  describeHoldingEntry,
   ASSET_CLASS_NAMES,
   ASSET_CLASS_ORDER,
   formatQuantity,
@@ -29,10 +30,19 @@ export function AddHoldingSheet({
   open,
   onClose,
   accounts,
+  accountsHoldingSomething,
 }: {
   open: boolean;
   onClose: () => void;
   accounts: readonly LedgerAccount[];
+  /**
+   * Which accounts already hold something.
+   *
+   * An account holding nothing yet is one whose worth is still a figure
+   * somebody typed, so the first holding recorded in it replaces that figure
+   * rather than adding to it. The sentence above the button says which.
+   */
+  accountsHoldingSomething: ReadonlySet<string>;
 }) {
   const money = useMoney();
   const fx = useFx();
@@ -75,6 +85,7 @@ export function AddHoldingSheet({
   const value = quantity > 0 && price > 0 ? marketValue(minor(price), quantity) : minor(0);
 
   const account = accounts.find((a) => a.id === accountId);
+  const firstInAccount = accountId !== '' && !accountsHoldingSomething.has(accountId);
   const ready = Boolean(accountId && symbol.trim() && name.trim() && quantity > 0);
 
   async function save() {
@@ -203,13 +214,20 @@ export function AddHoldingSheet({
         <div className="rounded-md border border-line bg-raised px-3.5 py-3">
           <p className="text-caption text-ink-2">
             {ready
-              ? `This will add ${formatQuantity(quantity)} shares of ` +
-                `${symbol.trim().toUpperCase()} valued at ${money.format(value)} to your ` +
-                `${account?.name ?? 'account'}.` +
-                (cost > 0
-                  ? ` It cost ${money.format(minor(cost))}, so it is currently ` +
-                    `${value >= cost ? 'up' : 'down'} ${money.format(minor(Math.abs(value - cost)))}.`
-                  : '')
+              ? describeHoldingEntry(
+                  {
+                    quantity1e8: quantity,
+                    symbol,
+                    marketValue: value,
+                    costBasis: minor(cost),
+                    accountName: account?.name ?? 'this account',
+                    // The first holding in an account whose worth was typed by
+                    // hand replaces that figure rather than adding to it, and
+                    // the sentence has to say so before the button is pressed.
+                    replacesTypedValue: firstInAccount,
+                  },
+                  money.format,
+                )
               : 'Fill the fields above in.'}
           </p>
         </div>

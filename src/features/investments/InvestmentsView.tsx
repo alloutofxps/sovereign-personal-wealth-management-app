@@ -40,7 +40,7 @@
  * If this ever gets rewritten to rank by magnitude again, that is the bug.
  * ======================================================================== */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { minor } from '@/core/money';
 import { describeAllocation, formatReturn, type Holding } from '@/core/investments';
 import { formatExpenseRatio } from '@/core/investments';
@@ -116,6 +116,18 @@ export function InvestmentsView() {
   const driftFamily = familyFor(worstDrift?.assetClass);
 
   const data = portfolio.data;
+
+  /*
+   * Which accounts already hold something.
+   *
+   * `AddHoldingSheet` needs it to say the truth in its preview: the first
+   * holding recorded in an account replaces the figure somebody typed for it,
+   * and every one after that adds to a register the account already follows.
+   */
+  const accountsHoldingSomething = useMemo(
+    () => new Set((data?.holdings ?? []).map((h) => h.accountId)),
+    [data?.holdings],
+  );
   const up = (data?.totals.gainLoss ?? 0) > 0;
   const flat = (data?.totals.gainLoss ?? 0) === 0;
 
@@ -333,6 +345,7 @@ export function InvestmentsView() {
             open={adding}
             onClose={() => setAdding(false)}
             accounts={data.accounts}
+            accountsHoldingSomething={accountsHoldingSomething}
           />
           <UpdatePricesSheet
             open={pricing}

@@ -24,6 +24,7 @@ import { LATEST_VERSION, MIGRATIONS } from './migrations';
 import { TARGET_KIND_COLUMN, v17Statements } from './migrations/v17';
 import { v18Statements } from './migrations/v18';
 import { v19Statements } from './migrations/v19';
+import { REGISTER_MARK_NOTE, v20Statements } from './migrations/v20';
 
 function fresh(): DatabaseSync {
   const db = new DatabaseSync(':memory:');
@@ -371,5 +372,112 @@ describe('every migration step', () => {
     const versions = MIGRATIONS.map((step) => step.to);
     expect(new Set(versions).size).toBe(versions.length);
     expect([...versions].sort((a, b) => a - b)).toEqual(versions);
+  });
+});
+
+/* ===========================================================================
+ * V20 — TELLING A TYPED FIGURE FROM A COMPUTED ONE
+ * ---------------------------------------------------------------------------
+ * The column exists because its absence cost money. `valuations` held both
+ * "I reckon this is worth EUR 3,458" and "the holdings added up to EUR
+ * 1,777.50", and two things followed: the residual was read off whichever row
+ * was newest, and the unique index on (account_id, date) let a register mark
+ * overwrite somebody's own opening figure outright.
+ *
+ * The index is the half a source scan cannot check, so it is exercised here
+ * against real SQLite: two kinds on one day must both survive, and two of the
+ * same kind on one day must still collapse to one.
+ * ======================================================================== */
+
+describe('a valuation says who is speaking', () => {
+  function accountRow(db: DatabaseSync): void {
+    db.exec(`INSERT INTO accounts (id, book, type, name, normal)
+             VALUES ('acc-1', 'FINANCIAL', 'ASSET', 'Trading 212', 'DEBIT')`);
+  }
+
+  const mark = (id: string, value: number, kind: string, date = '2026-09-15') =>
+    `INSERT INTO valuations (id, account_id, date, value, kind, created_at)
+      VALUES ('${id}', 'acc-1', '${date}', ${value}, '${kind}', '2026-09-15T10:00:00Z')`;
+
+  it('ships the column on a fresh database', () => {
+    const db = fresh();
+    expect(columnNames(db, 'valuations')).toContain('kind');
+  });
+
+  it('defaults to the kind that must never be overwritten', () => {
+    const db = fresh();
+    accountRow(db);
+    db.exec(`INSERT INTO valuations (id, account_id, date, value, created_at)
+             VALUES ('v1', 'acc-1', '2026-09-15', 345800, '2026-09-15T10:00:00Z')`);
+    const row = db.prepare(`SELECT kind FROM valuations WHERE id = 'v1'`).get() as { kind: string };
+    expect(row.kind).toBe('user');
+  });
+
+  /*
+   * The defect this index change exists for.
+   *
+   * Before v20 the second of these replaced the first, because they share a
+   * date and the key was (account_id, date). A person's opening figure was
+   * destroyed by the app's own bookkeeping on the day they created the
+   * account, and the detail sheet then showed the register's total under the
+   * caption "What it was worth when you added it".
+   */
+  it('keeps a typed figure and a register mark from the same day apart', () => {
+    const db = fresh();
+    accountRow(db);
+    db.exec(mark('v-user', 345_800, 'user'));
+    db.exec(mark('v-reg', 177_750, 'register'));
+
+    const rows = db
+      .prepare(`SELECT id, value, kind FROM valuations WHERE account_id = 'acc-1' ORDER BY kind`)
+      .all() as unknown as { id: string; value: number; kind: string }[];
+
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.kind === 'user')?.value, 'the figure they gave').toBe(345_800);
+    expect(rows.find((r) => r.kind === 'register')?.value, 'what the holdings came to').toBe(
+      177_750,
+    );
+  });
+
+  it('still allows only one of each kind per day', () => {
+    const db = fresh();
+    accountRow(db);
+    db.exec(mark('v-reg', 177_750, 'register'));
+    // A second opinion on the same day is a correction, not a second fact.
+    expect(() => db.exec(mark('v-reg-again', 301_750, 'register'))).toThrow();
+  });
+
+  it('refuses a kind it does not know', () => {
+    const db = fresh();
+    accountRow(db);
+    expect(() => db.exec(mark('v-bad', 1, 'guess'))).toThrow();
+  });
+
+  it('backfills existing register marks by the note they have always carried', () => {
+    const db = fresh();
+    accountRow(db);
+    // A database as it stood before v20: no kind, told apart only by prose.
+    db.exec(`INSERT INTO valuations (id, account_id, date, value, notes, kind, created_at)
+             VALUES ('old-reg', 'acc-1', '2026-09-10', 177750, '${REGISTER_MARK_NOTE}', 'user', '2026-09-10T10:00:00Z')`);
+    db.exec(`INSERT INTO valuations (id, account_id, date, value, notes, kind, created_at)
+             VALUES ('old-user', 'acc-1', '2026-09-09', 345800, 'What it was worth when you added it.', 'user', '2026-09-09T10:00:00Z')`);
+
+    for (const statement of v20Statements()) db.exec(statement);
+
+    const kindOf = (id: string) =>
+      (db.prepare(`SELECT kind FROM valuations WHERE id = '${id}'`).get() as { kind: string }).kind;
+    expect(kindOf('old-reg'), 'the register wrote this one').toBe('register');
+    expect(kindOf('old-user'), 'the person wrote this one').toBe('user');
+  });
+
+  it('is harmless to run twice, which is what a retry does', () => {
+    const db = fresh();
+    accountRow(db);
+    db.exec(mark('v-reg', 177_750, 'register'));
+    for (const statement of v20Statements()) db.exec(statement);
+    for (const statement of v20Statements()) db.exec(statement);
+
+    const row = db.prepare(`SELECT count(*) AS n FROM valuations`).get() as { n: number };
+    expect(row.n).toBe(1);
   });
 });

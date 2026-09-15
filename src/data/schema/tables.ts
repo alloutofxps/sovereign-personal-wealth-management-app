@@ -177,6 +177,14 @@ export const valuations = sqliteTable('valuations', {
   value: integer('value').notNull(),
   costBasis: integer('cost_basis'),
   notes: text('notes'),
+  /**
+   * v20. Who is speaking.
+   *
+   * `user` is a figure somebody typed; `register` is what the holdings in the
+   * account added up to. Reading one as the other is what wrote off the
+   * difference between them as a loss — see the v20 migration.
+   */
+  kind: text('kind').notNull().default('user'),
   entryId: text('entry_id'),
   createdAt: text('created_at').notNull(),
 });

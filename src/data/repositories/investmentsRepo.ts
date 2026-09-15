@@ -18,6 +18,7 @@
  * ======================================================================== */
 
 import { asc, inArray, sql } from 'drizzle-orm';
+import { REGISTER_MARK_NOTE } from '@/data/schema/migrations/v20';
 import { basisPoints, minor, type BasisPoints, type Minor } from '@/core/money';
 import {
   LedgerError,
@@ -203,7 +204,14 @@ export async function listSecurities(): Promise<Security[]> {
 export async function syncAccountValue(
   accountId: AccountId,
   asOf: IsoDate = today(),
-): Promise<{ changed: boolean; delta: Minor; uninvestedCash: Minor }> {
+  statedCash?: Minor,
+): Promise<{
+  changed: boolean;
+  delta: Minor;
+  uninvestedCash: Minor;
+  /** True when nothing was written because the difference is still unexplained. */
+  needsReconciling: boolean;
+}> {
   const account = (await listAccounts()).find((a) => a.id === accountId);
   if (!account) {
     throw new LedgerError('That account could not be found, so nothing has been recorded.');
@@ -215,17 +223,31 @@ export async function syncAccountValue(
   // The rule itself lives in `@/core/investments`, where it can be reasoned
   // about and tested without a database standing by.
   const lastMark = await lastRegisterMark(accountId);
-  const { target, delta, uninvestedCash } = reconcileTarget({
+  const { target, delta, uninvestedCash, needsReconciling } = reconcileTarget({
     registerValue,
     ledgerValue,
     lastRegisterValue: lastMark,
+    ...(statedCash === undefined ? {} : { statedCash }),
   });
+
+  /*
+   * The engine refused to guess, so nothing is written — not the valuation and
+   * not the register mark either.
+   *
+   * Recording the mark here would be worse than the loss it replaced: the
+   * residual would then be measured from an incomplete register, and the next
+   * holding somebody typed would *inflate* the account by its whole value.
+   * The account stays exactly as they left it until someone states the cash.
+   */
+  if (needsReconciling) {
+    return { changed: false, delta, uninvestedCash, needsReconciling: true };
+  }
 
   if (delta === 0) {
     // Still record where the register stands, so the next sync measures from
     // here rather than from whenever it last happened to move the balance.
     if (lastMark !== registerValue) await writeRegisterMark(accountId, asOf, registerValue);
-    return { changed: false, delta, uninvestedCash };
+    return { changed: false, delta, uninvestedCash, needsReconciling: false };
   }
 
   await saveEntry(
@@ -241,14 +263,22 @@ export async function syncAccountValue(
     [registerMarkStatement(accountId, asOf, registerValue)],
   );
 
-  return { changed: true, delta, uninvestedCash };
+  return { changed: true, delta, uninvestedCash, needsReconciling: false };
 }
 
 /** What the register was worth when the two records were last reconciled. */
 async function lastRegisterMark(accountId: AccountId): Promise<Minor | null> {
+  /*
+   * `kind = 'register'` is the whole point of this query.
+   *
+   * Without it this read the newest valuation of any kind, so a figure a
+   * person typed themselves came back as though the register had been squared
+   * against it. The residual then computed to zero and their figure was
+   * written off. See P24 in AUDIT.md.
+   */
   const [row] = (await db.all(sql`
     SELECT value FROM valuations
-     WHERE account_id = ${accountId}
+     WHERE account_id = ${accountId} AND kind = 'register'
      ORDER BY date DESC, created_at DESC
      LIMIT 1`)) as unknown as Record<number, unknown>[];
   return row === undefined ? null : minor(Number(row[0]));
@@ -268,12 +298,15 @@ function registerMarkStatement(
       date,
       value,
       costBasis: null,
-      notes: 'What the holdings in this account added up to.',
+      notes: REGISTER_MARK_NOTE,
+      kind: 'register',
       entryId: null,
       createdAt: now,
     })
     .onConflictDoUpdate({
-      target: [valuations.accountId, valuations.date],
+      // `kind` is in the key, so this can only ever replace another register
+      // mark. It used to be able to replace the person's own opening figure.
+      target: [valuations.accountId, valuations.date, valuations.kind],
       set: { value, createdAt: now },
     })
     .toSQL();

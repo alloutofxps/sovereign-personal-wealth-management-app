@@ -203,8 +203,21 @@ export interface Reconciliation {
   target: Minor;
   /** How far it has to move to get there. Zero means leave it alone. */
   delta: Minor;
-  /** Money in the account that the register does not know about. */
+  /**
+   * Money in the account that the register does not know about.
+   *
+   * Signed. Negative means the register accounts for more than the balance
+   * says, which is a question for the person rather than a figure to apply.
+   */
   uninvestedCash: Minor;
+  /**
+   * True when the two records have never been squared and this function
+   * therefore refused to guess.
+   *
+   * A caller must not write a valuation while this is true. It is the signal
+   * to ask somebody what the difference is, not to decide on their behalf.
+   */
+  needsReconciling: boolean;
 }
 
 /**
@@ -231,16 +244,119 @@ export function reconcileTarget(input: {
   registerValue: Minor;
   ledgerValue: Minor;
   lastRegisterValue: Minor | null;
+  /**
+   * Cash the person has stated, for an explicit reconciliation.
+   *
+   * Supplying it is what makes the difference between the two records a known
+   * quantity rather than a guess, and it is the only way to move an account
+   * that has never been reconciled.
+   */
+  statedCash?: Minor;
 }): Reconciliation {
-  const uninvested =
-    input.lastRegisterValue === null
-      ? minor(0)
-      : minor(input.ledgerValue - input.lastRegisterValue);
+  // An explicit reconciliation. The register plus the cash somebody has just
+  // told us about is the whole account, by definition.
+  if (input.statedCash !== undefined) {
+    const target = minor(input.registerValue + input.statedCash);
+    return {
+      target,
+      delta: minor(target - input.ledgerValue),
+      uninvestedCash: input.statedCash,
+      needsReconciling: false,
+    };
+  }
+
+  if (input.lastRegisterValue === null) {
+    // Nothing to protect: no figure was ever given, so the register is the
+    // only information there is and it is safe to adopt it whole.
+    if (input.ledgerValue === 0) {
+      return {
+        target: input.registerValue,
+        delta: input.registerValue,
+        uninvestedCash: minor(0),
+        needsReconciling: false,
+      };
+    }
+
+    /*
+     * The case that used to invent a loss.
+     *
+     * A balance exists, the register has never been squared against it, and
+     * the difference between them is genuinely ambiguous: it is either cash
+     * sitting in the account or a holding that has not been typed in yet.
+     * Guessing "cash" inflates the account on the next holding; guessing "not
+     * cash" — which is what this did — writes off the difference and dates
+     * the write-off today, so one correct action becomes a permanent crash in
+     * the net-worth history.
+     *
+     * So: leave it alone and say so. There is no third reading that is safe,
+     * and no valuation may be written from here.
+     */
+    return {
+      target: input.ledgerValue,
+      delta: minor(0),
+      uninvestedCash: minor(input.ledgerValue - input.registerValue),
+      needsReconciling: true,
+    };
+  }
+
+  const uninvested = minor(input.ledgerValue - input.lastRegisterValue);
 
   // Floored at zero: a negative residual means the balance has fallen behind
   // the register for some reason this cannot see, and inventing negative cash
   // to explain it would make the next reconciliation worse, not better.
   const target = minor(input.registerValue + Math.max(0, uninvested));
 
-  return { target, delta: minor(target - input.ledgerValue), uninvestedCash: uninvested };
+  return {
+    target,
+    delta: minor(target - input.ledgerValue),
+    uninvestedCash: uninvested,
+    needsReconciling: false,
+  };
+}
+
+/* ===========================================================================
+ * WHAT RECORDING A HOLDING WILL DO
+ * ======================================================================== */
+
+/**
+ * The sentence shown above the button, before the button is pressed.
+ *
+ * It said the holding would be **added to** the account. It is not: recording
+ * what an account holds re-states what the account is worth, and the first
+ * time that happens the figure somebody typed by hand is replaced outright.
+ * Saying "add" invited exactly the reading that a EUR 3,458 account plus a
+ * EUR 1,777.50 holding comes to EUR 5,235.50, and the screen then showed
+ * EUR 1,777.50 with no explanation of where the rest went.
+ *
+ * Same class as `describeFeeDrag`: every figure in the old sentence was
+ * correct and the verb was wrong. Wording turns on a plural, on whether a
+ * cost was given, and on the sign of the difference, so there is a test per
+ * branch — see `investments.test.ts`.
+ */
+export function describeHoldingEntry(
+  input: {
+    quantity1e8: number;
+    symbol: string;
+    marketValue: Minor;
+    costBasis: Minor;
+    accountName: string;
+    /** True when this account's worth is still a figure somebody typed. */
+    replacesTypedValue: boolean;
+  },
+  format: (amount: Minor) => string,
+): string {
+  const shares = formatQuantity(input.quantity1e8);
+  const unit = input.quantity1e8 === QUANTITY_SCALE ? 'share' : 'shares';
+  const what = `${shares} ${unit} of ${input.symbol.trim().toUpperCase()}`;
+
+  const opening = input.replacesTypedValue
+    ? `${input.accountName} is worth ${format(input.marketValue)} once you record ${what}, ` +
+      `replacing the figure you typed.`
+    : `This records ${what}, worth ${format(input.marketValue)}, in ${input.accountName}.`;
+
+  if (input.costBasis <= 0) return opening;
+
+  const difference = minor(Math.abs(input.marketValue - input.costBasis));
+  const direction = input.marketValue >= input.costBasis ? 'up' : 'down';
+  return `${opening} It cost ${format(input.costBasis)}, so it is currently ${direction} ${format(difference)}.`;
 }

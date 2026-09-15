@@ -255,13 +255,15 @@ function valuationRowStatement(row: ValuationRow): { sql: string; params: unknow
       value: row.value,
       costBasis: row.costBasis,
       notes: row.notes,
+      // A figure a person gave. Never overwritten by the register — see v20.
+      kind: 'user',
       entryId: row.entryId,
       createdAt: new Date().toISOString(),
     })
     // Two opinions about the same thing on the same day is a correction, not a
     // second fact. The later one wins rather than stacking beside the first.
     .onConflictDoUpdate({
-      target: [valuations.accountId, valuations.date],
+      target: [valuations.accountId, valuations.date, valuations.kind],
       set: {
         value: row.value,
         notes: row.notes,
@@ -361,22 +363,37 @@ function toMark(row: Record<number, unknown>): ValuationMark {
 }
 
 /** Every mark against one account, newest first. */
+/**
+ * What somebody has said this account is worth, newest first.
+ *
+ * `kind = 'user'` only. The other kind is the register's own running total,
+ * which is bookkeeping rather than an opinion anybody offered — listing it
+ * here put "what the holdings added up to" in a history captioned "what it
+ * was worth when you added it", and on the day an account was created the two
+ * shared a date and the register's figure won outright. See the v20 migration.
+ */
 export async function listValuations(id: AccountId, limit = 24): Promise<ValuationMark[]> {
   const rows = (await db.all(sql`
     SELECT id, account_id, date, value, cost_basis, notes, entry_id
       FROM valuations
-     WHERE account_id = ${id}
+     WHERE account_id = ${id} AND kind = 'user'
      ORDER BY date DESC
      LIMIT ${limit}`)) as unknown as Record<number, unknown>[];
   return rows.map(toMark);
 }
 
-/** The first mark, which carries what the thing originally cost. */
+/**
+ * The first mark, which carries what the thing originally cost.
+ *
+ * `kind = 'user'`, for the same reason as `listValuations`: what somebody
+ * originally paid is something they told us, never something the register
+ * worked out.
+ */
 export async function firstValuation(id: AccountId): Promise<ValuationMark | null> {
   const [row] = (await db.all(sql`
     SELECT id, account_id, date, value, cost_basis, notes, entry_id
       FROM valuations
-     WHERE account_id = ${id}
+     WHERE account_id = ${id} AND kind = 'user'
      ORDER BY date ASC
      LIMIT 1`)) as unknown as Record<number, unknown>[];
   return row ? toMark(row) : null;
