@@ -582,6 +582,51 @@ it was written down. The first was the milestone-label cause in M1. Neither was
 malicious and neither was careless — both were a reasonable thing to believe,
 recorded, and then relied on.
 
+### M3. A near miss: the wrong comment was mine, and it was two hours old
+
+**Caught before the commit that would have carried it. Recorded because a
+wrong comment outlives wrong code.**
+
+Exposing `income`, `spent` and `saved` on `SankeyGraph`, I documented the third
+one as:
+
+> Part of `totalOut` because it left the everyday accounts, and still the
+> person's money.
+
+It has not left anything. `assign` in `ledger/entries/builders.ts` says so in
+its own doc comment — *"Give money a job. Budget book only, no cash actually
+moves"* — and the selector confirms the shape: `income` and `spent` come from
+the FINANCIAL book, `saved` from the BUDGET book's goal and sinking-fund
+envelopes. `totalOut` adds a figure from one book to a figure from the other,
+deliberately and correctly, and "it left the everyday accounts" is exactly the
+thing that is not true of it.
+
+What makes it worth a numbered entry rather than a quiet fix:
+
+- **It is M1's failure mode, authored fresh.** M1 is about a recorded cause
+  read back as a fact a year later. This is the same thing at two hours old,
+  written by somebody who had read the engine that morning and had every
+  reason to believe it. A wrong comment does not decay into a fact; it starts
+  as one.
+- **Writing it is what caught it.** The claim only became checkable once it
+  was a sentence. Had the three figures been exposed without documentation the
+  defect would have shipped invisibly, and the next reader would have
+  reconstructed the same wrong belief from the field's label.
+- **It survives longer than wrong code.** No gate reads a comment. Typecheck,
+  1025 tests and lint were all green over it, and would have stayed green over
+  it indefinitely — it is squarely in G1's second open class, everything
+  outside the module graph, which is the class this file is also in.
+- **It had already produced four defects on screen.** The analytics field said
+  "Went out", "Money in", and "Still in your accounts", and printed "Nothing"
+  for a negative remainder. All four are the same misreading the comment made,
+  reached independently, which is the evidence that the misreading is the
+  natural one and has to be written down to stop.
+
+The corrected comment now says what `saved` is not, names `assign`, and states
+the two consequences that had already been got wrong — that a screen may not
+say "went out" and mean both halves, and that `drewOnReserves` can be true on
+a month that drew on nothing.
+
 ---
 
 ## Severity 2

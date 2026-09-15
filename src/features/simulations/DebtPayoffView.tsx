@@ -14,7 +14,8 @@ import {
 import { useForecast } from '@/app/forecast/useForecast';
 import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
-import { AmountInput, BottomSheet, Button, Card, Field, Money } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Card, Explain, Field, Money } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 export function DebtPayoffView() {
   const [, navigate] = useRoute();
@@ -36,6 +37,24 @@ export function DebtPayoffView() {
 
   const [preferred, setPreferred] = useState<Strategy>('costliest_first');
   const plan = preferred === 'costliest_first' ? comparison.costliestFirst : comparison.smallestFirst;
+
+  /*
+   * The six figures `payoff`'s worked example reads.
+   *
+   * `interestCharged` comes off the simulation's own first month rather than
+   * from the rate: `monthlyInterest` uses the simple one-twelfth convention,
+   * so a year's interest cannot be had by multiplying and the total has to be
+   * the simulation's result. Handing the explanation an annual rate would
+   * reproduce the deemed-return mistake a phase later.
+   */
+  const explain = useExplain({
+    debtTotal: minor(totalOwed),
+    debtMonthlyPayment: monthly,
+    debtMinimumTotal: minimum,
+    debtInterestThisMonth: plan.timeline[0]?.interestCharged ?? minor(0),
+    debtMonthsToClear: plan.months,
+    debtTotalInterest: plan.totalInterest,
+  });
 
   if (debts.length === 0) {
     return (
@@ -65,7 +84,15 @@ export function DebtPayoffView() {
           the hue its `cards` chapter already carries in the manual. */}
       <Field family="obligation">
         <div className="min-w-0">
-          <span className="text-caption opacity-75">What you put towards it each month</span>
+          <div className="flex items-center gap-1">
+            <span className="text-caption opacity-75">What you put towards it each month</span>
+            <Explain
+              topic="payoff"
+              label="clearing what you owe"
+              onOpen={explain.open}
+              className="text-[var(--tile-ink)] opacity-70"
+            />
+          </div>
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -160,6 +187,8 @@ export function DebtPayoffView() {
           hint={`The minimum across everything is ${money.format(minimum)}.`}
         />
       </BottomSheet>
+
+      {explain.sheet}
     </div>
   );
 }

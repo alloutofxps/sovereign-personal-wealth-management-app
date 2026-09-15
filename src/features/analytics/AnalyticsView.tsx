@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { describePace } from '@/core/analytics';
+import { minor } from '@/core/money';
 import {
   HORIZON_LABELS,
   useAnalytics,
@@ -26,12 +27,14 @@ import {
   BottomSheet,
   Button,
   Card,
+  Explain,
   Field,
   Money,
   PillRow,
   StatCell,
   StatStrip,
 } from '@/design/ui';
+import { useExplain } from '@/features/explain/useExplain';
 
 const HORIZONS: Horizon[] = ['this-month', 'last-month', 'trailing-90', 'year-to-date'];
 
@@ -57,6 +60,26 @@ export function AnalyticsView() {
     : null;
 
   const medians = useMedianMarks(data);
+
+  /*
+   * The four figures `where-it-went`'s worked example reads.
+   *
+   * `income`, `spent` and `saved` rather than `totalIn` and `totalOut`: the
+   * latter two are conservation figures the graph needs so no ribbon runs
+   * backwards, and handing them to an explanation would have it tell somebody
+   * that money they already had arrived this month. See the comments on
+   * `SankeyGraph`.
+   */
+  const explain = useExplain(
+    data
+      ? {
+          periodIncome: data.flow.income,
+          periodSpent: data.flow.spent,
+          periodSaved: data.flow.saved,
+          periodRetained: data.flow.retained,
+        }
+      : {},
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -113,25 +136,64 @@ export function AnalyticsView() {
           {!data.flow.empty && (
             <Field family="none">
               <div className="min-w-0">
-                <span className="text-caption opacity-75">
-                  Went out · {data.period.label.toLowerCase()}
-                </span>
+                <div className="flex items-center gap-1">
+                  {/* Not "went out". The hero is `spent + saved`, and money
+                      assigned to a pot has not gone anywhere — `assign` is
+                      budget-book only and moves no cash. It is spoken for,
+                      which is the honest word for both halves at once. */}
+                  <span className="text-caption opacity-75">
+                    Spent or set aside · {data.period.label.toLowerCase()}
+                  </span>
+                  <Explain
+                    topic="where-it-went"
+                    label="where your money went"
+                    onOpen={explain.open}
+                    className="opacity-70"
+                  />
+                </div>
                 <div className="pt-1">
                   <Money value={data.flow.totalOut} size="anchor" tone="inherit" />
                 </div>
               </div>
 
               <StatStrip className="pt-5">
-                <StatCell label="Money in">
-                  <Money value={data.flow.totalIn} size="lead" tone="neutral" decimals="hide" />
+                {/* `income`, never `totalIn`: the latter adds the shortfall
+                    source, so on a deficit month this cell used to claim
+                    money the person already had as money that arrived. */}
+                <StatCell label="Came in">
+                  <Money value={data.flow.income} size="lead" tone="neutral" decimals="hide" />
                 </StatCell>
-                <StatCell label="Still in your accounts">
-                  {data.flow.retained > 0 ? (
+
+                {data.flow.saved > 0 && (
+                  <StatCell label="Of that, set aside">
+                    <Money value={data.flow.saved} size="lead" tone="neutral" decimals="hide" />
+                  </StatCell>
+                )}
+
+                {/*
+                 * Three branches, because `retained` is signed and the label
+                 * has to change with it. It printed "Nothing" for anything at
+                 * or below zero, so every month that did more with its money
+                 * than arrived in it read as break-even.
+                 */}
+                {data.flow.retained > 0 ? (
+                  <StatCell label="Not spoken for">
                     <Money value={data.flow.retained} size="lead" tone="neutral" decimals="hide" />
-                  ) : (
+                  </StatCell>
+                ) : data.flow.retained < 0 ? (
+                  <StatCell label="More than came in">
+                    <Money
+                      value={minor(-data.flow.retained)}
+                      size="lead"
+                      tone="neutral"
+                      decimals="hide"
+                    />
+                  </StatCell>
+                ) : (
+                  <StatCell label="Not spoken for">
                     <span className="opacity-60">Nothing</span>
-                  )}
-                </StatCell>
+                  </StatCell>
+                )}
               </StatStrip>
             </Field>
           )}
@@ -156,21 +218,27 @@ export function AnalyticsView() {
 
                 <SankeyLegend graph={data.flow} />
 
+                {/* `income`, not `totalIn` less a reconstructed shortfall. The
+                    old version computed the same figure by hand from two
+                    others: correct, and it needed a reader to know that
+                    `totalIn` already contains the shortfall to check it. */}
                 {data.flow.drewOnReserves && (
                   <p className="text-caption text-caution">
-                    You spent {money.format(data.flow.totalOut)} against{' '}
-                    {money.format(
-                      (data.flow.totalIn - (data.flow.retained < 0 ? -data.flow.retained : 0)) as never,
-                    )}{' '}
-                    coming in, so the difference came out of what you had already put by. That is
-                    what savings are for. It is only worth watching if it becomes the pattern.
+                    You spent or set aside {money.format(data.flow.totalOut)} against{' '}
+                    {money.format(data.flow.income)} coming in, so{' '}
+                    {money.format(minor(-data.flow.retained))} of it was money you already had.
+                    There is nothing wrong with that once. It is only worth watching if it becomes
+                    the pattern.
                   </p>
                 )}
 
                 {data.flow.retained > 0 && (
+                  /* Not "still sitting in your accounts". This figure has had
+                     what you set aside taken off it, and that money has not
+                     moved — so the remainder is what has no job, which is a
+                     smaller claim than what is in the account. */
                   <p className="text-caption text-ink-2">
-                    {money.format(data.flow.retained)} of what came in is still sitting in your
-                    accounts.
+                    {money.format(data.flow.retained)} of what came in has no job yet.
                   </p>
                 )}
               </div>
@@ -230,6 +298,8 @@ export function AnalyticsView() {
             ))}
         </ul>
       </BottomSheet>
+
+      {explain.sheet}
     </div>
   );
 }

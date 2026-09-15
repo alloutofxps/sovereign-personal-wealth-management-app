@@ -12,12 +12,18 @@
  * confident lie about their own money, and it looks exactly as convincing as
  * a correct one.
  *
- * So two things are deliberate here. Spending beyond income becomes an
- * explicit "Drawn from savings" source rather than an inverted ribbon, because
- * a deficit is a real thing that happened and hiding it in negative geometry
+ * So two things are deliberate here. Doing more with a month's money than
+ * arrived in it becomes an explicit source rather than an inverted ribbon,
+ * because it is a real thing that happened and hiding it in negative geometry
  * makes the arithmetic unfalsifiable. And every amount stays an integer of
  * minor units from end to end: no percentage is ever multiplied back out into
  * a value.
+ *
+ * That source is named 'From money you already had' and the name is load
+ * bearing. It used to read 'Drawn from savings', which is a claim the
+ * arithmetic cannot support: the shortfall is `spent + saved - income`, and
+ * `saved` is budget-book only, so a month that merely gave money a job can
+ * trip it without drawing on anything. See `SHORTFALL_NAME`.
  * ======================================================================== */
 
 import { minor, type Minor } from '@/core/money';
@@ -87,8 +93,43 @@ export interface FlowLink {
 export interface SankeyGraph {
   nodes: FlowNode[];
   links: FlowLink[];
+  /**
+   * Everything entering the graph, which is **not** the same as income.
+   *
+   * It is `income + shortfall`, and the shortfall is the `SHORTFALL_NAME`
+   * source added below so no ribbon has to run backwards. Use it to check the
+   * picture adds up; use `income` to tell somebody what came in. Labelling
+   * this one "money in" is wrong on every month that outspent its income.
+   */
   totalIn: Minor;
+  /** Everything leaving it: `spent + saved`. */
   totalOut: Minor;
+  /** What actually arrived in the period. */
+  income: Minor;
+  /** What was spent. */
+  spent: Minor;
+  /**
+   * What was given a job in a pot, which is **not** money that moved.
+   *
+   * `assign` is budget-book only — "Give money a job. Budget book only, no
+   * cash actually moves" — and this figure is read from the BUDGET book's goal
+   * and sinking-fund envelopes, while `income` and `spent` are read from the
+   * FINANCIAL book. So `totalOut` deliberately adds a figure from one book to
+   * a figure from the other.
+   *
+   * That is right for the question this graph answers, which is what happened
+   * to the month's money rather than where the cash physically sits: money
+   * earmarked for next year's insurance is spoken for even though it is still
+   * in the current account. It is wrong for any sentence of the form "this is
+   * what is left in your accounts" — the cash still there is `income - spent`,
+   * and this figure is a label on part of it.
+   *
+   * Two things follow for callers, and both have already been got wrong once:
+   * a screen may not say "went out" and mean both halves, and `drewOnReserves`
+   * can be true on a month that drew on nothing, because assigning enough to
+   * pots is sufficient to push `totalOut` past `income`.
+   */
+  saved: Minor;
   /** Income less everything that left. Negative means savings were drawn on. */
   retained: Minor;
   /** True when spending outran income and a reserves source was added. */
@@ -107,6 +148,17 @@ export const STAGE_IDS = {
 } as const;
 
 export const RESERVES_ID = 'source-reserves';
+
+/**
+ * What the shortfall source is called on screen.
+ *
+ * Exported so the test that holds this wording can name it, and so nothing
+ * has to re-type a user-visible string to assert against it. It is a sentence
+ * about somebody's money rather than a label, which is why it is tested at
+ * all: see `sankeyFlow.test.ts`, and the second entry under sentences in
+ * `PLAN.md`.
+ */
+export const SHORTFALL_NAME = 'From money you already had';
 export const RETAINED_ID = 'leaf-retained';
 export const OTHER_ID = 'leaf-other';
 
@@ -136,6 +188,9 @@ export function buildSankeyFlow(input: FlowInput): SankeyGraph {
       links: [],
       totalIn: minor(0),
       totalOut: minor(0),
+      income: minor(0),
+      spent: minor(0),
+      saved: minor(0),
       retained: minor(0),
       drewOnReserves: false,
       empty: true,
@@ -166,7 +221,7 @@ export function buildSankeyFlow(input: FlowInput): SankeyGraph {
   if (shortfall > 0) {
     nodes.push({
       id: RESERVES_ID,
-      name: 'Drawn from savings',
+      name: SHORTFALL_NAME,
       kind: 'reserves',
       column: 0,
       value: minor(shortfall),
@@ -338,6 +393,9 @@ export function buildSankeyFlow(input: FlowInput): SankeyGraph {
     links,
     totalIn: minor(totalIn),
     totalOut: minor(totalOut),
+    income: minor(totalIncome),
+    spent: minor(totalSpend),
+    saved: minor(totalSaved),
     retained: minor(retained),
     drewOnReserves: shortfall > 0,
     empty: false,

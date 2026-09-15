@@ -256,6 +256,40 @@ with a test per branch written to fail against the old wording first. Anything
 that changes how an engine computes, or moves code for a visual change, is the
 refactor the brief forbids.
 
+### Used a second time, after the redesign closed: the flow graph's shortfall node
+
+Approved. The Sankey named its shortfall source `'Drawn from savings'`, which
+is a claim the arithmetic cannot support. The node appears when
+`spent + saved > income`, and `saved` is read from the BUDGET book — `assign`
+is "Give money a job. Budget book only, no cash actually moves." So a month
+that spent nothing and merely earmarked more than came in announced that
+savings had been drawn on, to somebody whose savings were untouched. It is
+`describeFeeDrag` exactly: every figure correct, the words in front of them
+assuming something not established.
+
+Two things make this worth recording rather than just fixing.
+
+**A node name is not overridable, and that is what put it over the line.** The
+same screen had four labels wrong in the same way and all four were fixed in
+the view, which is where a label belongs. This one could not be: the Sankey
+renders the name the engine hands it, so a false name in `src/core` is false
+everywhere and no screen can intercept it. That is the test for whether a
+sentence in an engine is the engine's problem — not whether it is user-visible,
+but whether a view could have said something true instead.
+
+**The test is the precedent, not the rename.** `sankeyFlow.test.ts` is new and
+exists only for this: `buildSankeyFlow`'s arithmetic was already covered in
+`analytics.test.ts`, and what had never been covered was its one sentence. It
+asserts the name says nothing about savings across three branches — real
+overspend, pure earmarking, and both — and it was verified by putting the old
+name back, which fails two arms. `SHORTFALL_NAME` is exported so the test can
+name it rather than re-type a user-visible string.
+
+The arithmetic was not touched, and mixing the two books is right for the
+question that screen answers: money earmarked for next year's insurance is
+spoken for, and showing it as available would be the larger lie. Only the
+sentences were wrong.
+
 ## The debt gate was miscounting, twice, and both fixes lowered the number
 
 Phase 4c, approved. Recorded because the count is a gate and its history has to

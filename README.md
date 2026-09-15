@@ -18,7 +18,7 @@ npm run dev
 | `npm run dev` | Vite dev server |
 | `npm run build` | Typecheck, bundle, generate the service worker |
 | `npm run typecheck` | `tsc --noEmit` under full strict |
-| `npm test` | Vitest. The engines by property over generated entries, the copy per branch of every sentence it builds, and the design system against its own rules — contrast, token existence, the motion budget, hit areas, hover gating, no prose in a component |
+| `npm test` | Vitest. The engines by property over generated sequences of entries; the copy per branch of every sentence an engine builds; the design system against its own rules — computed contrast, token existence, the motion budget, hit areas, hover gating, one field per screen, no prose in a component, no bare inputs; and a small rendering gate that mounts real screens to assert focus behaviour and that a screen prints the figure its engine returned |
 | `npm run lint` | ESLint, including the import-layering rule |
 | `npm run icons` | Regenerate `public/icons/*` and the favicon from the vector mark |
 
@@ -32,7 +32,7 @@ app opens and cannot reach its own database.
 
 ## What it does
 
-Twelve screens, all of them reading one ledger.
+Sixteen screens, all of them reading one ledger.
 
 - **Today** — what is safe to spend, and why that figure and not the balance.
 - **Envelopes** — money assigned to categories, with pacing against the month.
@@ -44,7 +44,10 @@ Twelve screens, all of them reading one ledger.
 - **What you're worth** — accounts, debts, property, net worth over time.
 - **Pots** — sinking funds that work out what this month owes them.
 - **Record** and **Review** — entry, import, splits, rules, and a triage queue.
-- **Settings** and a **field manual** of six chapters.
+- **Categories**, **Settings**, and a **field manual** of six chapters.
+
+A seventeenth route, the primitive gallery, is development-only and is not part
+of the app.
 
 Nothing is a mock. Every figure on every screen is derived from journal entries
 by an engine in `src/core`, which has no React, no DOM, and no I/O.
@@ -115,11 +118,18 @@ Imports point leftwards only, and ESLint enforces it.
 | `src/features/**` | Screens and sheets. |
 
 Analytics, investments, accounts, budget, the field manual and the gallery each
-stay out of the opening bundle, which is held to **185.5 kB gzipped**. That
-number is a decision rather than a measurement: it is what a phone on a bad
-connection can fetch before somebody gives up, and it is the reason there is no
-animation library, no charting components and no date library here — a scale
-function and a path generator, and the rest is markup.
+stay out of the opening bundle. The ceiling is **185.5 kB gzipped** and first
+paint currently walks the chunk graph to **150.2 kB**, so there is 35.3 kB of
+headroom.
+
+Both numbers want reading carefully. The ceiling is a decision rather than a
+measurement — it is what a phone on a bad connection can fetch before somebody
+gives up, and it is the reason there is no animation library, no charting
+components and no date library here. And **nothing enforces it**: there is no
+constant and no CI check, so the figure comes from walking `index.html`'s
+static imports by hand. It has been exceeded twice, both times by a re-export
+from an eagerly imported barrel, which is why `AppShell.tsx` carries comments
+naming what may not be imported above a given line.
 
 ## Design
 
@@ -130,19 +140,48 @@ consistency is what lets colour be an index you can navigate by, and it is why
 the explanatory prose can come out of the screens.
 
 A category hue never means good or bad. There is no danger red: overspending is
-a number that needs cover, not a siren. One hot accent exists and appears at
-most twice on a screen — the record button, and the single mark on the one
-thing that needs a decision.
+a number that needs cover, not a siren.
+
+One hot accent exists and appears **at most once on a screen**, on the single
+thing that needs a decision — the square covering the worst overspent envelope,
+the dot on anything needing you, and the confirm on the reset. Three places,
+each the one decision on its screen. A second occurrence is a bug.
+
+**The record button is not one of them**, though this file said it was for six
+phases. It is emerald, `--color-liquid`, which means "this releases or confirms
+capital". Recording something is not a decision the app is asking you to make;
+it is the app's ordinary verb.
+
+The distinction that makes a budget like that hold is between treatments that
+may repeat and treatments that may not. A ring, a hatched band, a category hue
+states a fact about one item, and every item may carry one — four envelopes
+over budget get four completed rings, because suppressing the second would be
+hiding a fact. A hot mark says *look here*, and saying it four times says it
+nowhere.
 
 Two themes, **Daylight** and **Midnight**, chosen or followed from the system.
 Contrast is computed rather than eyeballed: `tokens.test.ts` asserts WCAG AA
 for every ink-on-surface pair in both.
 
-Three surfaces, deliberately unlike each other — a `field` (never more than
-one on a screen, carrying the figure that screen exists for), a `card`, and a
+Three surfaces, deliberately unlike each other — a `field`, a `card` and a
 `tile`. Radii are hierarchical: the bigger the object, the rounder it is,
 because one radius on everything is what makes a screen read as a kit of
 identical boxes.
+
+The field carries the one figure its screen exists for, and the rule is
+**exactly one per screen, or a reason written down** — which is not the same as
+"never more than one". Read the weaker way, it sat on three routes of sixteen
+while the other thirteen led with a card carrying their hero figure, which is
+one surface doing two jobs. Eight routes have one; the other eight are on a
+list, each with an argument rather than a label, because "no" is a real answer
+to *is there one number this screen exists for* — a queue, a calendar, a list
+of sketches and a book of prose have none. A test fails if a route is on
+neither list, if an owner stops drawing one, or if one appears anywhere else.
+
+Position is evidence. A field was added to the forecast pane over a note in the
+file arguing against it, and measuring it found it 552px down the screen, below
+the whole chart, where the other eight land between 70px and 179px. A field
+below the fold is a card with a field's paint on it. It was removed.
 
 ### Explanations
 
@@ -181,8 +220,18 @@ number on screen that is not your money.
   unreachable by keyboard and by switch control.
 - 44×44 on every interactive target, with no exceptions — as a hit area, not a
   bigger glyph, so a 22px information button stays 22px and answers across 44.
-  Measured by hit-testing outwards from each control's centre, because a class
-  that says 44 is not a target that measures 44.
+  A class that says 44 is not a target that measures 44: expanding a hit area
+  means overflowing a layout slot, and whatever comes next owns the overflow
+  unless it is given a `z-index`. One information button had a 44×44 box, a
+  class saying 44, and a hit area of 44×37, because the caption after it
+  painted over the bottom seven pixels.
+
+  Verified by an exhaustive per-pixel scan at an unscaled viewport, **not** by
+  walking outwards from each control's centre. The walking probe reads 2–3px
+  short under a scaled viewport, and it once reported 123 of 217 controls under
+  44px — every value 41 or 42, including a button whose hit area is 44 by
+  construction. A control that cannot be short reading short is a measurement
+  of the ruler.
 - `focus-visible` rings throughout; sheets trap focus and hand it back.
 - `role="progressbar"` on pacing bars, live regions on counts that change.
 - Text inputs never below 16px, or iOS zooms the viewport on focus.
@@ -199,4 +248,37 @@ status bar style follows the theme in the same pre-paint script as
 
 ## Licence
 
-None yet. All rights reserved.
+Copyright © 2026 Pratik Parashar.
+
+**GNU Affero General Public License v3.0 or later.** The full text is in
+[`LICENSE`](LICENSE), byte-for-byte as the Free Software Foundation publishes
+it.
+
+The reasoning is specific to what this app claims. "No network request, ever"
+is not a promise anybody can take on trust — it is a promise you verify by
+reading the source, which means the licence has to permit reading, auditing,
+forking and self-hosting. "All rights reserved" on a public repository permits
+none of that, and it was the default rather than a decision.
+
+**In one sentence: if you change this and give the result to anyone — as a
+website, an app, or a binary — you have to offer them the changed source under
+this same licence.** That is the whole obligation. Reading it, running it,
+forking it, and changing it for your own use ask nothing of you at all.
+
+Copyleft rather than MIT because the fork most likely to hurt somebody who
+trusts this app is one that keeps the look and adds a server. The reach is
+worth being straight about, though: the AGPL's distinguishing clause, §13, is
+about software people interact with *over a network*, which an app with no
+server barely engages. Someone wrapping this bundle in Capacitor and shipping
+it to an app store is covered by ordinary GPL distribution — they are handing
+out a copy, so they owe their users the source — and not by §13 at all. So the
+AGPL here is really GPL-with-a-clause-held-in-reserve, against the hosted fork
+rather than the wrapped one, and the wrapped one is the likelier of the two.
+
+The alternative was plain GPL-3.0, which would cover the app-store case
+identically and drop a clause that mostly does not apply. AGPL is kept because
+the clause costs nothing while it is dormant and is the only thing that would
+bite a hosted rewrite, which is the version of this that could do real harm.
+
+As sole copyright holder I can relicense or dual-license this at any time, so
+choosing the stricter of the two costs nothing that cannot be given back.

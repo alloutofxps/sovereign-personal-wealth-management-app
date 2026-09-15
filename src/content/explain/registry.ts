@@ -738,6 +738,139 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
     },
     manual: 'selling',
   },
+
+  /* ---------------------------------------------------------------------
+   * LOOKING BACK, AND GETTING OUT FROM UNDER
+   *
+   * The last two topics, and both were written from the engine outwards
+   * rather than from the screen inwards. Nine of the ten steps drafted from
+   * what the screens display were wrong or incomplete, in the same two ways
+   * safe-to-spend and the deemed return were wrong: a figure whose name is
+   * not what it holds, and a rate that does not annualise by multiplying.
+   * ------------------------------------------------------------------ */
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against buildSankeyFlow, and it moved every step.
+   *
+   *   income  = sum of positive income slices, FINANCIAL book
+   *   spent   = sum of positive spend slices, FINANCIAL book, refunds
+   *             already netted per category by the selector's SUM, and any
+   *             category netting to zero or less dropped by its HAVING
+   *   saved   = sum of positive pot slices, BUDGET book -- `assign` is
+   *             "Budget book only, no cash actually moves"
+   *   retained = income - spent - saved, SIGNED
+   *   totalIn  = income + max(0, spent + saved - income)
+   *
+   * Three things that had to change. `totalIn` is not income and may not be
+   * described as money that came in. `saved` has not left anything, so the
+   * second step says "kept back" rather than "went out". And `retained` is
+   * not what is in the account -- the cash still there is `income - spent`,
+   * and this figure is what has no job yet, which is a different sentence.
+   *
+   * The folding of small slices into "Everything else" and the dropped
+   * net-negative category are real and do not fit in three steps. They are
+   * caveats, so they go to the manual chapter per the note in types.ts, and
+   * `two-books` is the right one because the book split is why `saved` is
+   * counted at all.
+   * ------------------------------------------------------------------ */
+  'where-it-went': {
+    id: 'where-it-went',
+    title: 'Where your money went',
+    short: 'What arrived over a stretch of time, what you spent, and what you kept back.',
+    how: [
+      'We add up everything that arrived, then everything you spent — with anything you got back already taken off.',
+      'Money you told us to keep for something later is counted too, even though it has not left your account. It has a job, so it is not spare.',
+      'What is left over has no job yet. If you did more with the money than arrived, the difference was already there before the period started.',
+    ],
+    worked: (c) => {
+      if (!need(c, ['periodIncome', 'periodSpent', 'periodRetained'])) return null;
+      const f = c.figures;
+      const saved = f.periodSaved ?? minor(0);
+      if (f.periodIncome === 0 && f.periodSpent === 0 && saved === 0) return null;
+
+      const did = [`spent ${c.money(f.periodSpent!)}`];
+      if (saved > 0) did.push(`kept ${c.money(saved)} back`);
+
+      const opening = `${c.money(f.periodIncome!)} arrived and you ${listOut(did)}`;
+
+      // Signed, and the wording turns on it. The screen printed "Nothing"
+      // for everything at or below zero, which read a deficit as break-even.
+      if (f.periodRetained! > 0) {
+        return `${opening}, which leaves ${c.money(f.periodRetained!)} with no job yet.`;
+      }
+      if (f.periodRetained! < 0) {
+        return `${opening} — ${c.money(minor(-f.periodRetained!))} more than arrived, which was money you already had.`;
+      }
+      return `${opening}, which is every penny of it and nothing spare.`;
+    },
+    manual: 'two-books',
+  },
+
+  /* ---------------------------------------------------------------------
+   * CHECKED against simulatePayoff, and the month runs in three steps in
+   * this order:
+   *
+   *   1. interest on EVERY outstanding balance, before anything is paid
+   *   2. the minimum on EVERY debt, so none falls behind
+   *   3. only what is left of the budget goes at one target, chosen by
+   *      `orderFor` -- APR descending, or balance ascending
+   *
+   * The draft had the whole payment going at the highest-rate debt, which is
+   * how these plans are usually described and is not what happens to the
+   * money. The extra is the third slice only.
+   *
+   * `monthlyInterest` is `balance x apr / (10000 x 12)`: the simple
+   * one-twelfth convention a statement uses. So a year's interest is NOT the
+   * rate times the balance -- each month's charge lands on a balance the
+   * previous month's payment already moved, and the total is the
+   * simulation's result. This is the deemed-return mistake exactly, and the
+   * worked example states one month's charge and nothing annualised.
+   *
+   * Two branches that only exist in the engine: `months` is null past 600
+   * months, and when the budget is under `totalMinimum` step 2 pays
+   * `min(budget, minimum, owed)` in Map insertion order, so some debts get
+   * nothing. The code comment there says "so nothing falls into arrears",
+   * which holds only above the minimum -- so the copy says so.
+   * ------------------------------------------------------------------ */
+  payoff: {
+    id: 'payoff',
+    title: 'Clearing what you owe',
+    short: 'How long your debts take to clear, and what the waiting costs in interest.',
+    how: [
+      'Interest goes on first, the way a lender does it: a year’s rate split into twelve, charged on what you still owe.',
+      'Then the smallest payment each debt will accept, so none of them falls behind.',
+      'Everything left over goes at one debt until it is gone, then rolls onto the next. That last part is what actually clears the debt.',
+    ],
+    worked: (c) => {
+      if (!need(c, ['debtTotal', 'debtMonthlyPayment'])) return null;
+      const f = c.figures;
+      if (f.debtTotal === 0) return null;
+
+      const opening = `You owe ${c.money(f.debtTotal!)} and put ${c.money(f.debtMonthlyPayment!)} towards it a month`;
+
+      // Below the total minimum nothing clears and something falls behind, so
+      // this branch comes before the never-clears one: it is the reason.
+      if (f.debtMinimumTotal !== undefined && f.debtMonthlyPayment! < f.debtMinimumTotal) {
+        return `${opening}, but the smallest payments alone come to ${c.money(f.debtMinimumTotal)}. Some of them would fall behind.`;
+      }
+
+      const charge =
+        f.debtInterestThisMonth !== undefined && f.debtInterestThisMonth > 0
+          ? ` This month’s interest alone is ${c.money(f.debtInterestThisMonth)}.`
+          : '';
+
+      if (f.debtMonthsToClear === null) {
+        return `${opening}. That never gets ahead of the interest, so it does not clear.${charge}`;
+      }
+      if (f.debtMonthsToClear === undefined || f.debtTotalInterest === undefined) {
+        return `${opening}.${charge}`;
+      }
+
+      const months = f.debtMonthsToClear;
+      return `${opening}, so you are clear in ${months} ${months === 1 ? 'month' : 'months'} and the interest costs ${c.money(f.debtTotalInterest)} on the way.${charge}`;
+    },
+    manual: 'cards',
+  },
 };
 
 /** "a, b and c" — so a list of subtractions reads as a sentence. */

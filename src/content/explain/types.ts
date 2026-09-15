@@ -71,7 +71,10 @@ export type ExplainTopic =
   | 'tags'
   | 'what-if'
   | 'independence'
-  | 'importing';
+  | 'importing'
+  /* Looking back at a period, and getting out from under a debt. */
+  | 'where-it-went'
+  | 'payoff';
 
 /**
  * The six chapter slugs, repeated rather than imported.
@@ -205,6 +208,47 @@ export interface ExplainFigures {
   mixCurrentBp: number;
   mixTargetBp: number;
   mixDepositToFix: Minor;
+
+  /*
+   * Looking back at a period.
+   *
+   * Four figures rather than the two the flow graph leads with, and the
+   * distinction is the whole reason these exist. `totalIn` and `totalOut` are
+   * conservation figures: the graph adds a synthetic source when a period did
+   * more with its money than arrived in it, so that no ribbon has to run
+   * backwards, and `totalIn` carries it. An explanation built from those two
+   * would tell somebody that money they already had was income.
+   *
+   * `periodSaved` is money given a job rather than money that moved --
+   * `assign` posts to the budget book only -- so it is separate from
+   * `periodSpent` and never folded in with it. `periodRetained` is signed:
+   * negative means the period did more than arrived.
+   */
+  periodIncome: Minor;
+  periodSpent: Minor;
+  periodSaved: Minor;
+  periodRetained: Minor;
+
+  /*
+   * Getting out from under a debt.
+   *
+   * `debtMonthsToClear` is null when the payment never gets ahead of the
+   * interest, which the simulation decides by running out of months rather
+   * than by any formula -- so it is carried as null rather than as a large
+   * number, and the worked example has a branch for it.
+   *
+   * `debtInterestThisMonth` is the first month of the simulation's own
+   * timeline, not an annual rate divided down for display. One month's charge
+   * is a fact; a year's interest is the simulation's result and cannot be had
+   * by multiplying, because each month's charge lands on a balance the
+   * previous month's payment already moved.
+   */
+  debtTotal: Minor;
+  debtMonthlyPayment: Minor;
+  debtMinimumTotal: Minor;
+  debtInterestThisMonth: Minor;
+  debtMonthsToClear: number | null;
+  debtTotalInterest: Minor;
 }
 
 export interface ExplainContext {

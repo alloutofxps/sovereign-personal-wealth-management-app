@@ -53,8 +53,8 @@ describe('every topic is complete and consistent', () => {
     }
   });
 
-  it('covers all twenty-eight', () => {
-    expect(TOPICS).toHaveLength(28);
+  it('covers all thirty', () => {
+    expect(TOPICS).toHaveLength(30);
   });
 
   it('points every manual link at a real chapter', () => {
@@ -284,5 +284,153 @@ describe('worked examples are built from real figures or not at all', () => {
       },
     });
     expect(worked).toContain('no gain to tax');
+  });
+});
+
+/* ===========================================================================
+ * THE TWO LAST TOPICS, PER BRANCH
+ * ---------------------------------------------------------------------------
+ * Both were written from the engine outwards, and both have wording that
+ * turns on a sign, a threshold or a null. That is the `describeFeeDrag` rule
+ * in CLAUDE.md: a test per branch, each written to fail against the drafted
+ * wording before it was kept.
+ *
+ * VERIFIED by breaking each one. The drafted steps these replaced are in the
+ * commit body; the four that mattered were "everything that came in" reading
+ * `totalIn`, "what is left is still in your accounts" reading `retained`,
+ * "your payment goes at the highest-rate debt", and a year's interest taken
+ * as the rate times the balance.
+ * ======================================================================== */
+
+describe('where it went says what the flow engine actually computed', () => {
+  const flow = (income: number, spent: number, saved: number) => ({
+    money,
+    figures: {
+      periodIncome: minor(income),
+      periodSpent: minor(spent),
+      periodSaved: minor(saved),
+      periodRetained: minor(income - spent - saved),
+    },
+  });
+
+  const worked = (income: number, spent: number, saved: number) =>
+    EXPLANATIONS['where-it-went'].worked!(flow(income, spent, saved))!;
+
+  it('names what is left over as unspoken-for rather than as a balance', () => {
+    const said = worked(400_000, 250_000, 50_000);
+
+    expect(said).toContain('€4000.00 arrived');
+    expect(said).toContain('spent €2500.00');
+    expect(said).toContain('kept €500.00 back');
+    expect(said).toContain('€1000.00 with no job yet');
+    // The defect this replaces. Money kept back has not left the account, so
+    // the remainder is not what is in the account.
+    expect(said, 'retained is not the account balance').not.toContain('in your account');
+  });
+
+  it('says a deficit came from money already held, not that nothing is left', () => {
+    const said = worked(290_000, 310_000, 40_000);
+
+    expect(said).toContain('€600.00 more than arrived');
+    expect(said).toContain('money you already had');
+    // The screen printed "Nothing" for this case for a phase.
+    expect(said, 'a deficit is not break-even').not.toMatch(/\bnothing\b/i);
+  });
+
+  it('says nothing spare when it comes out exactly even', () => {
+    const said = worked(300_000, 250_000, 50_000);
+
+    expect(said).toContain('nothing spare');
+    expect(said, 'zero is not a deficit').not.toContain('more than arrived');
+  });
+
+  it('leaves out money kept back when there was none', () => {
+    const said = worked(300_000, 200_000, 0);
+
+    expect(said).not.toContain('kept');
+    expect(said).toContain('€1000.00 with no job yet');
+  });
+
+  it('shows nothing at all for a period with no figures in it', () => {
+    expect(EXPLANATIONS['where-it-went'].worked!(empty)).toBeNull();
+    expect(EXPLANATIONS['where-it-went'].worked!(flow(0, 0, 0))).toBeNull();
+  });
+});
+
+describe('payoff says what the simulation actually does', () => {
+  const plan = (
+    owed: number,
+    payment: number,
+    minimum: number,
+    months: number | null,
+    interest: number,
+    thisMonth: number,
+  ) => ({
+    money,
+    figures: {
+      debtTotal: minor(owed),
+      debtMonthlyPayment: minor(payment),
+      debtMinimumTotal: minor(minimum),
+      debtMonthsToClear: months,
+      debtTotalInterest: minor(interest),
+      debtInterestThisMonth: minor(thisMonth),
+    },
+  });
+
+  it('states one month of interest and never a year of it', () => {
+    const said = EXPLANATIONS.payoff.worked!(
+      plan(1_240_000, 50_000, 42_000, 31, 310_000, 20_660),
+    )!;
+
+    expect(said).toContain('clear in 31 months');
+    expect(said).toContain('interest costs €3100.00');
+    expect(said).toContain('This month’s interest alone is €206.60');
+    // 19.99% of 12,400 would be 2,478.76. The draft reached for exactly that,
+    // and monthlyInterest is a twelfth of the rate on a balance the previous
+    // month's payment already moved, so a year cannot be had by multiplying.
+    expect(said, 'a year of interest is not the rate times the balance').not.toContain('2478');
+  });
+
+  it('says the debt never clears rather than naming a number of months', () => {
+    const said = EXPLANATIONS.payoff.worked!(
+      plan(1_240_000, 45_000, 42_000, null, 4_800_000, 20_660),
+    )!;
+
+    expect(said).toContain('never gets ahead of the interest');
+    expect(said).toContain('does not clear');
+    expect(said).not.toMatch(/clear in \d/);
+  });
+
+  /*
+   * The branch the engine has and the screen never mentioned.
+   *
+   * Under `totalMinimum`, step 2 of the month pays
+   * `min(budget, minimum, owed)` walking the balances in Map insertion order,
+   * so the debts it reaches last get nothing at all. The code comment there
+   * reads "so nothing falls into arrears", which is true only above the
+   * minimum.
+   */
+  it('warns that something falls behind when the payment is under the minimum', () => {
+    const said = EXPLANATIONS.payoff.worked!(
+      plan(1_240_000, 30_000, 42_000, null, 4_800_000, 20_660),
+    )!;
+
+    expect(said).toContain('smallest payments alone come to €420.00');
+    expect(said).toContain('fall behind');
+    // The arrears case is the reason it never clears, so it is the sentence
+    // that gets said. Leading with "it never clears" would hide the cause.
+    expect(said).not.toContain('never gets ahead');
+  });
+
+  it('singularises a one-month plan', () => {
+    const said = EXPLANATIONS.payoff.worked!(plan(40_000, 50_000, 20_000, 1, 500, 500))!;
+
+    expect(said).toContain('clear in 1 month and');
+    expect(said).not.toContain('1 months');
+  });
+
+  it('shows nothing when there is no debt', () => {
+    expect(EXPLANATIONS.payoff.worked!(empty)).toBeNull();
+    expect(EXPLANATIONS.payoff.worked!(plan(0, 50_000, 0, null, 0, 0))).toBeNull();
   });
 });

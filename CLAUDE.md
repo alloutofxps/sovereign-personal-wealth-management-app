@@ -21,6 +21,87 @@ update the test and say so in the commit body.
 
 ---
 
+## What a green suite does not tell you
+
+Read this before trusting a green run, because the most expensive defects in
+this project all produced one.
+
+**An app with a clean typecheck, a clean lint and a full green suite has
+established that its arithmetic is right and its class names are spelled
+correctly. It has established very little about what a person sees or can do.**
+That is not cynicism, it is the measured history: two conditional hooks, a
+scrubber reading a stale width at every width but 320, a compositor layer
+released 263ms before the movement it was promoted for, twenty-five unlabelled
+form fields, and an engine sentence that was false for most users while its
+arithmetic was correct to the cent — every one of those passed every gate, and
+several passed hundreds of tests for many commits.
+
+`AUDIT.md` has the full G1 analysis: each gate, the hole in it, and the ten
+classes of defect that fall through. Here is where each class stands.
+
+### Closed — a gate exists and it works
+
+| | Held by |
+| --- | --- |
+| **Meaning of generated sentences** | A test per branch wherever a `describe*` function's wording turns on a sign, a threshold, a count or a plural, each written to fail against the old wording first. This is the strongest gate in the repository because it was bought with `describeFeeDrag`. |
+| **Whole-app properties** | `fields.test.ts` (one field per route or a written reason), `targets.test.ts` (the static half), `tokens.test.ts` (reads every file in `src`, comments stripped), `noBareInputs.test.ts`, `motion.test.ts`, `toneNotOverridden.test.ts`. These assert *across* routes, which is the shape almost nothing else here does. |
+| **Engine-to-screen wiring** | `safeToSpendWiring.test.tsx`, by server rendering. Honest caveat: it closes the class for **one screen**. What it really establishes is the pattern — call the engine, render the component, assert the component prints the engine's figure through `formatMoney`, with nothing hand-written on either side. Extending it to another screen is twenty minutes, and the next figure anybody doubts should get one. |
+
+### Partial — reachable, but thinly asserted
+
+| | State |
+| --- | --- |
+| **Rendered output** | `renderingGate.test.tsx` mounts real components, so this is no longer structurally invisible. But `happy-dom` does no layout: it sees structure, text and focus, and it cannot see appearance. Three tests exist, one per severity 1 — a foothold, deliberately not a suite. |
+| **Execution over time** | Effects actually run in the gate, so hook order, cleanup and effect ordering are now *reachable*. `react-hooks/exhaustive-deps` and the conditional-hook rule catch the static half — adding that one lint rule found two conditional hooks and a live wrong-data bug that eleven commits and 946 tests had passed. Async races remain unasserted. |
+| **Closure freshness** | Reachable in the gate and **asserted nowhere**. A captured value that is type-correct and stale is invisible to every other gate here by construction. If you touch a `useCallback`/`useMemo` dependency list, you are unguarded. |
+| **The accessibility tree** | Accessible names and focus movement are reachable in the gate and were swept across all sixteen routes in a real browser (0 unnamed, down from 25). What no gate does is what a real screen reader announces, in order, for a whole flow. |
+
+### Open — nothing sees these at all
+
+These are the three to read carefully before changing anything, because a green
+suite is silent about all of them.
+
+1. **Computed geometry and cascade — what the browser resolves, rather than
+   what was written.** No test in this repository computes a style or a
+   position; `happy-dom` cannot. This class has produced more real defects here
+   than any other: a hero figure that rendered ink-black on every field for a
+   whole phase because two colour utilities of equal specificity collided and
+   Tailwind's emission order decided it; an information button with a 44×44 box,
+   a class saying 44, and a hit area of 44×37 because the paragraph after it
+   painted over seven pixels; six `dvh` surviving inside a shell that is already
+   the viewport. **If you change a token, a utility, a radius, a `z-index`, an
+   `overflow`, or anything a pseudo-element draws, the suite will stay green and
+   tell you nothing.** Measure it in a browser, and read `## Measuring` first —
+   both rules there were bought by getting exactly this wrong.
+
+2. **Everything outside the module graph — the manifest, the headers, the
+   icons, the meta tags, and these documents.** No gate reads any of them.
+   `index.html`'s pre-paint script, `vercel.json`, `public/_headers`, the icon
+   set and the service worker are all load-bearing and all unguarded: a wrong
+   `Cross-Origin-Embedder-Policy` opens an app that cannot reach its own
+   database, and nothing in a green run would say so. Both home-screen
+   shortcuts pointed at the dashboard for months. **This file is in this
+   category.** It has been wrong twice in writing — it claimed I1–I10 ran on
+   every write for six phases, and it claimed the record button was the hot
+   accent for six more — and in both cases the code was right and the
+   documentation was the defect. Treat a claim in here as a hypothesis, per
+   `## Measuring`, and check it against the code before relying on it.
+
+3. **Failure paths — storage eviction, a worker that will not start, a
+   migration that fails halfway.** Nothing exercises any of them.
+   `schema.test.ts` runs the real DDL and every migration against real SQLite,
+   which is the one genuine gate the data layer has, and it tests the *happy*
+   application of each migration rather than a failure in the middle of one.
+   This matters more than its position at the bottom of the list suggests:
+   **this is the failure mode a real user is most likely to hit**, the
+   dogfooding database lost every table twice during the redesign, and
+   `listPortfolio` once surfaced a raw `SQLITE_ERROR` to the screen. OPFS
+   eviction could not be simulated in the development environment at all
+   (`NoModificationAllowedError`), so the app's behaviour there is **unknown**,
+   not verified. If you touch `src/data`, assume you have no net.
+
+---
+
 ## Layering
 
 ```
