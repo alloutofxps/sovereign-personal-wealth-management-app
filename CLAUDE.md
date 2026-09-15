@@ -206,8 +206,14 @@ that rule, and it generalises well past the two screens it came from:
   envelopes over budget get four completed rings; three tight weeks get three
   hatched bands. Suppressing the second one would be hiding a fact.
 - **Attentional treatments do not scale.** A hot dot, a named label, an action
-  strip. They say *look here*, and saying it four times says it nowhere. Exactly
-  one per screen, on the single thing a person could act on next.
+  strip. They say *look here*, and saying it four times says it nowhere. **At
+  most one per screen**, on the single thing a person could act on next — and
+  none at all is the common case, because all three uses of the hot accent are
+  conditional on there being a decision to make. Phase 8 measured zero painted
+  across the whole seeded app and that was the correct result. This line read
+  "exactly one per screen" for four phases, which would have demanded a hot
+  mark on every screen in the app; the budget above has always said "at most
+  once". See M5 in `AUDIT.md`.
 
 So being over budget is described — the ring completes, the wording turns from
 "left of" to "over of", both in the envelope's own category hue — and the hot
@@ -390,9 +396,17 @@ means where these know.
   card, tile or row animates in — a fade-and-slide on every container is the
   generated default and it costs the screen the one thing an entrance is for,
   which is saying where to look first. Every entrance is scoped to `.field`
-  descendants, because there is never more than one field on a screen, so the
-  scope makes the budget unbreakable rather than something to remember.
-  `motion.test.ts` holds it.
+  descendants, so the scope makes the budget unbreakable rather than something
+  to remember. `motion.test.ts` holds it.
+
+  What this needs from the field rule is only its **upper** bound: no screen
+  has two fields, so no screen can have two orchestrated moments. It does not
+  need the other half — a screen with no field simply has no entrance, which
+  is the right outcome. This paragraph used to justify itself with "there is
+  never more than one field on a screen", which is the weaker reading the
+  field rule above names as the mistake that left the field on three routes of
+  sixteen. Correct here, wrong as a statement of that rule, and a reader who
+  met it here first learned the wrong version. See M5 in `AUDIT.md`.
 - **Every keyframe declares only a `from`.** A keyframe list with no 100% entry
   takes the element's own computed style as the destination, so the resting
   state lives in the component where a reader can see it, there is no second
@@ -532,6 +546,18 @@ Three things follow, and they generalise past pixels:
 - **Record which instrument produced a number.** Two probes here disagree by
   2–3px and only one is right. A figure in a report without its instrument
   cannot be reproduced or challenged.
+- **Check whether the sweep is reporting on itself.** If every answer is the
+  same answer — all pass, all fail, all silent — suspect the instrument
+  before the subject. Two probes in phase 9 failed this way inside an hour and
+  each would have inverted a finding: one dispatched an event React does not
+  listen to and reported that no node revealed anything, the other read a
+  first-run overlay and reported that every node opened a sheet. A silent
+  instrument and a saturated one both look like clean results.
+- **Re-run a measurement after interacting with whatever you measured.** The
+  same phase 9 probing left a chart stuck in its dimmed state, because the
+  synthetic leave event was not one React listens to either. Every earlier
+  figure had to be re-taken on a reloaded page to prove it had not been
+  contaminated.
 
 A third instance, same lesson, cheaper: phase 8 reported that two manual
 chapters had no in-context link, from a grep for `chapter="…"`. Both are

@@ -1,29 +1,55 @@
 /* ===========================================================================
  * WHERE THE MONEY WENT
  * ---------------------------------------------------------------------------
+ * READ THIS FIRST — WHY A GRAPH NOTHING DRAWS IS STILL HERE
+ *
+ * Phase 9 removed the chart this file was built for. **Nothing renders the
+ * nodes or the links any more.** Roughly three hundred lines below have no
+ * consumer outside the tests, and the ordinary rule for that is to delete
+ * them. Do not.
+ *
+ * What the analytics screen reads are the six scalars at the foot of
+ * `SankeyGraph`: `income`, `spent`, `saved`, `retained`, `totalOut` and
+ * `drewOnReserves`. `retained` is a screen's headline figure and a
+ * three-term subtraction, and between one phase and the next it produced
+ * **six false sentences** — four labels on the field, a caption under the
+ * chart, and two node names in this file. Every figure was correct; the words
+ * in front of them were not.
+ *
+ * The graph is the second opinion on those six. `conservationErrors` walks
+ * the nodes and links and checks that every unit entering leaves or is
+ * retained, and that each node's inbound total equals its outbound total —
+ * an arithmetic path **independent** of the scalar subtraction a screen
+ * prints. The property tests hold it over hundreds of generated ledgers. So
+ * `retained` is not one subtraction nobody checks; it is a figure two
+ * unrelated routes agree on.
+ *
+ * That is worth more than the chart was, and it costs no bundle: this module
+ * is quarantined out of first paint and the graph half is reachable only from
+ * tests.
+ *
+ * **The cross-check is the whole justification, so deleting the call while
+ * keeping the graph is the worst available outcome** — three hundred dead
+ * lines *and* no second opinion, with every other test still green because
+ * the scalars would go on agreeing with themselves.
+ * `sankeyFlow.test.ts` fails if `conservationErrors` stops being called from
+ * inside the generated-ledger property test. If you ever decide the property
+ * is not worth holding, delete the graph and that guard together — never one
+ * without the other.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT IT BUILDS
+ *
  * Turns a period of the ledger into a directed acyclic graph: income on the
  * left, what it was for in the middle, individual categories and pots on the
  * right.
  *
- * **Phase 9 removed the chart this was built to draw.** Nothing renders the
- * nodes and links any more; what the analytics screen reads are the scalars
- * at the foot of `SankeyGraph` — `income`, `spent`, `saved`, `retained`,
- * `totalOut` and `drewOnReserves`. The graph is kept, deliberately, and the
- * reason is the next paragraph: it is what makes those six falsifiable.
- *
- * The one property that has to hold is conservation. Every unit that enters
- * the graph leaves it or is retained as cash, and every node's inbound total
- * equals its outbound total. `conservationErrors` proves that by walking the
- * nodes and links, which is an arithmetic path independent of the scalars —
- * so a screen reading `retained` has a second opinion behind it rather than
- * one subtraction nobody checks. That is worth more than the chart was: the
- * property tests hold it over hundreds of generated ledgers.
- *
- * It was originally written because a Sankey whose ribbons do not add up is
- * not a chart with a rounding problem — it is a picture that tells somebody a
- * confident lie about their own money, and it looks exactly as convincing as
- * a correct one. The picture is gone and the argument survives it: a figure
- * that does not add up reads exactly as convincing as one that does.
+ * Conservation was originally written in because a Sankey whose ribbons do
+ * not add up is not a chart with a rounding problem — it is a picture that
+ * tells somebody a confident lie about their own money, and it looks exactly
+ * as convincing as a correct one. The picture is gone and the argument
+ * survives it: a figure that does not add up reads exactly as convincing as
+ * one that does.
  *
  * So two things are deliberate here. Doing more with a month's money than
  * arrived in it becomes an explicit source rather than an inverted ribbon,

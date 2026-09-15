@@ -338,23 +338,40 @@ Everything below re-measured after every fix, not carried forward.
 | **Cross-origin** | Nothing in `dist/` fetches from another origin | Every file scanned for nine request forms. |
 | **Debt list** | 0 strings across 0 files | |
 
-### What is genuinely left
+### What is genuinely left — THE STANDING LIST
 
-Four things, all recorded, none hidden.
+**Current as of phase 9.** This is the list, not a phase report: anything open
+lives here rather than in a commit message or a conversation. Every closed line
+is kept with its resolution so the list reads as a history rather than a
+to-do that forgets what it once held.
 
-1. **A new explanation for Where it went, and one for Payoff.** P11's remainder.
-   None of the 28 existing topics is about where money went or about paying debt
-   down, so each needs a title, a short line, three `how` steps and a `worked()`
-   built from live figures, in the copy standard's register, with a test per
-   branch. A copy task, flagged rather than absorbed into an audit.
-2. **A5 — seventeen…** now 57, all gated; see the phase 7 carries. *Closed.*
-3. **P12's numbers are pinned, not improved.** A disabled label is 2.60:1 in
-   Daylight. WCAG exempts it and the exemption is now in writing with the
-   figure, so raising it is a decision somebody can take deliberately.
-4. **233 exports are referenced nowhere outside their own file.** Almost all are
-   props interfaces and in-file helpers that carry an unnecessary `export`;
-   two genuinely dead ones were deleted. Tidying the rest is cosmetic and was
-   not done.
+#### Closed
+
+| | State |
+| --- | --- |
+| **P9** — three `storage` Explain buttons on settings | ✅ One door. `ProtectStorage`'s went; `DataAndSecurity`'s stayed, because `ProtectStorage` only renders while persistence has *not* been granted. |
+| **P10** — two manual chapters with no in-context link | ❌ **Withdrawn, not a defect.** `ExplainSheet` renders `chapter={showing.manual}` dynamically; the grep could not see it. M2. |
+| **P11** — Accounts, Analytics and Payoff had no Explain | ✅ Closed in full. Accounts got `net-worth` in phase 8; `where-it-went` and `payoff` were written in phase 9 from the engines outwards, with a test per branch. Nine of ten drafted steps were wrong before that check. |
+| **P13** — Quick-assign's disabled reasons unassociated | ✅ `aria-describedby` names the title and the reason. |
+| **P14** — `CLAUDE.md` misdescribed the hot accent | ✅ Rule corrected; the record button is emerald and the rule says so. |
+| **P15** — a field 552px down the forecast pane | ✅ Removed. Position is evidence. |
+| **A5** — ungated hover fills | ✅ 57 found, all gated behind `@media (hover: hover)`, with a guard that forbids ungated hover outright rather than one pinned to a count. |
+| **P18–P21** — the Sankey's opacity, its pointer-only content, its 93% band, and `'Still in your account'` | ✅ Phase 9. The chart was removed and recorded in `INVENTORY.md` as an authorised removal; the node name was fixed with a failing-first test. |
+
+#### Open, by decision
+
+| | Why it is open |
+| --- | --- |
+| **P12** — a disabled label is 2.60:1 in Daylight | Pinned rather than improved. WCAG exempts disabled controls, the exempt pairs are now asserted explicitly in `tokens.test.ts` rather than by omission, and the figure is in writing. Raising it is a decision somebody can take deliberately; leaving it is the correct resting state for a WCAG-exempt pair. |
+| **233 exports referenced nowhere outside their own file** | Almost all are props interfaces and in-file helpers carrying an unnecessary `export`. Two genuinely dead ones were deleted. Tidying the rest is cosmetic, touches a very large number of files for no behavioural change, and was deliberately not done. |
+| **The flow graph renders nowhere** | ~300 lines of node and link construction in `sankeyFlow.ts` have no consumer outside the tests since phase 9. Kept on purpose: `conservationErrors` walks them on a path independent of the scalar subtraction a screen prints, so `retained` — a headline figure that produced six false sentences — has a second opinion. The file's header says this as the first thing read, and `sankeyFlow.test.ts` fails if the cross-check stops being called from inside the property test. **Delete the graph and that guard together or neither.** |
+
+#### Open, and not yet a decision
+
+| | What it needs |
+| --- | --- |
+| **The analytics field's deficit branch has never been seen on screen** | The seeded household has no month where `spent + saved > income`, so the "More than came in" cell and the `--color-caution` caption are covered by per-branch copy tests and by contrast computed from the token, but have never been *rendered*. Computed at 4.82:1 on the Daylight field ground — AA, and the tightest pair on that surface. Seeding a deficit month would close it in twenty minutes. |
+| **Closure freshness is asserted nowhere** | Reachable in the rendering gate and unasserted. The one G1 class that is *reachable* and simply has no test. If you touch a `useCallback`/`useMemo` dependency list you are unguarded — see `CLAUDE.md`. |
 
 ### The rendering gate's remaining blind spots
 
@@ -382,7 +399,9 @@ does no layout, so of the ten classes in G1:
 | **Worker failing to start** | The worker URL is resolved by the bundler; there is no supported way to make it fail from the page without editing the source, which would be testing a modified app. **Unverified.** |
 | **A migration failing halfway** | Same: it needs a deliberately broken migration in the build. `schema.test.ts` runs every migration against real SQLite and asserts the result, which covers the happy application of each step and not a failure inside one. **Unverified.** |
 | **Frame timing of the dock-blur change** | `requestAnimationFrame` does not fire while the Browser pane is hidden — a 20-frame capture with a 3s ceiling never completed. No frame timeline can be captured here. Carried from phase 7 and still **unverified**. |
-| **Real iOS behaviour** | Everything about the status bar, the home-screen shortcut, `100dvh` and the sticky `:hover` fills is reasoned from the platform's documented behaviour and verified only in Chromium. **Unverified on device.** |
+| **Real iOS behaviour** | Everything about the status bar, the home-screen shortcut, `100dvh` and the sticky `:hover` fills is reasoned from the platform's documented behaviour and verified only in Chromium. **Unverified on device.** This is the largest single block of unverified surface in the project, and the only one a phone closes in an afternoon. |
+| **Screenshots, intermittently** | `computer{action:"screenshot"}` times out when the Browser pane is not displayed — "the page did not finish rendering in time". Text-based instruments (`get_page_text`, DOM reads, computed styles) work throughout, so no finding depended on a picture; the phase 9 layout check was done by measuring `scrollWidth` against `clientWidth` and by walking element rects rather than by looking. Worth knowing before anybody trusts a visual diff taken here. |
+| **A real screen reader's announcement** | Accessible names and focus order are computed and swept; what VoiceOver or TalkBack actually says, in order, through a whole flow, has never been heard. The rendering gate reaches the accessibility *tree*, not a reader. **Unverified.** |
 
 ---
 
@@ -803,6 +822,84 @@ synthetic `pointerleave` was not the event React listens to either. The ΔE
 sweeps had all been taken before that point, and were re-run on a reloaded page
 to prove it — identical to two decimal places. **Re-run a measurement after
 interacting with the thing you measured.**
+
+### M5. A rule stated twice is two rules, and they diverge silently
+
+**Found by accident in phase 9, which is the problem. Nothing detects this
+class and no gate ever will.**
+
+`CLAUDE.md` stated the `family="none"` exemption in two places:
+
+> **The field rule:** *"exists for exactly one case and must stay rare: where
+> it went, whose field sits directly above **a Sankey** in which every ribbon
+> is already one of the six hues."*
+>
+> **The kit table:** *"`family="none"` for the one screen whose subject is
+> every family at once."*
+
+They read as the same rule and they are not. The first is narrower: it grounds
+the exemption in a component. The second grounds it in what the screen is
+about. For four phases nothing distinguished them, because the Sankey existed
+and both were satisfied by the same screen.
+
+Removing the chart separated them. The narrow statement stopped making sense —
+its reason was gone — and the exemption looked like fallout of the deletion.
+The broad statement was untouched and still correct, because the donut and the
+category rows below the field colour every segment by family. **The rule
+survived; the statement of it that named an implementation did not.**
+
+What makes this a method finding rather than a tidy-up:
+
+- **Nothing detects it.** Two prose statements of one rule, in one file, with
+  different scopes. No typecheck, test, lint or source scan is shaped to
+  compare them, and none could be without understanding what the sentences
+  mean. It is squarely in G1's second open class — everything outside the
+  module graph — and this file and `CLAUDE.md` are both in that class.
+- **Divergence is invisible while both statements are satisfied.** The narrow
+  one is *implied by* the broad one, so every check passes and every screen
+  looks right, until the thing the narrow one names is deleted or changes.
+  The moment of discovery is the moment of breakage, which is the worst
+  possible time.
+- **The one naming an implementation is the one to distrust.** A component, a
+  file, a chart, a token is where a rule was first *noticed*, not usually why
+  it holds. When a rule cites one, ask whether the citation is the reason or
+  the anecdote.
+
+That last heuristic is the useful half, and the sweep below shows it is not
+universal — so it is a place to look first, not a verdict.
+
+### The sweep M5 produced, and the two more it found
+
+Rules rarely diverge alone, so every subject stated in more than one section of
+`CLAUDE.md` was enumerated and each set read for agreement in **scope**, not in
+sentiment. Twenty subjects, ten stated once (no divergence possible), ten in
+two or three places. Seven of those ten were citations rather than
+restatements — the G1 map naming `fields.test.ts` or `noBareInputs` as examples
+of what a gate covers is a reference, not a second statement of a rule.
+
+**Three were real restatements, and two of them disagreed.** Both in the same
+direction, and it is the direction that has already cost this project twelve
+routes: **an upper bound written as an exact count.**
+
+| Subject | The two statements | Verdict |
+| --- | --- | --- |
+| `family="none"` | "above a Sankey" vs "the one screen whose subject is every family at once" | **Diverged.** M5 above. Fixed: the broad statement is the rule, and the field rule now says how the narrow one went wrong. |
+| The field per screen | The field rule: *"exactly one per screen, or a reason written down"* — against **Motion**: *"there is never more than one field on a screen"* | **Diverged.** "Never more than one" is the exact weaker reading the field rule names as the mistake. It is *correct as a premise for the motion scope*, which only needs an upper bound — so the fix is to say that explicitly rather than restate the field rule. A reader meeting the motion section first learned the discredited version. |
+| The hot accent | The budget: *"appears at most once per screen"* — against the describe/name rule: *"Attentional treatments do not scale … **exactly one per screen**"* | **Diverged.** "Exactly one" would demand a hot mark on every screen. Phase 8 measured **zero** painted across the whole seeded app and recorded that as correct, because all three uses are conditional on a decision existing. Fixed to "at most one per screen, and none at all is the common case". |
+| 44×44 | `CLAUDE.md`: *"44×44pt **minimum** on every interactive target"* — `README.md`: *"44×44 on every interactive target, with **no exceptions**"* | **Agree.** A minimum with no exemptions is one rule stated two ways. Checked and left. |
+
+Two of three restatements were wrong, and both were the same confusion. That is
+a better argument for the sweep than the original finding was: **"at most one"
+and "exactly one" are different rules that look like a wording preference**,
+and this project has now got that distinction wrong three separate times — the
+field, the motion premise, and the hot accent. The first cost thirteen screens
+their hero surface for four phases.
+
+The instrument was a hand-built enumeration of subjects, which is a grep and
+therefore a hypothesis (M2). It can only find divergence among subjects
+somebody thought to list; a rule stated twice in words that share no keyword is
+invisible to it. Listed here so the next person knows what the sweep did and
+did not cover.
 
 ---
 

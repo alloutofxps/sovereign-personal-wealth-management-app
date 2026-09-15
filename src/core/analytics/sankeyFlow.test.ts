@@ -42,6 +42,8 @@
  * fails two arms.
  * ======================================================================== */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { minor } from '@/core/money';
 import {
@@ -52,6 +54,7 @@ import {
   SHORTFALL_NAME,
   SMALL_SLICE_BP,
   buildSankeyFlow,
+  conservationErrors,
   type SpendSlice,
 } from './sankeyFlow';
 
@@ -297,5 +300,91 @@ describe('small categories are gathered up without changing the totals', () => {
     const flow = withTiddlers(1_000_000, 2, 400_000);
 
     expect(flow.nodes.find((node) => node.id === OTHER_ID)).toBeUndefined();
+  });
+});
+
+/* ===========================================================================
+ * THE CROSS-CHECK HAS TO STAY WIRED UP
+ * ---------------------------------------------------------------------------
+ * The graph is kept for one reason — `conservationErrors` walks the nodes and
+ * links on an arithmetic path independent of the scalars a screen reads, so
+ * `retained` has a second opinion behind it. The header of `sankeyFlow.ts`
+ * says so as the first thing in the file.
+ *
+ * That reason is only true while something calls it. Deleting the call and
+ * keeping the graph is the worst of both outcomes: three hundred lines with no
+ * consumer *and* no cross-check, and nothing else in the suite would notice —
+ * every other test would stay green, because the scalars would still agree
+ * with themselves.
+ *
+ * So this is a guard on the wiring rather than on the arithmetic. It is a
+ * source scan, which is the same instrument the design-system guards use and
+ * has the same limits: it sees that the call is written, not that it ran.
+ * Asserting the property test *block* contains it is what stops a token call
+ * on one hand-built input from satisfying it.
+ *
+ * VERIFIED by breaking it three ways: deleting the call from the property
+ * test fails `is called from inside the property test`; moving it to a
+ * single-input test fails the same assertion while the file-wide one still
+ * passes, which is the case this is shaped for; and renaming the property test
+ * fails `the property test still exists`.
+ * ======================================================================== */
+
+describe('the conservation cross-check is still called', () => {
+  const ANALYTICS_TEST = fileURLToPath(new URL('./analytics.test.ts', import.meta.url));
+  const source = readFileSync(ANALYTICS_TEST, 'utf8');
+
+  /** The property test's name, which is the anchor the whole guard hangs on. */
+  const PROPERTY_TEST = 'conserves every unit over arbitrary ledgers';
+
+  it('is exported by the engine as something callable', () => {
+    expect(typeof conservationErrors).toBe('function');
+  });
+
+  it('still disagrees when a graph does not add up', () => {
+    // The cross-check has to be able to fail, or calling it proves nothing.
+    // A node whose inbound total no longer matches its outbound one is the
+    // shape it exists to catch.
+    const flow = graph(100_000, 60_000, 0);
+    expect(conservationErrors(flow), 'a real graph conserves').toEqual([]);
+
+    const broken = { ...flow, links: flow.links.slice(0, -1) };
+    expect(
+      conservationErrors(broken).length,
+      'dropping a ribbon has to be reported',
+    ).toBeGreaterThan(0);
+  });
+
+  it('the property test still exists', () => {
+    expect(
+      source.includes(PROPERTY_TEST),
+      'the generated-ledger test is the anchor for the guard below; renaming it needs this updated',
+    ).toBe(true);
+  });
+
+  it('is called from inside the property test', () => {
+    const start = source.indexOf(PROPERTY_TEST);
+    expect(start, 'anchor missing').toBeGreaterThan(-1);
+
+    // The block runs to the next sibling `it(` at the same indentation, or to
+    // the end of the file. Cheaper and more robust than brace matching, and
+    // it cannot accidentally swallow a later test's call.
+    const rest = source.slice(start);
+    const next = rest.search(/\n {2}it\(/);
+    const block = next === -1 ? rest : rest.slice(0, next);
+
+    expect(
+      block.includes('conservationErrors('),
+      'the graph is kept solely because this cross-check runs over generated ledgers. ' +
+        'If the property no longer holds, delete the graph too — do not keep one without the other.',
+    ).toBe(true);
+  });
+
+  it('still walks a graph that has nodes and links to walk', () => {
+    // Keeping the call while emptying the graph would satisfy the scan above
+    // and check nothing.
+    const flow = graph(100_000, 60_000, 25_000);
+    expect(flow.nodes.length, 'no nodes, nothing to cross-check').toBeGreaterThan(0);
+    expect(flow.links.length, 'no links, nothing to cross-check').toBeGreaterThan(0);
   });
 });
