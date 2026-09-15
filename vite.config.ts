@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 /**
  * Cross-origin isolation.
@@ -25,16 +26,43 @@ const CROSS_ORIGIN_ISOLATION = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
+/**
+ * HTTPS for testing on a real phone over the local network.
+ *
+ * Opt-in and inert unless both variables are set, so the ordinary `npm run
+ * dev` is untouched.
+ *
+ * It exists because of a hard iOS rule that is easy to lose a day to. OPFS —
+ * `navigator.storage.getDirectory()` — is gated on a **secure context**, and
+ * on iOS only `https://` and `localhost` qualify. `localhost` means the
+ * device itself, so `http://192.168.x.x` from a phone is *not* secure, OPFS
+ * is unavailable, and `db.worker.ts` falls back to `:memory:` exactly as it
+ * is designed to. The app then opens, works, looks completely normal, and
+ * forgets everything on reload. Nothing warns you except the storage line in
+ * Settings.
+ *
+ * A self-signed certificate is not enough on its own: the CA has to be
+ * installed *and* fully trusted on the phone, or Safari treats the origin as
+ * insecure even after you tap through the warning. `mkcert` does both halves.
+ * See `design-refs/DEVICE-CHECK.md`.
+ */
+const LOCAL_HTTPS = (() => {
+  const cert = process.env.SOVEREIGN_HTTPS_CERT;
+  const key = process.env.SOVEREIGN_HTTPS_KEY;
+  if (!cert || !key) return undefined;
+  return { cert: readFileSync(cert), key: readFileSync(key) };
+})();
+
 export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { headers: CROSS_ORIGIN_ISOLATION },
+  server: { headers: CROSS_ORIGIN_ISOLATION, ...(LOCAL_HTTPS ? { https: LOCAL_HTTPS } : {}) },
   // The SQLite WASM binary must not be pre-bundled — esbuild rewrites the
   // module in a way that breaks its worker and OPFS entry points.
   optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
   worker: { format: 'es' },
-  preview: { headers: CROSS_ORIGIN_ISOLATION },
+  preview: { headers: CROSS_ORIGIN_ISOLATION, ...(LOCAL_HTTPS ? { https: LOCAL_HTTPS } : {}) },
   plugins: [
     react(),
     tailwindcss(),
