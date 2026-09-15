@@ -13,6 +13,7 @@ export type {
   Security,
 } from './holdingsMath';
 export {
+  describePortfolioSetup,
   describeHoldingEntry,
   QUANTITY_EXPONENT,
   QUANTITY_SCALE,
@@ -27,6 +28,7 @@ export {
 
 export type { Allocation, AllocationSlice } from './assetAllocation';
 export {
+  HOLDABLE_ASSET_CLASSES,
   ASSET_CLASS_MEANINGS,
   ASSET_CLASS_NAMES,
   ASSET_CLASS_ORDER,

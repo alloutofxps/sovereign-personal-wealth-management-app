@@ -14,7 +14,7 @@ import {
   ASSET_CLASS_MEANINGS,
   describeHoldingEntry,
   ASSET_CLASS_NAMES,
-  ASSET_CLASS_ORDER,
+  HOLDABLE_ASSET_CLASSES,
   formatQuantity,
   marketValue,
   parseQuantity,
@@ -164,7 +164,7 @@ export function AddHoldingSheet({
           label="What kind of thing is it"
           value={assetClass}
           onChange={(e) => setAssetClass(e.target.value as AssetClass)}
-          options={ASSET_CLASS_ORDER.map((cls) => ({
+          options={HOLDABLE_ASSET_CLASSES.map((cls) => ({
             value: cls,
             label: ASSET_CLASS_NAMES[cls],
           }))}

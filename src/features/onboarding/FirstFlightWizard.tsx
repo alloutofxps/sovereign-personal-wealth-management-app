@@ -31,23 +31,25 @@ import {
   StepSaving,
   StepTheNumber,
   StepWhatYouOwe,
+  StepInvested,
   StepWhereItIs,
   type Added,
 } from './steps';
 
 /**
- * The six steps, in the order the questions actually depend on each other:
+ * The seven steps, in the order the questions actually depend on each other:
  * what you have, then what you owe against it, then what moves in and out of
  * it, then what you are holding back from it, and only then the figure that
  * comes out of all four.
  */
-const STEPS = ['promise', 'cash', 'debts', 'regulars', 'pots', 'number'] as const;
+const STEPS = ['promise', 'cash', 'invested', 'debts', 'regulars', 'pots', 'number'] as const;
 type Step = (typeof STEPS)[number];
 
 /** The word on the button that moves on, per step. */
 const ONWARD: Record<Step, string> = {
   promise: 'Start',
   cash: 'Next',
+  invested: 'Next',
   debts: 'Next',
   regulars: 'Next',
   pots: 'Next',
@@ -57,6 +59,7 @@ const ONWARD: Record<Step, string> = {
 export function FirstFlightWizard({ onFinished }: { onFinished: () => void }) {
   const [index, setIndex] = useState(0);
   const [cash, setCash] = useState<Added[]>([]);
+  const [invested, setInvested] = useState<Added[]>([]);
   const [debts, setDebts] = useState<Added[]>([]);
   const [regulars, setRegulars] = useState<Added[]>([]);
   const [pots, setPots] = useState<Added[]>([]);
@@ -163,6 +166,12 @@ export function FirstFlightWizard({ onFinished }: { onFinished: () => void }) {
             <StepWhereItIs
               added={cash}
               onAdded={(item) => setCash((previous) => [...previous, item])}
+            />
+          )}
+          {step === 'invested' && (
+            <StepInvested
+              added={invested}
+              onAdded={(item) => setInvested((previous) => [...previous, item])}
             />
           )}
           {step === 'debts' && (

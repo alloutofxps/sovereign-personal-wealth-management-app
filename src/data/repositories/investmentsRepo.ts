@@ -266,6 +266,36 @@ export async function syncAccountValue(
   return { changed: true, delta, uninvestedCash, needsReconciling: false };
 }
 
+/**
+ * Square an account against its holdings, with the cash stated rather than
+ * inferred.
+ *
+ * The only thing that may move an account whose two records have never been
+ * reconciled. `syncAccountValue` refuses that case on purpose — the gap
+ * between a hand-typed figure and an incomplete register is either cash or a
+ * holding not entered yet, and guessing either way destroys money. This is
+ * where somebody answers the question instead.
+ */
+export async function reconcileWithStatedCash(
+  accountId: AccountId,
+  cash: Minor,
+  asOf: IsoDate = today(),
+): Promise<{ changed: boolean; delta: Minor }> {
+  const result = await syncAccountValue(accountId, asOf, cash);
+  return { changed: result.changed, delta: result.delta };
+}
+
+/**
+ * Whether an account's two records have ever been squared.
+ *
+ * False means there is no register mark, so the difference between what the
+ * account says it is worth and what its holdings come to is still unexplained
+ * — and the app must ask rather than assume. Drives the set-up prompt.
+ */
+export async function isReconciled(accountId: AccountId): Promise<boolean> {
+  return (await lastRegisterMark(accountId)) !== null;
+}
+
 /** What the register was worth when the two records were last reconciled. */
 async function lastRegisterMark(accountId: AccountId): Promise<Minor | null> {
   /*
@@ -335,6 +365,13 @@ export interface AddHoldingInput {
   expenseRatioBp: BasisPoints;
   /** Shares as an exact integer at 1e8. */
   quantity1e8: number;
+  /**
+   * Skip the reconciliation this would otherwise trigger.
+   *
+   * For a caller recording several holdings in one sitting, which reconciles
+   * once at the end instead. See `reconcileWithStatedCash`.
+   */
+  deferSync?: boolean;
   /** What the whole position cost, in minor units. */
   costBasis: Minor;
   /** Minor units for one whole share, today, in the security's own currency. */
@@ -489,7 +526,17 @@ export async function addHolding(input: AddHoldingInput): Promise<void> {
   ];
 
   await runBatch(statements.map((s) => ({ sql: s.sql, params: s.params })));
-  await syncAccountValue(input.accountId, date);
+
+  /*
+   * `deferSync` is how the set-up flow writes several holdings without the
+   * account's worth moving between them.
+   *
+   * Reconciling after each one is what made net worth wrong in the middle of
+   * entering a portfolio — the register is incomplete until the last holding
+   * lands, and any figure derived from it before then is a figure nobody
+   * should see. The flow reconciles once, at the end, with the cash stated.
+   */
+  if (!input.deferSync) await syncAccountValue(input.accountId, date);
 }
 
 /** Change how many shares are held, or what the position cost. */

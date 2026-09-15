@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { minor, type Minor, type Rate1e6 } from '@/core/money';
-import type { AccountClass } from '@/core/ledger';
+import type { AccountClass, AccountId } from '@/core/ledger';
 // Deep import on purpose: see the note in the ledger barrel.
 import { CLASS_PROFILES } from '@/core/ledger/accountClasses';
 import { COMMON_CURRENCIES } from '@/core/money';
@@ -89,7 +89,22 @@ const FAMILIES: {
   },
 ];
 
-export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateAccountSheet({
+  open,
+  onClose,
+  onSetUpHoldings,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /**
+   * Called instead of finishing, for an account that holds positions.
+   *
+   * The caller opens the composition screen. This sheet does not open it
+   * itself because a sheet inside a sheet is two backdrops and two focus
+   * traps, and the one underneath has already served its purpose.
+   */
+  onSetUpHoldings?: (account: { accountId: AccountId; accountName: string }) => void;
+}) {
   const money = useMoney();
   // No figures: nothing on this sheet has happened yet, so the general
   // explanation is the only honest one to show.
@@ -141,6 +156,17 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
 
   const profile = chosen ? CLASS_PROFILES[chosen] : null;
   const owed = profile?.type === 'LIABILITY';
+
+  /*
+   * An account that holds positions is not worth a figure somebody estimates;
+   * it is worth what is in it. So it is not asked for one — the next screen
+   * asks what it holds and how much of it is cash, and the account's worth
+   * falls out of the answer.
+   *
+   * These are the two classes `listInvestmentAccounts` accepts, which is what
+   * makes them the two that can be followed by the composition step.
+   */
+  const holdsPositions = chosen === 'brokerage' || chosen === 'retirement';
   // An account in another currency is never part of the budget, so the
   // override below stops being offered the moment one is chosen.
   const foreign = foreignCurrency !== null;
@@ -164,6 +190,21 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
         ...(foreign && parsedRate !== null ? { rateScaled: parsedRate } : {}),
         ...(profile?.onBudget && offBudget && !foreign ? { onBudget: false } : {}),
       });
+
+      /*
+       * Straight on to what is in it, without a toast in between.
+       *
+       * The old flow ended here with "Trading 212 is set up." and nothing to
+       * follow, which is why somebody with a portfolio ended up with a single
+       * hand-typed number. An account that holds positions is not set up until
+       * its holdings are in it, so the next screen opens rather than being
+       * advertised.
+       */
+      if (holdsPositions) {
+        onSetUpHoldings?.({ accountId: created.account.id, accountName: name.trim() });
+        close();
+        return;
+      }
 
       toast(
         created.paymentEnvelopeId
@@ -246,7 +287,9 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             label="What do you call it?"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={owed ? 'Barclays mortgage' : 'Family home'}
+            placeholder={
+              holdsPositions ? 'Trading 212' : owed ? 'Barclays mortgage' : 'Family home'
+            }
             autoFocus
           />
 
@@ -298,16 +341,18 @@ export function CreateAccountSheet({ open, onClose }: { open: boolean; onClose: 
             placeholder="Your bank, lender, or leave it blank"
           />
 
-          <AmountInput
-            value={amount}
-            onChange={setAmount}
-            label={owed ? 'How much is owed on it' : 'What it is worth today'}
-            hint={
-              owed
-                ? 'What is left to pay. Enter it as a positive number.'
-                : 'Your best estimate is fine. You can update it whenever you like.'
-            }
-          />
+          {!holdsPositions && (
+            <AmountInput
+              value={amount}
+              onChange={setAmount}
+              label={owed ? 'How much is owed on it' : 'What it is worth today'}
+              hint={
+                owed
+                  ? 'What is left to pay. Enter it as a positive number.'
+                  : 'Your best estimate is fine. You can update it whenever you like.'
+              }
+            />
+          )}
 
           {/* What choosing this will actually do. Stated, not asked. */}
           <div

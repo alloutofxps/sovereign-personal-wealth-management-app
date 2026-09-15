@@ -360,3 +360,60 @@ export function describeHoldingEntry(
   const direction = input.marketValue >= input.costBasis ? 'up' : 'down';
   return `${opening} It cost ${format(input.costBasis)}, so it is currently ${direction} ${format(difference)}.`;
 }
+
+/**
+ * What setting up a portfolio will do, before the button is pressed.
+ *
+ * Wording turns on four things: whether anything has been added yet, whether
+ * there is cash, whether the account already carried a figure somebody typed,
+ * and — if it did — whether the total now agrees with it. So there is a test
+ * per branch, per the rule in CLAUDE.md.
+ *
+ * The branch that matters is the last one. An account set up after the fact
+ * has a figure on it already, and the honest thing is to say whether this
+ * leaves that figure alone or changes it. Discovering afterwards that net
+ * worth moved is what the whole flow exists to stop.
+ */
+export function describePortfolioSetup(
+  input: {
+    accountName: string;
+    holdingCount: number;
+    holdingsValue: Minor;
+    cash: Minor;
+    total: Minor;
+    /** What the account already says it is worth, or null if it says nothing. */
+    typedValue: Minor | null;
+  },
+  format: (amount: Minor) => string,
+): string {
+  if (input.holdingCount === 0 && input.cash === 0) {
+    return input.typedValue === null
+      ? 'Add what you hold, and the account will be worth what it adds up to.'
+      : `${input.accountName} stays at ${format(input.typedValue)} until you add what is in it.`;
+  }
+
+  const parts: string[] = [];
+  if (input.holdingCount > 0) {
+    parts.push(
+      `${format(input.holdingsValue)} in ${input.holdingCount} ` +
+        `${input.holdingCount === 1 ? 'holding' : 'holdings'}`,
+    );
+  }
+  if (input.cash > 0) parts.push(`${format(input.cash)} in cash`);
+
+  const worth = `${input.accountName} will be worth ${format(input.total)} — ${parts.join(', ')}.`;
+
+  if (input.typedValue === null) return worth;
+
+  const gap = minor(input.total - input.typedValue);
+  if (gap === 0) {
+    return `${worth} That matches the ${format(input.typedValue)} already recorded, so nothing else changes.`;
+  }
+  if (gap > 0) {
+    return `${worth} That is ${format(gap)} more than the ${format(input.typedValue)} recorded, so the account goes up by that much.`;
+  }
+  return (
+    `${worth} That is ${format(minor(-gap))} less than the ${format(input.typedValue)} recorded. ` +
+    `If something is missing, add it before finishing.`
+  );
+}

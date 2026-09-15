@@ -172,7 +172,11 @@ export function InvestmentsView() {
         */}
       {data && data.holdings.length > 0 && (
         <Field family="transport">
-          <div className="text-caption opacity-75">What it is all worth</div>
+          {/* "What you hold" rather than "what it is all worth", because the
+              accounts can be worth more than their holdings — the cash below
+              is the difference, and this figure alone read as a contradiction
+              of the total on Net worth. */}
+          <div className="text-caption opacity-75">What you hold</div>
           <div className="pt-1">
             <Money value={data.totals.marketValue} size="anchor" tone="inherit" />
           </div>
@@ -181,6 +185,14 @@ export function InvestmentsView() {
             <StatCell label="Went in">
               {money.format(data.totals.costBasis, { decimals: 'hide' })}
             </StatCell>
+            {/* Shown only when there is some, because a cell reading nothing
+                is a question nobody asked. What it buys when it is there is
+                that the hero plus this equals the figure on Net worth. */}
+            {data.uninvestedCash > 0 && (
+              <StatCell label="Cash waiting" hint="Not in a holding yet">
+                {money.format(data.uninvestedCash, { decimals: 'hide' })}
+              </StatCell>
+            )}
             <StatCell
               label={flat ? 'Unchanged' : up ? 'Growth' : 'Below cost'}
               hint={formatReturn(data.totals.returnBp)}

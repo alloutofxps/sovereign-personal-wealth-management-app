@@ -8,6 +8,7 @@
  * ======================================================================== */
 
 import { useCallback } from 'react';
+import { currentValue } from '@/data/repositories/accountsRepo';
 import {
   allocationOf,
   feeDragOf,
@@ -26,7 +27,7 @@ import {
   listSecurities,
   priceHistories,
 } from '@/data/repositories/investmentsRepo';
-import type { Minor } from '@/core/money';
+import { minor, type Minor } from '@/core/money';
 import type { Security } from '@/core/investments';
 
 export interface PortfolioData {
@@ -45,6 +46,15 @@ export interface PortfolioData {
   priceHistory: Map<string, Minor[]>;
   /** True when there are accounts that could hold securities but none do yet. */
   awaitingFirstHolding: boolean;
+  /**
+   * Money in the investment accounts that is not in a holding.
+   *
+   * Invested used to show only what the holdings came to while Net worth showed
+   * the accounts' full value, and the gap between the two was this, with
+   * nothing on either screen reconciling them. Two figures for one thing and
+   * no explanation is how somebody decides a screen is lying.
+   */
+  uninvestedCash: Minor;
 }
 
 export function usePortfolio(accountId?: AccountId): LiveQueryResult<PortfolioData> {
@@ -59,9 +69,20 @@ export function usePortfolio(accountId?: AccountId): LiveQueryResult<PortfolioDa
     // returned. Twelve rows still cost one query between them.
     const priceHistory = await priceHistories(holdings.map((h) => h.security.id));
 
+    /*
+     * What the accounts say, less what the register accounts for.
+     *
+     * Floored at zero for the same reason `reconcileTarget` floors it: a
+     * negative residual is a question rather than a figure to print.
+     */
+    const accountValues = await Promise.all(accounts.map((a) => currentValue(a.id)));
+    const accountsTotal = accountValues.reduce((sum, value) => sum + value, 0);
+    const held = totalsOf(holdings).marketValue;
+
     return {
       holdings,
       priceHistory,
+      uninvestedCash: minor(Math.max(0, accountsTotal - held)),
       totals: totalsOf(holdings),
       allocation: allocationOf(holdings),
       feeDrag: feeDragOf(holdings),

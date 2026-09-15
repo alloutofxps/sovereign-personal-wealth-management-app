@@ -143,3 +143,26 @@ export function describeAllocation(allocation: Allocation): string {
     `spread across ${allocation.slices.length} kinds of investment in all.`
   );
 }
+
+/**
+ * The classes a *holding* may be recorded as, which is not all of them.
+ *
+ * `cash_equivalent` is deliberately absent. Plain cash in a brokerage has no
+ * price, no cost basis and no fee, so it is not a position — and offering it
+ * here alongside the account's own cash field gave two ways to record one
+ * thing. Two mechanisms for one figure is how somebody's EUR 440 gets counted
+ * twice, so there is one way: the cash field on the account.
+ *
+ * The class itself stays in `AssetClass`. It is in the schema's CHECK
+ * constraints since v11, it is a legitimate *target* in a rebalancing mix, and
+ * existing rows carry it. This list narrows what a person may choose, and
+ * changes nothing that has already been recorded.
+ *
+ * The one case it costs: a money-market fund genuinely is a holding with a
+ * ticker and a price, and it now has to be filed under something else. Worth
+ * revisiting under an unambiguous label if anybody asks for it — the reason
+ * this option went is the word "Cash", not the asset class.
+ */
+export const HOLDABLE_ASSET_CLASSES: AssetClass[] = ASSET_CLASS_ORDER.filter(
+  (value) => value !== 'cash_equivalent',
+);

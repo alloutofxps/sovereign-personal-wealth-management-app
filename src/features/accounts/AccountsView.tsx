@@ -43,6 +43,7 @@ import { DebtTermsSheet } from './DebtTermsSheet';
 import { AccountDetailSheet } from './AccountDetailSheet';
 import { ConvertCurrencySheet } from './ConvertCurrencySheet';
 import { CreateAccountSheet } from './CreateAccountSheet';
+import { PortfolioSetupSheet } from '@/features/investments/PortfolioSetupSheet';
 import { RecordValuationSheet } from './RecordValuationSheet';
 import { LoanScheduleSheet } from './LoanScheduleSheet';
 import { RecordLoanPaymentSheet } from './RecordLoanPaymentSheet';
@@ -72,6 +73,13 @@ export function AccountsView() {
   const [writingOff, setWritingOff] = useState<Claim | null>(null);
   const [editingTerms, setEditingTerms] = useState<DebtTermsRow | null>(null);
   const [adding, setAdding] = useState(false);
+  /** The account whose holdings are being set up, if any. */
+  const [composing, setComposing] = useState<{
+    accountId: AccountId;
+    accountName: string;
+    typedValue?: Minor;
+  } | null>(null);
+
   const [converting, setConverting] = useState(false);
   const [viewing, setViewing] = useState<LedgerAccount | null>(null);
   const [revaluing, setRevaluing] = useState<LedgerAccount | null>(null);
@@ -126,6 +134,23 @@ export function AccountsView() {
     }
     return byGroup;
   }, [live, fx.baseCurrency]);
+  /*
+   * Investment accounts that are still just a figure somebody typed.
+   *
+   * An account that can hold positions and holds none is unfinished setup, not
+   * a finished account — so it says so on its own row with the way in. The
+   * only previous route was "See what you hold" on the section header, which
+   * reads as a link to a chart rather than as work outstanding, and a walk
+   * from a wiped database missed it entirely.
+   */
+  const unsetInvestments = useMemo(() => {
+    const withHoldings = new Set((portfolio.data?.holdings ?? []).map((h) => h.accountId));
+    return live.filter(
+      (a) =>
+        (a.accountClass === 'brokerage' || a.accountClass === 'retirement') &&
+        !withHoldings.has(a.id),
+    );
+  }, [live, portfolio.data?.holdings]);
 
   // The three figures in the header come from the same balances as every row
   // below them, so the sum a person does by eye always comes out.
@@ -307,6 +332,39 @@ export function AccountsView() {
                   )}
                 </p>
 
+                {group === 'investments' &&
+                  unsetInvestments.map((account) => (
+                    <Card key={`setup-${account.id}`}>
+                      <div className="flex flex-col gap-2 py-1">
+                        <p className="text-body text-ink">
+                          {baseFor(account.id) === 0
+                            ? `${account.name} has nothing in it yet`
+                            : `${account.name} is tracked as one figure`}
+                        </p>
+                        <p className="max-w-[44ch] text-caption text-ink-2">
+                          {baseFor(account.id) === 0
+                            ? 'Add what you hold and it will be worth what that comes to, plus any cash sitting in it.'
+                            : `${money.format(baseFor(account.id))}, typed by hand. Tell the app what is in it and you will see each holding, how it is spread, and what the fees cost you.`}
+                        </p>
+                        <div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                              setComposing({
+                                accountId: account.id,
+                                accountName: account.name,
+                                typedValue: baseFor(account.id),
+                              })
+                            }
+                          >
+                            Set up holdings
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+
                 {rows.length === 0 ? (
                   <Card>
                     <p className="py-2 text-caption text-ink-2">
@@ -436,7 +494,21 @@ export function AccountsView() {
         )}
       </Section>
 
-      <CreateAccountSheet open={adding} onClose={() => setAdding(false)} />
+      <CreateAccountSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        onSetUpHoldings={setComposing}
+      />
+
+      {composing && (
+        <PortfolioSetupSheet
+          open
+          onClose={() => setComposing(null)}
+          accountId={composing.accountId}
+          accountName={composing.accountName}
+          {...(composing.typedValue === undefined ? {} : { typedValue: composing.typedValue })}
+        />
+      )}
       <ConvertCurrencySheet open={converting} onClose={() => setConverting(false)} />
 
       <AccountDetailSheet

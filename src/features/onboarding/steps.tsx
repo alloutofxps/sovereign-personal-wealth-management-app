@@ -131,6 +131,49 @@ export function StepWhereItIs({ added, onAdded }: StepProps) {
 }
 
 /* ===========================================================================
+ * 2b. ANYTHING INVESTED?
+ * ---------------------------------------------------------------------------
+ * Added after a walk from a wiped database found that onboarding never
+ * mentions investments or pensions at all, so somebody whose main asset is a
+ * broker is never asked about it.
+ *
+ * No amount, for the reason `CreateAccountSheet` also stopped asking: an
+ * account that holds positions is worth what is in it, and what is in it is
+ * the next question. Skippable like every other step.
+ * ======================================================================== */
+
+const INVESTMENT_KINDS: { value: AccountClass; title: string; detail: string }[] = [
+  {
+    value: 'brokerage',
+    title: 'Investments',
+    detail: 'A broker, a stocks ISA, a share dealing account.',
+  },
+  {
+    value: 'retirement',
+    title: 'Pension',
+    detail: 'Yours, and not money you could spend this week.',
+  },
+];
+
+export function StepInvested({ added, onAdded }: StepProps) {
+  return (
+    <StepFrame
+      title="Anything invested?"
+      lede="A broker, a stocks ISA, a pension. Yours, but not money you would spend this week."
+    >
+      <AccountAdder
+        kinds={INVESTMENT_KINDS}
+        nameHint="Trading 212"
+        amountLabel=""
+        hideAmount
+        onAdded={onAdded}
+      />
+      <AddedList items={added} empty="Nothing added yet. Skip this if you hold nothing." />
+    </StepFrame>
+  );
+}
+
+/* ===========================================================================
  * 3. WHAT YOU OWE
  * ======================================================================== */
 
@@ -505,11 +548,21 @@ function AccountAdder({
   nameHint,
   amountLabel,
   onAdded,
+  hideAmount = false,
 }: {
   kinds: { value: AccountClass; title: string; detail: string }[];
   nameHint: string;
   amountLabel: string;
   onAdded: (item: Added) => void;
+  /**
+   * For an account whose worth is not a figure anybody types.
+   *
+   * A brokerage is worth what it holds plus its cash, both asked for on the
+   * composition screen, so asking for an estimate here would be asking for a
+   * number with nothing to do. An empty amount already reads as zero, which
+   * is what this leaves it at.
+   */
+  hideAmount?: boolean;
 }) {
   const money = useMoney();
   const [chosen, setChosen] = useState<AccountClass>(kinds[0]!.value);
@@ -572,9 +625,11 @@ function AccountAdder({
         <TextBox value={name} onChange={setName} placeholder={nameHint} />
       </Labelled>
 
-      <Labelled label={amountLabel}>
-        <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
-      </Labelled>
+      {!hideAmount && (
+        <Labelled label={amountLabel}>
+          <MoneyBox value={typed} onChange={setTyped} exponent={money.exponent} />
+        </Labelled>
+      )}
 
       {problem && (
         <p className="text-caption text-caution" role="alert">

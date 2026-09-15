@@ -16,6 +16,10 @@ import {
   parseQuantity,
   QUANTITY_SCALE,
   describeHoldingEntry,
+  describePortfolioSetup,
+  HOLDABLE_ASSET_CLASSES,
+  ASSET_CLASS_ORDER,
+  ASSET_CLASS_NAMES,
   reconcileTarget,
   totalsOf,
   valueOf,
@@ -622,5 +626,117 @@ describe('what recording a holding says it will do', () => {
     const said = describeHoldingEntry({ ...base, costBasis: minor(0) }, euros);
     expect(said).not.toContain('cost');
     expect(said).not.toMatch(/\bup\b|\bdown\b/);
+  });
+});
+
+/* ===========================================================================
+ * SETTING UP A PORTFOLIO, PER BRANCH
+ * ---------------------------------------------------------------------------
+ * The footer of the composition screen. It turns on four things — whether
+ * anything is in the list, whether there is cash, whether the account already
+ * carried a figure somebody typed, and whether the total now agrees with it —
+ * so there is a test per branch, per CLAUDE.md.
+ *
+ * The branch that earns the rest is the disagreeing one. An account being set
+ * up after the fact has a figure on it already, and somebody has to be told
+ * before they press Done whether this leaves it alone or moves it. Finding
+ * out afterwards is the whole defect the flow exists to remove.
+ * ======================================================================== */
+
+describe('what setting up a portfolio says it will do', () => {
+  const euros = (amount: Minor) => `€${(amount / 100).toFixed(2)}`;
+  const base = {
+    accountName: 'Trading 212',
+    holdingCount: 2,
+    holdingsValue: minor(301_750),
+    cash: minor(44_050),
+    total: minor(345_800),
+    typedValue: minor(345_800),
+  };
+
+  it('asks for the holdings when nothing is in the list and no figure exists', () => {
+    const said = describePortfolioSetup(
+      { ...base, holdingCount: 0, holdingsValue: minor(0), cash: minor(0), total: minor(0), typedValue: null },
+      euros,
+    );
+    expect(said).toContain('Add what you hold');
+  });
+
+  it('says the existing figure stands while the list is empty', () => {
+    const said = describePortfolioSetup(
+      { ...base, holdingCount: 0, holdingsValue: minor(0), cash: minor(0), total: minor(0) },
+      euros,
+    );
+    expect(said).toContain('Trading 212 stays at €3458.00');
+  });
+
+  it('names the total, the holdings and the cash', () => {
+    const said = describePortfolioSetup(base, euros);
+    expect(said).toContain('Trading 212 will be worth €3458.00');
+    expect(said).toContain('€3017.50 in 2 holdings');
+    expect(said).toContain('€440.50 in cash');
+  });
+
+  it('says nothing else changes when the total matches what was recorded', () => {
+    const said = describePortfolioSetup(base, euros);
+    expect(said).toContain('matches the €3458.00 already recorded');
+    expect(said).toContain('nothing else changes');
+  });
+
+  it('warns when the total is short, because something is probably missing', () => {
+    const said = describePortfolioSetup({ ...base, cash: minor(0), total: minor(301_750) }, euros);
+    expect(said).toContain('€440.50 less than the €3458.00 recorded');
+    expect(said).toContain('If something is missing, add it before finishing');
+  });
+
+  it('says the account goes up when the holdings have outrun the old figure', () => {
+    const said = describePortfolioSetup(
+      { ...base, holdingsValue: minor(357_800), cash: minor(0), total: minor(357_800) },
+      euros,
+    );
+    expect(said).toContain('€120.00 more than the €3458.00 recorded');
+    expect(said).toContain('the account goes up by that much');
+  });
+
+  it('singularises one holding', () => {
+    const said = describePortfolioSetup({ ...base, holdingCount: 1 }, euros);
+    expect(said).toContain('in 1 holding');
+    expect(said).not.toContain('1 holdings');
+  });
+
+  it('leaves cash out of the sentence when there is none', () => {
+    const said = describePortfolioSetup(
+      { ...base, cash: minor(0), total: minor(301_750), typedValue: null },
+      euros,
+    );
+    expect(said).not.toContain('cash');
+  });
+
+  it('describes a brand-new account without mentioning a recorded figure', () => {
+    const said = describePortfolioSetup({ ...base, typedValue: null }, euros);
+    expect(said).toContain('will be worth €3458.00');
+    expect(said).not.toContain('recorded');
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * Cash is a field, so it is not also a kind of holding.
+ * ------------------------------------------------------------------------ */
+describe('what a holding may be recorded as', () => {
+  it('does not offer cash, because the account has a cash field', () => {
+    expect(HOLDABLE_ASSET_CLASSES).not.toContain('cash_equivalent');
+  });
+
+  it('still offers every other class', () => {
+    for (const cls of ['equity', 'fixed_income', 'real_estate', 'commodity', 'crypto', 'other']) {
+      expect(HOLDABLE_ASSET_CLASSES).toContain(cls);
+    }
+  });
+
+  it('keeps the class itself, which the schema and rebalancing both use', () => {
+    // Narrowing the picker must not narrow the type: v11's CHECK constraint
+    // allows it, a rebalancing target may be it, and existing rows carry it.
+    expect(ASSET_CLASS_ORDER).toContain('cash_equivalent');
+    expect(ASSET_CLASS_NAMES.cash_equivalent).toBe('Cash');
   });
 });
