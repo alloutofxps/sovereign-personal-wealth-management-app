@@ -22,9 +22,7 @@ import { useMoney } from '@/app/money/useMoney';
 import { useRoute } from '@/app/router';
 import { CategoryBars, MedianTickKey } from '@/charts/CategoryBars';
 import { SpendDonut } from '@/charts/SpendDonut';
-import { SankeyFlow, SankeyLegend } from '@/charts/SankeyFlow';
 import {
-  BottomSheet,
   Button,
   Card,
   Explain,
@@ -42,9 +40,6 @@ export function AnalyticsView() {
   const [, navigate] = useRoute();
   const money = useMoney();
   const [horizon, setHorizon] = useState<Horizon>('this-month');
-  const [itemised, setItemised] = useState<
-    { name: string; members: { id: string; name: string; amount: number }[] } | null
-  >(null);
 
   const analytics = useAnalytics(horizon);
   const data = analytics.data;
@@ -129,10 +124,15 @@ export function AnalyticsView() {
         <>
           {/* --- what went out -------------------------------------------
            *
-           * The only field in the app with no family, and the reason is the
-           * Sankey directly beneath it: every ribbon there is already one of
-           * the six hues, so a seventh above them would be a colour statement
-           * about nothing. See `family="none"` in `Surfaces.tsx`. */}
+           * The only field in the app with no family, because this is the one
+           * screen whose subject is every family at once: the donut and the
+           * category rows below colour every segment by family, so a seventh
+           * hue above them would be a colour statement about nothing.
+           *
+           * The rule used to name the Sankey that sat here as the reason. The
+           * chart was removed in phase 9 and the exemption did not go with it,
+           * because the chart was never the reason — see `family="none"` in
+           * CLAUDE.md. */}
           {!data.flow.empty && (
             <Field family="none">
               <div className="min-w-0">
@@ -195,55 +195,43 @@ export function AnalyticsView() {
                   </StatCell>
                 )}
               </StatStrip>
+
+              {/* The two lines that qualify the figures above. They used to sit
+                  under the Sankey; with the chart gone they belong to the
+                  figures they are about, which is where the payoff field keeps
+                  its own. `income`, never `totalIn` — the latter carries the
+                  shortfall, so it would report money already held as money
+                  that arrived. */}
+              {data.flow.drewOnReserves && (
+                <p className="measure pt-4 text-caption text-caution">
+                  You spent or set aside {money.format(data.flow.totalOut)} against{' '}
+                  {money.format(data.flow.income)} coming in, so{' '}
+                  {money.format(minor(-data.flow.retained))} of it was money you already had.
+                  There is nothing wrong with that once. It is only worth watching if it becomes
+                  the pattern.
+                </p>
+              )}
+
+              {data.flow.retained > 0 && (
+                /* Not "still sitting in your accounts". What you set aside has
+                   been taken off this figure and has not moved, so this is what
+                   has no job — a smaller claim than what is in the account. */
+                <p className="measure pt-4 text-caption opacity-80">
+                  {money.format(data.flow.retained)} of what came in has no job yet.
+                </p>
+              )}
             </Field>
           )}
 
-          {/* --- the flow ------------------------------------------------- */}
-          <Card label={`Where your money went · ${data.period.label.toLowerCase()}`}>
-            {data.flow.empty ? (
+          {/* A period inside a ledger that is not itself empty. Distinct from
+              `data.emptyLedger` above, and the only thing that shows here. */}
+          {data.flow.empty && (
+            <Card>
               <p className="py-6 text-center text-caption text-ink-2">
                 Nothing was recorded in this period. Try a wider window above.
               </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <SankeyFlow
-                  graph={data.flow}
-                  format={(amount) => money.format(amount)}
-                  onSelectNode={(node) => {
-                    if (node.members?.length) {
-                      setItemised({ name: node.name, members: node.members });
-                    }
-                  }}
-                />
-
-                <SankeyLegend graph={data.flow} />
-
-                {/* `income`, not `totalIn` less a reconstructed shortfall. The
-                    old version computed the same figure by hand from two
-                    others: correct, and it needed a reader to know that
-                    `totalIn` already contains the shortfall to check it. */}
-                {data.flow.drewOnReserves && (
-                  <p className="text-caption text-caution">
-                    You spent or set aside {money.format(data.flow.totalOut)} against{' '}
-                    {money.format(data.flow.income)} coming in, so{' '}
-                    {money.format(minor(-data.flow.retained))} of it was money you already had.
-                    There is nothing wrong with that once. It is only worth watching if it becomes
-                    the pattern.
-                  </p>
-                )}
-
-                {data.flow.retained > 0 && (
-                  /* Not "still sitting in your accounts". This figure has had
-                     what you set aside taken off it, and that money has not
-                     moved — so the remainder is what has no job, which is a
-                     smaller claim than what is in the account. */
-                  <p className="text-caption text-ink-2">
-                    {money.format(data.flow.retained)} of what came in has no job yet.
-                  </p>
-                )}
-              </div>
-            )}
-          </Card>
+            </Card>
+          )}
 
           {/* --- the shape of it ------------------------------------------ */}
           {!data.distribution.empty && (
@@ -279,25 +267,6 @@ export function AnalyticsView() {
           <RhythmCard data={data} />
         </>
       )}
-
-      <BottomSheet
-        open={itemised !== null}
-        onClose={() => setItemised(null)}
-        title={itemised?.name ?? 'Everything else'}
-        description="The smaller things, gathered up so the chart stays readable."
-      >
-        <ul className="flex flex-col gap-2 pb-2">
-          {itemised?.members
-            .slice()
-            .sort((a, b) => b.amount - a.amount)
-            .map((member) => (
-              <li key={member.id} className="flex items-center justify-between gap-3">
-                <span className="truncate text-body text-ink">{member.name}</span>
-                <Money value={member.amount as never} size="body" />
-              </li>
-            ))}
-        </ul>
-      </BottomSheet>
 
       {explain.sheet}
     </div>

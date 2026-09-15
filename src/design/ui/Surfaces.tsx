@@ -33,7 +33,8 @@ export interface FieldProps {
    * transport blue on Invested, the obligation clay on Payoff.
    *
    * `'none'` is for the one screen whose subject is every family at once.
-   * Where it went is that screen — the Sankey under its field colours every
+   * Where it went is that screen — the donut and category rows under its
+   * field colour every
    * ribbon by family, so a hue above it would be a claim about nothing. It
    * goes sunken instead of washed, the way `QuietTile` does at tile size.
    * Reach for it only when a hue would be *wrong*, not when one is hard to

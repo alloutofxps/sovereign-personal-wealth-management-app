@@ -5,25 +5,38 @@
  * left, what it was for in the middle, individual categories and pots on the
  * right.
  *
+ * **Phase 9 removed the chart this was built to draw.** Nothing renders the
+ * nodes and links any more; what the analytics screen reads are the scalars
+ * at the foot of `SankeyGraph` — `income`, `spent`, `saved`, `retained`,
+ * `totalOut` and `drewOnReserves`. The graph is kept, deliberately, and the
+ * reason is the next paragraph: it is what makes those six falsifiable.
+ *
  * The one property that has to hold is conservation. Every unit that enters
  * the graph leaves it or is retained as cash, and every node's inbound total
- * equals its outbound total. A Sankey whose ribbons do not add up is not a
- * chart with a rounding problem — it is a picture that tells somebody a
+ * equals its outbound total. `conservationErrors` proves that by walking the
+ * nodes and links, which is an arithmetic path independent of the scalars —
+ * so a screen reading `retained` has a second opinion behind it rather than
+ * one subtraction nobody checks. That is worth more than the chart was: the
+ * property tests hold it over hundreds of generated ledgers.
+ *
+ * It was originally written because a Sankey whose ribbons do not add up is
+ * not a chart with a rounding problem — it is a picture that tells somebody a
  * confident lie about their own money, and it looks exactly as convincing as
- * a correct one.
+ * a correct one. The picture is gone and the argument survives it: a figure
+ * that does not add up reads exactly as convincing as one that does.
  *
  * So two things are deliberate here. Doing more with a month's money than
  * arrived in it becomes an explicit source rather than an inverted ribbon,
  * because it is a real thing that happened and hiding it in negative geometry
- * makes the arithmetic unfalsifiable. And every amount stays an integer of
- * minor units from end to end: no percentage is ever multiplied back out into
- * a value.
+ * makes the arithmetic unfalsifiable — and it is also what `drewOnReserves`
+ * is derived from, which the analytics screen still reads. And every amount
+ * stays an integer of minor units from end to end: no percentage is ever
+ * multiplied back out into a value.
  *
- * That source is named 'From money you already had' and the name is load
- * bearing. It used to read 'Drawn from savings', which is a claim the
- * arithmetic cannot support: the shortfall is `spent + saved - income`, and
- * `saved` is budget-book only, so a month that merely gave money a job can
- * trip it without drawing on anything. See `SHORTFALL_NAME`.
+ * Both node names are load bearing, and both were wrong. See `SHORTFALL_NAME`
+ * and `RETAINED_NAME` for what each claimed and why the arithmetic could not
+ * support it; `sankeyFlow.test.ts` holds them, and its header says plainly
+ * that nothing currently renders either one.
  * ======================================================================== */
 
 import { minor, type Minor } from '@/core/money';
@@ -159,6 +172,23 @@ export const RESERVES_ID = 'source-reserves';
  * `PLAN.md`.
  */
 export const SHORTFALL_NAME = 'From money you already had';
+
+/**
+ * What the retained node is called.
+ *
+ * It said **"Still in your account"**, which is a claim this figure cannot
+ * support. `retained` is `income - spent - saved`, and `saved` is budget-book
+ * only, so money earmarked for next year's insurance has been *subtracted*
+ * from it and is still sitting in the account. The sentence was true only on
+ * a period with no pot contributions, where `saved` is zero — which is how it
+ * survived: the month it was read against had exactly that shape.
+ *
+ * What the figure is is the part of what came in that has no job yet. The
+ * wording matches the analytics field's own cell exactly rather than being a
+ * near-synonym of it, because one term used twice is worth more than two
+ * terms for one figure.
+ */
+export const RETAINED_NAME = 'Not spoken for';
 export const RETAINED_ID = 'leaf-retained';
 export const OTHER_ID = 'leaf-other';
 
@@ -298,7 +328,7 @@ export function buildSankeyFlow(input: FlowInput): SankeyGraph {
   if (retained > 0) {
     nodes.push({
       id: RETAINED_ID,
-      name: 'Still in your account',
+      name: RETAINED_NAME,
       kind: 'retained',
       column: 1,
       value: minor(retained),

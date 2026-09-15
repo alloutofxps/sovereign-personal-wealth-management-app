@@ -290,6 +290,94 @@ question that screen answers: money earmarked for next year's insurance is
 spoken for, and showing it as available would be the larger lie. Only the
 sentences were wrong.
 
+## The ribbon opacity was a measured pair, and then a fifth of it was not
+
+Phase 5, approved, and kept here after the Sankey itself was removed in phase
+9 — the chart is gone and the lesson is not, because it is the clearest case
+in this project of a token change breaking something no gate could see.
+
+**The regression.** `SankeyFlow.tsx` was not touched by the redesign. Phase 1
+re-pointed the tokens under it and the ribbons lost separation, silently.
+Composited at the 0.34 alpha it shipped with:
+
+```
+before (obsidian palette)   closest pair dE 13.0   0 of 10 confusable
+after  (daylight palette)   closest pair dE 10.0   1 of 10 confusable
+```
+
+**The obvious fix was wrong.** Re-pointing the ribbons at the six category
+families — right for consistency with the donut and the rows, and what phase 5
+was for — made it *worse* at 0.34: closest pair dE 6.8, two confusable pairs.
+Six hues composited at a third over white are all pastels. 0.34 had been tuned
+against a near-black ground, where a colour darkens toward black and keeps its
+hue; over white everything washes toward white.
+
+**So the two numbers were one decision.** Family hues *and* an opacity floor of
+0.55, CIE76 on the composited result across all fifteen pairs:
+
+```
+alpha   daylight (on #ffffff)        midnight (on #131936)
+0.34    dE  6.7   2 of 15 under 10   dE 11.2   0 under 10
+0.45    dE  9.1   1 of 15 under 10   dE 14.6   0 under 10
+0.55    dE 11.4   0 of 15 under 10   dE 17.1   0 under 10   <- shipped
+```
+
+dE below 10 reads as the same colour at a glance. Daylight was the binding
+case and housing/health its closest pair: a verdigris and a slate teal, both
+dark and both low-chroma, which is what compositing hurts most. Midnight was
+never in trouble.
+
+**The grounds above are corrected.** This note previously recorded Daylight as
+`#edf0ea` and Midnight as `#131936` in one table and `#0b0f22` in the other.
+The real card grounds are **white** and **#131936** — the chart sat on a
+`.card` surface, not on the page base. Re-measured against the true grounds
+the figures move by less than half a dE unit (11.45 → 11.36 at `#edf0ea` →
+white; 17.52 → 17.10 at `#0b0f22` → `#131936`), so nothing followed from the
+error. It is corrected because nothing reads a note: the next person measures
+against the ground it names, and M3 in `AUDIT.md` is this failure mode exactly.
+
+### The part that was missing: the model measured one ribbon, the chart drew five
+
+**Phase 9, measured on the live screen, and worth more than the chart was.**
+
+The 0.55 floor is correct and it reproduces — every figure in the table above
+was re-derived from the running app. What it describes is *one ribbon over a
+ground*. The chart did not look like that:
+
+```
+ribbons deep   share of painted area   effective alpha
+1                      81.4%               0.550
+2                      11.5%               0.798
+3                       5.9%               0.909
+4                       1.0%               0.959
+5                       0.1%               0.982
+```
+
+**A fifth of the chart was painted at 0.80 to 0.98.** Ribbons were drawn as
+strokes on bezier paths, and a thick stroke on a curve bulges into its
+neighbour, so overlap was structural rather than occasional.
+
+Two consequences, and the second is the one nobody would have predicted:
+
+- **Family-versus-family separation was never the problem.** Overlap *raises*
+  it — the composite moves toward the pure token, so at depth 2 the closest
+  family pair goes from dE 17.1 to 17.3 in Midnight. Checked against the real
+  screen: a blend was never confusable with a single ribbon, 0 pairs under
+  dE 10 in either theme.
+- **Overlap manufactures colours that are in no palette.** With the seeded
+  month the chart painted 7 single-ribbon colours and **15 blends**, none of
+  which is a family. Of the 231 pairs among all 22, eleven were under dE 10 in
+  Midnight and ten in Daylight, with the closest at **dE 3.26** — and every
+  one of those collisions was blend against blend. The palette held; the
+  compositing invented a second palette that did not.
+
+The rule that comes out of it, and it generalises past this chart: **a colour
+model measured on a single layer does not describe a drawing that layers.**
+Measure the composited output of the thing as drawn, at the depths it actually
+reaches, not the tokens as declared. The 0.55 table was true and the screen it
+was meant to describe was two to five deep across a fifth of its area, which
+is not a case the table has a row for.
+
 ## The debt gate was miscounting, twice, and both fixes lowered the number
 
 Phase 4c, approved. Recorded because the count is a gate and its history has to

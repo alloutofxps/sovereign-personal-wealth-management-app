@@ -1,29 +1,45 @@
 /* ===========================================================================
- * THE FLOW GRAPH'S ONE SENTENCE
+ * THE FLOW GRAPH'S SENTENCES, AND THE SCALARS A SCREEN READS
  * ---------------------------------------------------------------------------
  * `buildSankeyFlow` is arithmetic and `analytics.test.ts` covers the
- * arithmetic. This file covers the one thing in it that is not a number: the
- * name of the shortfall source, which is a claim about somebody's money that
- * appears on their screen.
+ * arithmetic. This file covers the two things in it that are not numbers —
+ * the names of the shortfall source and the retained leaf — and the six
+ * scalars the analytics field and the `where-it-went` explanation read.
  *
- * It is here because of `describeFeeDrag`, which shipped telling everybody
- * with cheap funds that they were doing badly while every figure in the
- * sentence was correct to the cent. The rule that came out of it is in
- * CLAUDE.md: where wording depends on a sign, a threshold, a count or a
- * plural, there is a test per branch, and each is written to fail against the
- * old wording before it is kept.
+ * Both names were claims the arithmetic could not support:
  *
- * This is the second time that rule has been applied to `src/core` rather
- * than to a `describe*` function, and the reason is worth stating: a node
- * name is not overridable. A screen can relabel its own cells — the analytics
- * field does, for exactly this reason — but the Sankey renders the name the
- * engine hands it, so a false name here is false everywhere and no view can
- * intercept it.
+ *   'Drawn from savings'      fired whenever `spent + saved > income`, and
+ *                             `saved` is budget-book only, so a month that
+ *                             spent nothing and merely earmarked past its
+ *                             income announced that savings were drawn on.
+ *   'Still in your account'   is `income - spent - saved`, so earmarked money
+ *                             had been subtracted from it — and earmarked
+ *                             money is exactly what is still in the account.
+ *                             True only where `saved` is zero.
  *
- * VERIFIED by breaking it: setting `SHORTFALL_NAME` back to 'Drawn from
- * savings' fails `says nothing about savings` and `is true of a month that
- * only gave money a job`. Removing the assertion that the node appears at all
- * fails nothing, which is why the conservation arm is asserted too.
+ * Both are `describeFeeDrag` again: every figure correct to the cent, the
+ * words in front of them assuming something not established. CLAUDE.md's rule
+ * is a test per branch, each written to fail against the old wording first.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THESE GUARDS STAY NOW THAT NOTHING DRAWS THE GRAPH
+ *
+ * Phase 9 removed the Sankey, so as of today **these two names render
+ * nowhere**. That is worth stating rather than implying, because a guard on an
+ * invisible string is exactly the kind of test that looks like cargo later.
+ *
+ * They stay for two reasons. The nodes still exist and still carry
+ * user-facing strings, so anything that renders this graph again inherits
+ * whatever they say — and the original defect survived a phase precisely
+ * because it was only read on months where it happened to be true. And the
+ * scalar arms below are not about names at all: they are what the field and
+ * the explanation now read, with no picture beside them to contradict them,
+ * which makes them *more* load-bearing than they were when a chart could have
+ * shown the disagreement.
+ *
+ * VERIFIED by breaking each one. `SHORTFALL_NAME` back to 'Drawn from
+ * savings' fails two arms; `RETAINED_NAME` back to 'Still in your account'
+ * fails two arms.
  * ======================================================================== */
 
 import { describe, expect, it } from 'vitest';
@@ -31,6 +47,8 @@ import { minor } from '@/core/money';
 import {
   OTHER_ID,
   RESERVES_ID,
+  RETAINED_ID,
+  RETAINED_NAME,
   SHORTFALL_NAME,
   SMALL_SLICE_BP,
   buildSankeyFlow,
@@ -103,6 +121,63 @@ describe('the shortfall source is named for something that is always true', () =
 });
 
 /* ---------------------------------------------------------------------------
+ * The retained node's name, which was the same defect one node along.
+ *
+ * It read "Still in your account". `retained` is `income - spent - saved`, so
+ * money earmarked for a pot has been taken off it — and that money has not
+ * moved, which is the one thing `assign` is explicit about. The sentence was
+ * true only where `saved` is zero, and that is the shape of the month it was
+ * read against, which is how it survived a phase.
+ *
+ * The branch below is the one that matters and the one no screen exercised:
+ * a period with a pot contribution, where the node's figure is strictly less
+ * than what is in the account.
+ *
+ * VERIFIED by breaking it: setting `RETAINED_NAME` back to 'Still in your
+ * account' fails `does not claim to be the account balance` on both arms.
+ * ------------------------------------------------------------------------ */
+describe('the retained node is named for what the figure is', () => {
+  const retainedNode = (income: number, spend: number, saved: number) =>
+    graph(income, spend, saved).nodes.find((node) => node.id === RETAINED_ID);
+
+  it('does not claim to be the account balance', () => {
+    // 1000 in, 300 spent, 200 earmarked. 700 is still in the account; the
+    // node's figure is 500, and the old name asserted those were the same.
+    const node = retainedNode(100_000, 30_000, 20_000);
+
+    expect(node, 'a surplus period has a retained node').toBeDefined();
+    expect(node!.value, 'income - spent - saved').toBe(minor(50_000));
+    expect(node!.name).toBe(RETAINED_NAME);
+
+    const lower = node!.name.toLowerCase();
+    expect(lower, 'earmarked money is still in the account').not.toContain('account');
+    expect(lower, 'nor is it a balance').not.toContain('balance');
+  });
+
+  it('is worded the same way on a period with nothing set aside', () => {
+    // The branch the old name was accidentally right on. It has to take the
+    // same wording, or the node would tell two different stories about one
+    // figure depending on whether a pot happened to be funded.
+    const node = retainedNode(100_000, 30_000, 0);
+
+    expect(node!.value).toBe(minor(70_000));
+    expect(node!.name).toBe(RETAINED_NAME);
+    expect(node!.name.toLowerCase()).not.toContain('account');
+  });
+
+  it('agrees with the figure the graph returns', () => {
+    const flow = graph(100_000, 30_000, 20_000);
+
+    expect(retainedNode(100_000, 30_000, 20_000)!.value).toBe(flow.retained);
+  });
+
+  it('is absent when there is nothing left over', () => {
+    expect(retainedNode(50_000, 50_000, 0)).toBeUndefined();
+    expect(retainedNode(30_000, 50_000, 0), 'nor on a deficit').toBeUndefined();
+  });
+});
+
+/* ---------------------------------------------------------------------------
  * The figures the field and the explanation read.
  *
  * `income`, `spent` and `saved` were computed and discarded until the "where
@@ -153,12 +228,18 @@ describe('the three halves are returned separately from the conservation totals'
 /* ---------------------------------------------------------------------------
  * The gathered-up slice.
  *
- * Anything under SMALL_SLICE_BP of the spending gets folded into one leaf so
- * the chart stays readable. It matters to the explanation because the ribbons
- * a person can see no longer name every category, so a `how` step promising
- * "each category shows what you spent there" would be describing a chart the
- * app does not draw. The figures must still reconcile after the fold —
- * hiding a category is a presentation decision and losing its money is a lie.
+ * Anything under SMALL_SLICE_BP of the spending is folded into one leaf. It
+ * was a presentation decision of the Sankey, which phase 9 removed, and these
+ * tests were written for it — they are kept because what they actually assert
+ * is an engine property that outlived the chart: **the fold changes which
+ * nodes exist and must not change what anything cost.**
+ *
+ * That is worth a guard on its own. Folding is the only place in this engine
+ * where a slice stops having its own node, so it is the only place where the
+ * node totals and the scalar totals could drift apart — and the scalars are
+ * what the field and the explanation now read, with no picture beside them to
+ * contradict. Hiding a category is a presentation decision; losing its money
+ * is a lie, and after phase 9 nothing on screen would show it happening.
  * ------------------------------------------------------------------------ */
 describe('small categories are gathered up without changing the totals', () => {
   /** One big category and `count` tiny ones, each well under the threshold. */

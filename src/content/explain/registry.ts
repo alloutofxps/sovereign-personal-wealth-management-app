@@ -767,11 +767,16 @@ export const EXPLANATIONS: Record<ExplainTopic, Explanation> = {
    * not what is in the account -- the cash still there is `income - spent`,
    * and this figure is what has no job yet, which is a different sentence.
    *
-   * The folding of small slices into "Everything else" and the dropped
-   * net-negative category are real and do not fit in three steps. They are
-   * caveats, so they go to the manual chapter per the note in types.ts, and
-   * `two-books` is the right one because the book split is why `saved` is
-   * counted at all.
+   * The dropped net-negative category is real and does not fit in three
+   * steps, so it is a caveat and goes to the manual chapter per the note in
+   * types.ts. `two-books` is the right chapter because the book split is why
+   * `saved` is counted at all.
+   *
+   * One caveat left with the chart. Small slices folding into "Everything
+   * else" was a presentation decision of the Sankey, which phase 9 removed;
+   * `foldSmallSlices` still shapes the graph's leaf nodes, but nothing a
+   * person can now see gathers categories up, so there is nothing to warn
+   * about. The donut and the rows name every category they draw.
    * ------------------------------------------------------------------ */
   'where-it-went': {
     id: 'where-it-went',

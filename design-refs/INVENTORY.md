@@ -11,6 +11,12 @@ finding regardless of the reason.
 Counts: 17 routes · 51 sheets and overlays · 6 manual chapters with 6 working
 labs · 6 chart components · 85 feature files.
 
+**One authorised removal, phase 9.** `SankeyFlow` is gone. It is the only line
+in this file that is deliberately no longer true, it is struck through where it
+appears rather than deleted, and the argument is at the foot of this file under
+*Authorised removals*. Everything else still has to be true, reachable and
+working.
+
 ---
 
 ## Routes
@@ -141,7 +147,8 @@ Router behaviour that must survive:
 
 - Heading "Where it went".
 - Period selector: This month / Last month / Last 90 days / This year.
-- `SankeyFlow` chart — where money went, income → categories.
+- ~~`SankeyFlow` chart — where money went, income → categories.~~
+  **Removed, phase 9 — authorised.** See *Authorised removals* below.
 - `CategoryBars` — spending by group and category.
 - "How this compares to your normal" — trailing-median baselines.
 - "Still learning your rhythm" state with weeks-of-records so far.
@@ -429,7 +436,7 @@ purpose, because `Input` models a text field and none of these is one:
 | `ForecastBand` | `ForecastView` | Projected balance, cushion line, hatched squeeze bands with one "tight" label, scrubber |
 | `GrowthBand` | `IndependenceView` | Growth projection band — the band's width is the point |
 | `NetWorthTimeline` | `NetWorthHistoryCard` | Actual net worth against a dashed steady-average comparison, scrubber, milestones that step left rather than collide. **Never projected forward** |
-| `SankeyFlow` | `AnalyticsView` | Income → categories, ribbons in the six families at opacity 0.55 |
+| ~~`SankeyFlow`~~ | ~~`AnalyticsView`~~ | **Removed, phase 9 — authorised.** Income → categories, ribbons in the six families at opacity 0.55 |
 | `SpendDonut` | `AnalyticsView` | One ring in the families, values on external tinted pills with leader lines, total plus one comparison in the middle |
 | `CategoryBars` | `AnalyticsView` | Ranked rows repeating the donut's hues, each with its own median notch |
 | `Sparkline` | `HoldingsList` | The shape of a series at the size of a word. A `src/design/ui` primitive, not a chart |
@@ -522,3 +529,61 @@ Unchanged, and each is stated in the file that would break it:
 - **Focus trap and restore** in every bottom sheet.
 - **PWA**: service worker precache, update banner, OPFS + SQLite worker,
   `crossOriginIsolated` via COOP/COEP.
+
+---
+
+## Authorised removals
+
+Nothing else belongs in this section. A line here has been agreed in advance,
+with evidence, and the evidence is recorded because "we decided to" is the
+sentence a later reader cannot check.
+
+### `SankeyFlow`, the where-it-went ribbon chart — phase 9
+
+Removed on three findings, all measured on the live screen against the seeded
+household rather than argued from taste.
+
+**It spent its area on the wrong thing.** With one salary and a month that
+spent 7% of what came in, the chart was one band. Measured: the retained node
+carried **93%** of the flow, a single ribbon covered **56.5%** of all painted
+area, and the six destinations the flow metaphor exists to relate shared the
+remaining 7% — their own hover labels rounding to "0%" and "1%". The chart was
+least readable exactly when somebody's finances were healthiest, and a chart
+that degrades as the person does better is the wrong chart for this app.
+
+**Its content was pointer-only.** Measured: **zero** text nodes inside the
+SVG, no `<title>`, no `<desc>`, **zero** focusable elements, and a
+`role="img"` whose `aria-label` named the chart and carried no value. Names and
+amounts existed only on hover or tap. CLAUDE.md forbids hover-only
+affordances outright, and the donut and category rows beside it already said
+the same thing in plain text — so the accessible version of the chart was the
+list already on the screen. This alone would have justified removal even had
+it rendered perfectly.
+
+**Its colour model did not describe it.** The 0.55 opacity floor was correct
+and reproduced to within half a dE unit, but it was measured on single ribbons.
+**18.6%** of the painted area was two to five ribbons deep, at effective alpha
+0.798 to 0.982, which manufactured fifteen blend colours in no palette — eleven
+of the 231 pairs under dE 10, closest **3.26**. The full working is in
+`PLAN.md` under *The ribbon opacity was a measured pair, and then a fifth of it
+was not*.
+
+**What answers the question instead.** Nothing was merged away and nothing is
+now unreachable:
+
+| Was in the chart | Is now |
+| --- | --- |
+| Money in, as a column | The field's "Came in" cell |
+| What it went on | The donut and the ranked category rows, both labelled in text |
+| What was set aside | The field's "Of that, set aside" cell |
+| What was left over | The field's "Not spoken for" cell, and a line under it |
+| That it all adds up | The `where-it-went` explanation, which spells the arithmetic out |
+| A deficit month | The caution line on the field, which names the figure |
+| "Everything else", the folded slice | Nothing — the donut and rows name every category they draw, so there is no longer anything gathered up to disclose |
+
+**What was kept.** `buildSankeyFlow` and its graph survive in `src/core`,
+unrendered. `conservationErrors` walks the nodes and links on an arithmetic
+path independent of the scalars the field reads, so `retained` has a second
+opinion behind it rather than one unchecked subtraction — and the property
+tests hold that over hundreds of generated ledgers. That is worth more than the
+picture was.

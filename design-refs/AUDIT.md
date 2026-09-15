@@ -216,10 +216,11 @@ expected; what matters is that the affordance survives. Each one does:
 
 **Counts in the inventory's own header, re-measured:** 17 routes ✓ (`ROUTES`
 has 17), 6 manual chapters ✓ (`CHAPTERS`), 6 chart components ✓
-(`src/charts/*.tsx` = 7 files, one of which is `useChartWidth.ts`'s companion —
-`CategoryBars`, `CumulativeSpend`, `ForecastBand`, `GrowthBand`,
-`NetWorthTimeline`, `SankeyFlow`, `SpendDonut` = **7**, one more than the
-inventory's 6, because `SpendDonut` was added in phase 5).
+(`src/charts/*.tsx` — `CategoryBars`, `CumulativeSpend`, `ForecastBand`,
+`GrowthBand`, `NetWorthTimeline`, `SpendDonut` = **6**. It was 7 at the time of
+the audit: `SpendDonut` was added in phase 5 and `SankeyFlow` was removed in
+phase 9, which returns the count to the inventory's 6 by coincidence rather
+than by correction.)
 
 ### The rendering gate
 
@@ -476,6 +477,137 @@ was the first thing looking.
 
 ---
 
+## Phase 9 — the Sankey, and two more engine-authored sentences
+
+Opened by a reader's report that the ribbons looked opaque in Midnight and the
+colours ran together, which is a good example of the only class of defect this
+project's gates have never been able to reach: what a person sees.
+
+### P18. A fifth of the chart was painted at two to five times its declared alpha
+
+**Severity 2. The declared value was right; the drawing was not what the value
+described.**
+
+`strokeOpacity` was `0.55` on all ten ribbons, confirmed from
+`getComputedStyle`, and the ΔE table recorded in phase 5 reproduced from the
+running app to within half a unit. What neither described is a chart whose
+ribbons overlap: measured on the live screen, **81.4%** of the painted area was
+one ribbon deep at alpha 0.550 and **18.6%** was two to five deep, at 0.798,
+0.909, 0.959 and 0.982.
+
+*How established.* Canvas rasterisation of the live SVG over the measured card
+ground, with overlap depth from the browser's own `isPointInStroke`. Calibrated
+before use, per M2: an empty corner read the ground exactly, and eleven of
+twelve probes agreed with the arithmetic composite to within 1.2 — the twelfth
+being a stroke edge, where coverage is binary and the raster antialiases. Two
+instrument errors were caught by calibration and are recorded in M4 below.
+
+The consequence nobody had modelled: family-versus-family separation was never
+the problem — overlap *raises* it, and a blend was never confusable with a
+single ribbon (0 pairs under dE 10 in either theme). What overlap does is
+manufacture colours that are in no palette. The seeded month painted 7
+single-ribbon colours and **15 blends**, and eleven of the 231 pairs among all
+22 were under dE 10, closest **3.26**. The palette held and the compositing
+invented a second one that did not. Full working in `PLAN.md`.
+
+### P19. The chart's entire content was reachable only by pointer
+
+**Severity 2, and on its own sufficient to remove the chart.**
+
+Measured inside the rendered SVG: **0** text nodes, no `<title>`, no `<desc>`,
+**0** focusable elements, and `role="img"` with `aria-label="Where your money
+went this period"` — which names the chart and carries no value. Every name,
+amount and share existed only as a hover or tap reveal.
+
+CLAUDE.md: *"No hover-only affordances. Anything reachable only on `:hover` is
+unreachable on a phone."* The donut and the ranked category rows immediately
+below were plain DOM with the same names and amounts already in text, so the
+accessible version of this chart was the list already on the screen.
+
+*How established.* DOM query for text and focusable descendants, plus a hover
+sweep of all eleven nodes driven through the event React actually listens to.
+
+### P20. The chart spent 93% of its area on the one thing that did not happen
+
+**Not a defect in the code. The reason the chart was removed.**
+
+Measured on the seeded household, this month:
+
+| | |
+| --- | --- |
+| Sources | Pay €3,950 (77%), Other money in €1,180 (23%) |
+| Middle | Bills €74.39 (1%), Day-to-day €297.95 (6%), **retained €4,757.66 (93%)** |
+| Destinations | six leaves totalling **€372.34 — 7% of the money** |
+| Largest single painted colour | **56.5%** of all painted area, one ribbon |
+
+A Sankey earns its area on two-stage attribution — of the money from *this*
+source, how much reached *that* destination, through which intermediate. That
+needs a many-to-many mapping, and this one is one-to-many at both hops:
+`streamLinks` tiles sources against targets proportionally, so no source is
+preferentially connected to any stage and the left column carries nothing a
+single "in" figure does not. A one-to-many Sankey is a tree, and a tree of
+proportions is a donut drawn worse — a donut gives angle against the whole at a
+glance, a Sankey gives vertical extent across a gap.
+
+**The decisive form of it:** the retained band grows as somebody spends less of
+what they earn, so the chart is least readable exactly when their finances are
+healthiest. A chart that degrades as the person does better is the wrong chart.
+
+Threshold at which it would have started working: two or more sources each above
+~25%, six or more destinations with none above ~35%, and total spend above ~60%
+of income. The seeded month fails all three, and it is a *good* month.
+
+Removal, what replaced each part of it, and what was kept, are recorded in
+`INVENTORY.md` under *Authorised removals* — because a removed capability
+belongs in the contract it was removed from, not only in the audit.
+
+### P21. "Still in your account" subtracted money that was still in the account
+
+**Severity 2. The sixth instance of the same class, and the second in `src/core`.**
+
+The retained node was named `'Still in your account'`. Its figure is
+`income - spent - saved`, and `saved` is budget-book only, so money earmarked
+for a pot had been *subtracted* from it — and earmarked money is exactly what
+is still sitting in the account. The sentence is true only where `saved` is
+zero, which is the shape of the month it was read against. That is how it
+survived a phase.
+
+*How established.* Driving the seeded app and reading the node's own hover
+label: "Still in your account €4,757.66 93%", against a month whose `saved` was
+zero. The defect is in the branch no screen exercised.
+
+Fixed to `RETAINED_NAME`, which is `'Not spoken for'` — the analytics field's
+own wording for the same figure, because one term used twice beats two terms
+for one figure. `sankeyFlow.test.ts` holds it across the funded-pot branch and
+the zero branch, verified by reverting the name, which fails both.
+
+### The dependency audit before the removals
+
+Recorded because the instruction was to confirm rather than assume, and because
+one of the two answers was the opposite of what had been predicted.
+
+| Symbol | Predicted | Established | Kept? |
+| --- | --- | --- | --- |
+| `SankeyFlow`, `SankeyLegend` | chart-only | chart-only; sole importer was `AnalyticsView` | **removed** |
+| the itemised `BottomSheet` | chart-only | sole caller was `onSelectNode` | **removed** |
+| `SHORTFALL_NAME` | chart-only | read only by the engine and its test — but it names a node that is *not* chart-only, below | **kept** |
+| the shortfall node and `RESERVES_ID` | chart-only | **wrong.** `conservationErrors` asserts `sourceTotal === totalIn`, and without the node that fails on every deficit period. Asserted five times in `analytics.test.ts`, including over generated ledgers | **kept** |
+| `drewOnReserves` | read by the deficit caption | confirmed: `AnalyticsView` reads it, and it derives from the same `shortfall` | **kept** |
+| `foldSmallSlices`, `SMALL_SLICE_BP`, `OTHER_ID` | chart-only presentation | shape the graph's leaves, which `conservationErrors` walks | **kept** |
+| `buildSankeyFlow`, nodes and links | keep as the conservation engine | confirmed, with a caveat: after the removal **nothing renders nodes or links**. The view reads only the six scalars | **kept, unrendered** |
+
+The last row is the one worth arguing rather than asserting. Roughly 300 lines
+of graph construction now have no consumer outside the tests, which ordinarily
+means delete it — *"prefer deleting a thing to leaving it unused"*. It is kept
+because `conservationErrors` walks the nodes and links on a path independent of
+the scalar arithmetic, so the `retained` figure the field prints has a second
+opinion behind it instead of one subtraction nobody checks, and the property
+tests hold that over hundreds of generated ledgers. Deleting the graph would
+delete the only cross-check on the numbers that replaced it. `src/core` is also
+explicitly out of scope for restructuring on a visual change.
+
+---
+
 ## Method
 
 ### M1. A recorded cause is a hypothesis until it is measured
@@ -517,9 +649,13 @@ finding. Where a note in the source names a cause, it says how it was
 established, and a note that cannot say is marked as a guess. The measurement
 is the finding; the prose is a summary of it.
 
-The two Sankey notes in `SankeyFlow.tsx` are the shape this should take: they
-carry the ΔE table they were derived from, so a later reader can check the
-conclusion against the numbers rather than against the confidence.
+The two ribbon-opacity notes are the shape this should take: they carry the ΔE
+table they were derived from, so a later reader can check the conclusion
+against the numbers rather than against the confidence. They lived in
+`SankeyFlow.tsx`, and when phase 9 removed that file they moved to `PLAN.md`'s
+decisions section rather than going with it — **a measured decision outlives
+the code it was measured on**, and the overlap finding added there is worth
+more than the chart was.
 
 **Not a one-off.** Phase 5 also carried a claim that bare `<input>`s lost the
 16px iOS-zoom floor. Checking it before writing the guard showed the floor is a
@@ -626,6 +762,47 @@ The corrected comment now says what `saved` is not, names `assign`, and states
 the two consequences that had already been got wrong — that a screen may not
 say "went out" and mean both halves, and that `drewOnReserves` can be true on
 a month that drew on nothing.
+
+### M4. Two instruments failed inside one hour, and both would have inverted a finding
+
+**Phase 9. Neither reached this file as a finding, which is the only reason
+they are worth recording.**
+
+Measuring whether the Sankey had labels, two probes gave confidently wrong
+answers in opposite directions.
+
+**The hover probe reported that no node revealed anything.** It dispatched
+`pointerenter`. React attaches at the root and derives `onPointerEnter` from
+native `pointerover`, so nothing was listening and all eleven nodes came back
+silent. The finding it was about to produce — *"the chart has no labels at
+either end, not even on hover"* — was the opposite of the truth: hovering
+reveals "Food shopping €191.05 4%". Caught by asking the instrument to prove
+itself against a value fixed by construction: a working hover **must** dim the
+unrelated ribbons to `0.07`, which is in the source. It did not, so the
+instrument was broken rather than the chart.
+
+**The tap probe reported that all eleven nodes opened a sheet.** Every one
+returned the same dialog text, which on inspection was the first-run onboarding
+overlay — restored by a reload and sitting in front of everything. The real
+answer is that no node opens a sheet with this data, because `onSelectNode`
+only fires for the folded node. Caught by a precondition the probe should have
+had from the start: assert zero dialogs are open *before* touching anything.
+
+Two things follow, and they sharpen M2 rather than repeat it:
+
+- **A silent instrument and a saturated one fail the same way.** One said "no"
+  to everything and one said "yes" to everything, and both looked like clean
+  results. A sweep whose answers are all identical is reporting on itself.
+- **The calibration has to be a value the subject cannot fake.** "Does the
+  hover reveal text" is the question; "does the hover dim the other ribbons to
+  the 0.07 written in the source" is checkable independently of the answer.
+  Every sweep needs one of the second kind.
+
+A third, smaller: probing left the chart stuck in its dimmed state, because the
+synthetic `pointerleave` was not the event React listens to either. The ΔE
+sweeps had all been taken before that point, and were re-run on a reloaded page
+to prove it — identical to two decimal places. **Re-run a measurement after
+interacting with the thing you measured.**
 
 ---
 

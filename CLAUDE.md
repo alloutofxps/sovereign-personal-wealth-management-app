@@ -284,9 +284,23 @@ When you could stop shares Invested's transport, because it is that screen's
 own future.
 
 `family="none"` exists for exactly one case and must stay rare: where it went,
-whose field sits directly above a Sankey in which every ribbon is already one of
-the six hues. A seventh above them would be a colour statement about nothing.
-Reach for it only where a hue would be *wrong*, never where one is hard to pick.
+**the one screen whose subject is every family at once**. Its field sits above a
+complete breakdown of the six — the donut and the category rows — so a seventh
+hue above them would be a colour statement about nothing. Reach for it only
+where a hue would be *wrong*, never where one is hard to pick.
+
+**The justification was written too narrowly once, and it is worth knowing how.**
+Until phase 9 this rule said the exemption existed because the field sat above
+*a Sankey* in which every ribbon was one of the six hues. When the Sankey was
+removed the rule read as though the exemption went with it — and it does not,
+because the chart was never the reason. The reason is what the screen is about,
+and the donut and rows underneath it still colour every segment by family.
+
+The kit table below had it right the whole time: *"`family="none"` for the one
+screen whose subject is every family at once."* Two statements of one rule
+disagreed in scope for four phases, and the narrower one was the one that named
+an implementation. **When a rule names a specific component as its reason, check
+whether the component is the reason or just where the reason was first noticed.**
 
 **`Field` is the surface and nothing else.** Eight components in six files were
 also called `Field` — each a label above a control — so `<Field label="How

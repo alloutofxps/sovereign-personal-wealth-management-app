@@ -19,7 +19,7 @@ import { ForecastView } from './ForecastView';
 /**
  * The analytics pane is lazy even from here.
  *
- * It was a plain import, which put the Sankey geometry, the ranking maths and
+ * It was a plain import, which put the donut geometry, the ranking maths and
  * the trailing-median engine into this chunk — so opening the forecast
  * downloaded all of it for somebody who never touched the analytics tab. First
  * paint was unaffected, which is exactly what made it easy to miss.

@@ -100,9 +100,10 @@ const BudgetGrid = lazy(() =>
 // The analytics pane is not routed from here. It is one of the five panes
 // behind the Ahead toggle, so `AheadView` owns it along with the others — see
 // the 'analytics' case below. It stays quarantined either way: nothing above
-// this line may import from `@/core/analytics`, `@/charts/SankeyFlow` or
-// `@/charts/CategoryBars`, which carry the Sankey geometry, the ranking maths
+// this line may import from `@/core/analytics`, `@/charts/SpendDonut` or
+// `@/charts/CategoryBars`, which carry the donut geometry, the ranking maths
 // and the trailing-median engine that nobody needs to open the app.
+// (`@/charts/SankeyFlow` was the third of these until phase 9 removed it.)
 const CategoryManagerView = lazy(() =>
   import('@/features/categories/CategoryManagerView').then((m) => ({
     default: m.CategoryManagerView,
