@@ -28,6 +28,11 @@ require-corp` and `Cross-Origin-Opener-Policy: same-origin`**, which are in
 `crossOriginIsolated` is false and SQLite's OPFS backend has no fallback — the
 app opens and cannot reach its own database.
 
+Live at **https://sovereign-e5u.pages.dev**. [`DEPLOY.md`](DEPLOY.md) has the
+deploy command, the checks that prove a deploy took, and the rollback route —
+including the `pre-redesign` tag, a permanent bookmark on the app as it stood
+before any of this work.
+
 ---
 
 ## What it does
