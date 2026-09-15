@@ -209,12 +209,17 @@ export const SHORTFALL_NAME = 'From money you already had';
  * a period with no pot contributions, where `saved` is zero — which is how it
  * survived: the month it was read against had exactly that shape.
  *
- * What the figure is is the part of what came in that has no job yet. The
- * wording matches the analytics field's own cell exactly rather than being a
- * near-synonym of it, because one term used twice is worth more than two
- * terms for one figure.
+ * What the figure is is the part of what came in that has no job yet.
+ *
+ * **Kept identical to the analytics field's own cell and to the caption
+ * beneath it, deliberately.** Three statements of one figure, and M5 in
+ * `AUDIT.md` is the finding that two statements of one thing drift apart
+ * without anything noticing. It was briefly 'Not spoken for' — until that
+ * label was measured at 78.7px against the 74px a third stat cell gets, and
+ * had to shorten. Changing it here means changing the cell and the caption in
+ * the same commit.
  */
-export const RETAINED_NAME = 'Not spoken for';
+export const RETAINED_NAME = 'No job yet';
 export const RETAINED_ID = 'leaf-retained';
 export const OTHER_ID = 'leaf-other';
 

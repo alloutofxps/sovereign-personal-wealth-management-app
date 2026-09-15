@@ -152,9 +152,27 @@ async function gather(horizon: Horizon): Promise<AnalyticsData> {
        GROUP BY a.id, a.name
       HAVING COALESCE(-SUM(p.amount), 0) > 0`),
 
-    // Money moved into a saving pot during the window.
+    /*
+     * Money moved into a saving pot during the window.
+     *
+     * NEGATED, and that is the whole correctness of this query. Putting money
+     * into a pot is `credit(BUD, envelopeId, amount)`, and `credit` stores the
+     * amount negated — its own doc comment says so: "a reduction of an asset,
+     * or an increase in a liability, income or envelope balance". So a funded
+     * pot sums to a negative number, and `SUM(p.amount) > 0` could only ever
+     * match a pot being *drained*.
+     *
+     * This read `SUM` rather than `-SUM` until phase 9, which made `saved`
+     * structurally zero for every period: the analytics field told people
+     * their earmarked money had no job yet, `totalOut` understated by whatever
+     * they had put by, and the explanation's promise that money kept for later
+     * "is counted too" described something the app did not do. The income
+     * query four lines up negates for exactly the same reason, and
+     * `budgetRepo` negates over these same ENVELOPE accounts. This one query
+     * disagreed with both. See P22 in AUDIT.md, and `postingSigns.test.ts`.
+     */
     db.all(sql`
-      SELECT a.id, a.name, COALESCE(SUM(p.amount), 0)
+      SELECT a.id, a.name, COALESCE(-SUM(p.amount), 0)
         FROM postings p
         JOIN entries e  ON e.id = p.entry_id
         JOIN accounts a ON a.id = p.account_id
@@ -162,7 +180,7 @@ async function gather(horizon: Horizon): Promise<AnalyticsData> {
          AND a.envelope_role IN ('goal', 'sinking_fund')
          AND e.date >= ${period.start} AND e.date <= ${period.end}
        GROUP BY a.id, a.name
-      HAVING COALESCE(SUM(p.amount), 0) > 0`),
+      HAVING COALESCE(-SUM(p.amount), 0) > 0`),
 
     db.all(sql`SELECT DISTINCT category_id FROM scheduled_items
                 WHERE active = 1 AND kind = 'bill' AND category_id IS NOT NULL`),

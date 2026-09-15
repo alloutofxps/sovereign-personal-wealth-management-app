@@ -357,6 +357,10 @@ to-do that forgets what it once held.
 | **P15** — a field 552px down the forecast pane | ✅ Removed. Position is evidence. |
 | **A5** — ungated hover fills | ✅ 57 found, all gated behind `@media (hover: hover)`, with a guard that forbids ungated hover outright rather than one pinned to a count. |
 | **P18–P21** — the Sankey's opacity, its pointer-only content, its 93% band, and `'Still in your account'` | ✅ Phase 9. The chart was removed and recorded in `INVENTORY.md` as an authorised removal; the node name was fixed with a failing-first test. |
+| **P22** — `saved` structurally zero, so earmarked money read as unspoken-for | ✅ Both sums negated; guarded by `postingSigns.test.ts` across `src/app` and `src/data`, verified by three breaks. Severity 1. |
+| **P23** — three stat cells truncating their labels at 390px | ✅ Labels measured and shortened; the retained wording now agrees across the cell, the caption and `RETAINED_NAME`. |
+| **The analytics field's deficit branch had never been rendered** | ✅ Seeded and rendered in both themes at 390. It is what found P22 and P23. The caution caption measures 10.67:1 in Midnight and 4.82:1 in Daylight — the latter matching the figure computed from the token before it had ever been drawn. |
+| **Closure freshness asserted nowhere** | ✅ Two tests in `renderingGate.test.tsx` on `BottomSheet`'s Escape effect, asserting the handler reads a *value* from the latest render rather than merely the latest function. Verified by removing `onClose` from the effect's deps, which makes both read `0` instead of `3`. |
 
 #### Open, by decision
 
@@ -370,8 +374,8 @@ to-do that forgets what it once held.
 
 | | What it needs |
 | --- | --- |
-| **The analytics field's deficit branch has never been seen on screen** | The seeded household has no month where `spent + saved > income`, so the "More than came in" cell and the `--color-caution` caption are covered by per-branch copy tests and by contrast computed from the token, but have never been *rendered*. Computed at 4.82:1 on the Daylight field ground — AA, and the tightest pair on that surface. Seeding a deficit month would close it in twenty minutes. |
-| **Closure freshness is asserted nowhere** | Reachable in the rendering gate and unasserted. The one G1 class that is *reachable* and simply has no test. If you touch a `useCallback`/`useMemo` dependency list you are unguarded — see `CLAUDE.md`. |
+| **`StatCell` labels on every other screen are unmeasured** | P23 measured the three on the analytics field and shortened them. Eleven other labels exist across the app, up to 22 characters, in strips whose cell widths nobody has measured. They may truncate identically. No gate can see it; it needs a browser sweep of every strip at 375 and 390. |
+| **No execution test exists for any selector in `src/app`** | The gap P22 came through, and the largest remaining hole in the suite. Engines are property-tested and components now have a rendering gate; the SQL joining them is tested by nothing. `schema.test.ts` shows the harness is possible — `node:sqlite` plus the real DDL — so this is affordable rather than blocked. Until it exists, `postingSigns.test.ts` is a source scan standing in for it. |
 
 ### The rendering gate's remaining blind spots
 
@@ -599,6 +603,120 @@ Fixed to `RETAINED_NAME`, which is `'Not spoken for'` — the analytics field's
 own wording for the same figure, because one term used twice beats two terms
 for one figure. `sankeyFlow.test.ts` holds it across the funded-pot branch and
 the zero branch, verified by reverting the name, which fails both.
+
+### P22. `saved` was structurally always zero, so the field told people their earmarked money had no job
+
+**Severity 1. Somebody was shown something false about their own money, on
+every period, for as long as the query has existed.**
+
+Found by seeding a month that spends more than it earns — the branch of the
+analytics field nobody had ever rendered — and noticing that the third stat
+cell still did not appear.
+
+The analytics selector reads pot funding as:
+
+```sql
+SELECT a.id, a.name, COALESCE(SUM(p.amount), 0)
+ WHERE p.book = 'BUDGET' AND a.type = 'ENVELOPE'
+   AND a.envelope_role IN ('goal', 'sinking_fund')
+HAVING COALESCE(SUM(p.amount), 0) > 0
+```
+
+Putting money into a pot is `credit(BUD, envelopeId, amount)`, and `credit`
+stores its amount **negated** — its own doc comment says so: *"a reduction of
+an asset, or an increase in a liability, income or envelope balance."* So a
+funded pot sums to a negative number, `HAVING … > 0` matches nothing, and
+`saved` is zero for every period that has ever been viewed. The only way that
+query could return a row is a pot being *drained*.
+
+*How established.* Three independent measurements:
+
+1. Funded the Holiday Travel pot with €900 through the app's own
+   `assignOnDate`, which returned without error — so `assertBalanced` was
+   satisfied and the entry is real.
+2. The **Pots screen** showed Holiday Travel at €1,500 of €1,800, up from
+   €600. The money is there and one screen can see it.
+3. The analytics field showed no "set aside" cell and `retained` exactly equal
+   to `income − spent`, which is only possible if `saved` is 0.
+
+And the decisive piece of evidence is internal: the income query four lines
+above negates (`-SUM(p.amount)`) for exactly the same reason, and `budgetRepo`
+negates over these **same** ENVELOPE accounts in the same book. Four summing
+queries in one file, three right; two queries over one account type
+disagreeing, with nothing comparing them.
+
+**What it cost.** `saved` zero means `totalOut` understated by whatever had
+been put by, and `retained` overstated by the same amount — so the field's
+"not spoken for" figure included money the person had deliberately earmarked.
+On the seeded household that was **€235 a month of pre-existing assignments**,
+invisible on every period. The figure reported in the phase 9 review — €4,758
+"not spoken for" for September — was itself overstated by €235 by this defect.
+
+It also made a whole paragraph of documentation describe something the app did
+not do. The `where-it-went` explanation's second step promises that money kept
+for later "is counted too, even though it has not left your account"; it was
+not counted. The comments on `SankeyGraph.saved` reasoned carefully about
+mixing the two books, for a figure that was always zero.
+
+*Fixed* by negating both sums. *Guarded* by `src/app/postingSigns.test.ts`,
+which asserts that **every** `SUM(p.amount)` over a credit-normal account in
+`src/app` and `src/data` is negated, and that none over a debit-normal one is.
+Verified by breaking it three ways — both sums reverted, and each of the two
+half-edits.
+
+**The guard was itself wrong first.** Its first version asked whether `-SUM`
+appeared *anywhere* in the query block, and a deliberate revert of the SELECT
+alone — leaving the HAVING negated — sailed straight through it. Caught only
+because the break was actually run rather than assumed. It now counts negated
+sums against total sums and requires equality. M2 at the third time of asking,
+and the first time the instrument under test was a guard I had just written.
+
+**The gap it came through.** There is **no execution test for any selector in
+`src/app`**. The engines are property-tested, the components now have a
+rendering gate, and the SQL that joins them is tested by nothing: it is not a
+pure function, it needs a database, and no harness exists for it even though
+`schema.test.ts` proves one is possible with `node:sqlite` and the real DDL.
+A source scan is what was affordable today; it sees that the negation is
+written, not that the query returned the right rows.
+
+### P23. Three stat cells do not fit their labels at 390px
+
+**Severity 2, and visible only once P22 was fixed.**
+
+The field's stat strip holds two cells until a pot is funded, and three
+afterwards. At 390 wide, three cells leave **74px** each. Measured at 11px
+Space Grotesk:
+
+```
+Came in              41.6px   fits
+Of that, set aside   91.8px   ellipsised to "Of that, set ..."
+More than came in    98.4px   ellipsised to "More than c..."
+Not spoken for       78.7px   would ellipsise; had been fitting only
+                              because two cells are wider than three
+```
+
+`StatCell` truncates gracefully rather than clipping, so nothing overflowed and
+the layout sweep reported zero problems — the page did not scroll sideways and
+no element painted outside its box. What was lost was the meaning: "More than
+c…" does not say what the figure is, in the one branch a reader most needs to
+understand.
+
+*How established.* Rendered it. The truncation is visible in a screenshot and
+then measured with `scrollWidth > clientWidth` per cell, with candidate
+replacements measured through a canvas `measureText` at the cell's own computed
+font rather than guessed.
+
+*Fixed* to "Came in" / "Set aside" / "Over by", with the surplus branch's
+"Not spoken for" shortened to "No job yet" — which also brings the cell, the
+caption beneath it and the engine's `RETAINED_NAME` to one wording, so M5's
+divergence cannot start here.
+
+**Not guarded, deliberately.** This is the computed-geometry class, which
+`happy-dom` cannot reach. A character-count proxy was considered and rejected:
+other screens carry `StatCell` labels up to 22 characters and are unmeasured,
+so a blanket limit would fail labels that may be perfectly fine. **Those other
+labels remain unmeasured and may truncate the same way** — it is on the
+standing list and on the device checklist.
 
 ### The dependency audit before the removals
 

@@ -264,3 +264,105 @@ describe('an empty ledger is not told it can stop working', () => {
     expect(text).toMatch(/Not yet known|Nothing to go on/);
   });
 });
+
+/* ===========================================================================
+ * A FOURTH TEST, AND WHY IT IS HERE
+ * ---------------------------------------------------------------------------
+ * Closure freshness was the one class in `AUDIT.md`'s G1 list that this gate
+ * made **reachable and nobody asserted**. It is also the class the
+ * `ForecastBand` scrubber lived in for eleven commits: a captured value that
+ * is type-correct and stale, so the component reads a number that was right
+ * one render ago. Typecheck cannot see it — the type is fine. Lint half-saw
+ * it, as a warning nobody had to act on. Nothing else in the suite can reach
+ * it at all, because observing it needs **two renders**.
+ *
+ * `BottomSheet`'s Escape handler is the right subject. It is installed in an
+ * effect, it closes over `onClose`, and `onClose` is the kind of prop that
+ * closes over screen state — so a stale one does not merely call an old
+ * function, it acts on an old value. The effect lists `onClose` in its
+ * dependencies, which is correct; this test is what makes that correctness
+ * load-bearing rather than incidental.
+ *
+ * The assertion is deliberately about a *value* and not about function
+ * identity. A test that only checked "the newest callback ran" would pass on a
+ * component that re-bound the listener while still reading a stale closure,
+ * which is the actual shape of the defect.
+ *
+ * VERIFIED by breaking it: removing `onClose` from the Escape effect's
+ * dependency array in `BottomSheet.tsx` fails `reads the value its effect
+ * closed over on the latest render`, reporting the first count instead of the
+ * last.
+ * ======================================================================== */
+
+describe('an effect reads the render it belongs to, not an earlier one', () => {
+  it('reads the value its effect closed over on the latest render', () => {
+    const seen: number[] = [];
+
+    function Harness() {
+      const [count, setCount] = useState(0);
+
+      return (
+        <>
+          <button type="button" onClick={() => setCount((n) => n + 1)}>
+            bump
+          </button>
+          <BottomSheet
+            open
+            // Closes over `count`. A stale closure here does not just call an
+            // old function — it records a number that is no longer true.
+            onClose={() => seen.push(count)}
+            title="Closing over a number"
+          >
+            <button type="button">inside</button>
+          </BottomSheet>
+        </>
+      );
+    }
+
+    const { getByText } = render(<Harness />);
+
+    // Three renders, so a handler pinned to the first is distinguishable from
+    // one pinned to the second as well as from a fresh one.
+    fireEvent.click(getByText('bump'));
+    fireEvent.click(getByText('bump'));
+    fireEvent.click(getByText('bump'));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(seen, 'Escape closes a dismissible sheet, so exactly one call').toHaveLength(1);
+    expect(
+      seen[0],
+      'the handler ran against a value from an earlier render — this is the ForecastBand class',
+    ).toBe(3);
+  });
+
+  it('keeps reading the current value across further renders', () => {
+    // The mirror of the above: a component can be right once by luck if the
+    // effect re-binds only on the first change.
+    const seen: number[] = [];
+
+    function Harness() {
+      const [count, setCount] = useState(0);
+      return (
+        <>
+          <button type="button" onClick={() => setCount((n) => n + 1)}>
+            bump
+          </button>
+          <BottomSheet open onClose={() => seen.push(count)} title="Still current">
+            <button type="button">inside</button>
+          </BottomSheet>
+        </>
+      );
+    }
+
+    const { getByText } = render(<Harness />);
+
+    fireEvent.click(getByText('bump'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(getByText('bump'));
+    fireEvent.click(getByText('bump'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(seen).toEqual([1, 3]);
+  });
+});

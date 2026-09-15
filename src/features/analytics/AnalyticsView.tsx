@@ -157,15 +157,31 @@ export function AnalyticsView() {
               </div>
 
               <StatStrip className="pt-5">
-                {/* `income`, never `totalIn`: the latter adds the shortfall
-                    source, so on a deficit month this cell used to claim
-                    money the person already had as money that arrived. */}
+                {/*
+                 * `income`, never `totalIn`: the latter adds the shortfall
+                 * source, so on a deficit month this cell used to claim money
+                 * the person already had as money that arrived.
+                 *
+                 * The labels are short because they are measured. A third cell
+                 * appears once a pot is funded, and three cells leave 74px
+                 * each at 390 wide: "Of that, set aside" needed 91px and
+                 * "More than came in" 98px, so both ellipsised to something
+                 * that did not say what the figure was — "More than c…" in the
+                 * one branch a reader most needs to understand. "Not spoken
+                 * for" needed 78.7px and had been fitting only because two
+                 * cells are wider than three.
+                 *
+                 * Measured at 11px Space Grotesk: Came in 41.6, Set aside
+                 * 49.3, Over by 40.4, No job yet 54.4. Lengthening any of
+                 * these needs the same measurement, not a guess — nothing in
+                 * the suite can see a truncated label.
+                 */}
                 <StatCell label="Came in">
                   <Money value={data.flow.income} size="lead" tone="neutral" decimals="hide" />
                 </StatCell>
 
                 {data.flow.saved > 0 && (
-                  <StatCell label="Of that, set aside">
+                  <StatCell label="Set aside">
                     <Money value={data.flow.saved} size="lead" tone="neutral" decimals="hide" />
                   </StatCell>
                 )}
@@ -177,11 +193,11 @@ export function AnalyticsView() {
                  * than arrived in it read as break-even.
                  */}
                 {data.flow.retained > 0 ? (
-                  <StatCell label="Not spoken for">
+                  <StatCell label="No job yet">
                     <Money value={data.flow.retained} size="lead" tone="neutral" decimals="hide" />
                   </StatCell>
                 ) : data.flow.retained < 0 ? (
-                  <StatCell label="More than came in">
+                  <StatCell label="Over by">
                     <Money
                       value={minor(-data.flow.retained)}
                       size="lead"
@@ -190,7 +206,7 @@ export function AnalyticsView() {
                     />
                   </StatCell>
                 ) : (
-                  <StatCell label="Not spoken for">
+                  <StatCell label="No job yet">
                     <span className="opacity-60">Nothing</span>
                   </StatCell>
                 )}
