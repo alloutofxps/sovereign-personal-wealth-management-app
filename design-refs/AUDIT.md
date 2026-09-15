@@ -458,6 +458,112 @@ claim before writing the guard is what turned up the real one. The lesson is in
 `CLAUDE.md` under the primitives table: reach for the primitive, and a guard is
 justified by a defect that has been measured, not assumed.
 
+### P24. A person's own figure was destroyed by the app's bookkeeping, on the day they typed it
+
+**Severity 1. Silent data loss in a ledger whose whole promise is that nothing
+is lost — and it hid for a week behind what both of us had filed as a label
+problem.**
+
+`valuations` held two different kinds of claim:
+
+```
+"I reckon this account is worth EUR 3,458"        a person, typing
+"the holdings in it added up to EUR 1,777.50"     the app, computing
+```
+
+**There was no column to tell them apart, and the unique key was
+`(account_id, date)`.** Both writers used `onConflictDoUpdate` against it. So
+on the day somebody created an investment account and recorded its first
+holding — one sitting, two actions, both correct — the register's mark
+replaced the person's opening figure outright. Not shadowed, not superseded:
+the row was overwritten and the figure was gone.
+
+Two further defects came out of the same missing column:
+
+- **The residual was read off the wrong row.** `lastRegisterMark` took the
+  newest valuation of *either* kind, so the hand-typed figure came back as
+  though the register had already been squared against it. The uninvested-cash
+  residual computed to zero and the difference was written off as a loss,
+  dated today and therefore permanent: net worth dropped from EUR 3,458.00 to
+  EUR 1,777.50 and the screen read "down EUR 1,681 this month". That was
+  filed separately as item 8 of the flow walk before the shared cause was
+  found.
+- **The account history then described the survivor wrongly.** The detail
+  sheet lists valuations under "What it has been worth" with each row captioned
+  by its own notes, so the register's total appeared under "What it was worth
+  when you added it." Filed as item 11, a wrong caption. It was not a wrong
+  caption. It was the correct caption on a destroyed record.
+
+*How established.* Walking the flow from a wiped database, then reading the
+schema for the mechanism. The overwrite is provable against real SQLite and is
+now asserted that way in `schema.test.ts` — restoring the two-column key fails
+the test, which is the half no source scan could have reached.
+
+*Fixed* in v20: `valuations.kind` (`'user' | 'register'`), **in the unique
+key**, so both kinds coexist on one day and each still collapses to one row per
+day. `lastRegisterMark` filters to register marks; `listValuations` and
+`firstValuation` return only what somebody said, so the history is opinions
+rather than arithmetic mixed in beside them.
+
+**What makes this the most serious finding in the project.** Every other defect
+here showed somebody a wrong number. This one deleted a number they had
+entered, in the one part of the app that exists to not do that, and it did it
+as a side effect of the app working correctly. Nothing failed. No gate could
+fail: 1,047 tests, a clean typecheck and a clean lint all passed over it,
+because the code did exactly what it said and the schema permitted the
+collision.
+
+And the diagnosis nearly stopped one level short. Both symptoms were recorded
+as separate, smaller things — a phantom loss and a mislabelled row — and both
+readings were wrong in the same direction: they described what was on screen
+rather than what had happened to the data. **A wrong label and a missing record
+look identical from the outside.**
+
+### The sweep: is there another table holding two kinds of claim?
+
+Asked directly, because this one was found by complaint and that is not a
+method. Every table was checked for the pattern — rows of more than one
+provenance, and whether anything distinguishes them.
+
+| Table | Two kinds? | Told apart by | Unique key |
+| --- | --- | --- | --- |
+| `valuations` | **yes** — typed vs computed | `kind`, **as of v20** | includes `kind` ✓ |
+| `fx_rates` | one, in practice | `source` exists | **does not include `source`** — see below |
+| `security_prices` | yes — manual, pasted, from a trade | `source` | no unique key, so nothing overwrites ✓ |
+| `entries` | yes — many shapes | `kind` | no unique key ✓ |
+| `investment_trades` | yes — buy, sell, dividend | `trade_type` | no unique key ✓ |
+| `staged_transactions` | yes — by review state | `status` | no unique key ✓ |
+| `accounts` | yes — eleven classes | `type` + `account_class` | no unique key ✓ |
+| `holdings` | no — one row per position | — | merge on `(account, security)` is deliberate and documented ✓ |
+| `securities` | no — one shared fact per symbol | — | merge on `symbol` is deliberate and documented ✓ |
+| `tax_lots` | no — each lot is its own fact | — | no unique key ✓ |
+| `loan_payments`, `reconciliations`, `rules`, `tags`, `target_allocations`, `meta` | single writer each | — | ✓ |
+
+**`valuations` was the only live instance.** `fx_rates` is the one latent case:
+it has a `source` column and a unique key on `(base_currency, quote_currency,
+date)` that excludes it, so an imported rate could overwrite a hand-typed one
+on the same day. It is not a live defect because nothing in the app writes a
+source other than `'manual'` — there is one kind of claim in that table today.
+The argument for leaving it is also real: one rate for one pair on one date is
+a single fact, and two sources disagreeing is a conflict to settle rather than
+two facts to keep. Overwriting replaces a rate with a rate; it does not replace
+somebody's statement with the app's arithmetic.
+
+*Guarded rather than trusted.* `schema.test.ts` now asserts that **every
+discriminator column that exists is in its table's unique key**, with
+`fx_rates.source` on an explicit exemption list — and a second test holds that
+exemption to its own premise by failing the moment anything writes a
+non-`manual` source. The latent bug is now a tripwire. Verified by breaking all
+three arms, including the vacuity arm: blinding the parser fails "finds the
+schema at all".
+
+**What the guard cannot see, stated plainly.** It could not have caught
+`valuations`, because before v20 there was no discriminator column for a scan
+to find — there was nothing to check. Whether two writers are inserting two
+kinds of claim is a judgement about meaning, and the table above was produced
+by hand. **It has to be redone by hand whenever a table gains a second
+writer**, and that is now in `CLAUDE.md`.
+
 ### G1. The gates could not see a hook-order violation, and eleven commits went past
 
 **Severity 1. Found in phase 6, recorded here in phase 7 at the commissioner's

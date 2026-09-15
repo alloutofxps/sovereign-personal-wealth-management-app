@@ -502,6 +502,67 @@ Every affordance that exists today stays. Add more, remove none.
 
 ---
 
+## Walk every flow, from a wiped database
+
+**Required for any flow. Not any screen — any flow: two or more screens a
+person moves through to finish one thing.** Adding an account and seeing what
+is in it. Recording a payment and finding it again. Importing a file and
+clearing the queue.
+
+Read nothing. Drive it, as somebody who has never seen the code.
+
+### The number, because it is the argument
+
+| | |
+| --- | --- |
+| The walk | **11 minutes, 14 tool calls** |
+| Found | **11 friction points, 1 severity 1, 1 destroyed record** |
+| Nine phases of gates, 1,047 tests | **found none of them** |
+
+That is not a criticism of the suite. Every one of the eleven sits in a G1
+class that has no gate — computed geometry, outside the module graph, or the
+meaning of a sentence. **The walk is the gate for the classes that have none.**
+It is also the cheapest instrument in this project by a wide margin.
+
+### Two rules, both bought
+
+- **Wiped database every time.** Clear `localStorage`, the caches, the service
+  worker and the OPFS directory before you start. The app's own first-run
+  wizard was invisible until that was done, and the first finding of the walk
+  lived in it — investments and pensions are never mentioned in onboarding, so
+  somebody whose main asset is a broker is never asked about it. State hides
+  the first-run path, which is the path every new person takes.
+- **Write the list before proposing a fix.** Every point where you had to know
+  something the screen did not tell you, written down first. The list is the
+  spec. Writing it before designing is what pushed the diagnosis past the
+  symptom: two items on it had been filed as a phantom loss and a mislabelled
+  caption, and only the written list made the shared cause visible — one table
+  holding two kinds of claim with no column to tell them apart, and a unique
+  key that let one overwrite the other. See P24 in `AUDIT.md`.
+
+### The standard
+
+**If the list is not empty, the flow is not finished.** A tick against
+`INVENTORY.md` does not close a flow; an empty list does.
+
+And the rule that decides what to build: **if a step needs a sentence of
+explanation to be safe, the step is wrong. Fix the step, do not write the
+sentence.** If a step cannot be fixed without one, say so rather than writing
+it.
+
+### Redo the by-hand sweeps when their subject changes
+
+Two things in `AUDIT.md` were established by hand and cannot be automated,
+because both are judgements about meaning rather than facts about the schema:
+
+- **Two kinds of claim in one table.** The table in P24's sweep says which
+  tables hold rows of more than one provenance and what distinguishes them.
+  `schema.test.ts` guards the decidable half — every discriminator column that
+  exists is in its table's unique key — and it could not have caught
+  `valuations`, because before v20 there was no column for a scan to find.
+  **Redo the sweep by hand whenever a table gains a second writer.**
+- **One rule stated twice.** M5's sweep, for rules that diverge in scope.
+
 ## Measuring
 
 Two rules, both bought at a price. `AUDIT.md` carries the worked examples as

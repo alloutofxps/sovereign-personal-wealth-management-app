@@ -17,6 +17,8 @@
  * field, so it is checked here rather than assumed.
  * ======================================================================== */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BOOTSTRAP_DDL, DDL, SCHEMA_VERSION } from './ddl';
@@ -479,5 +481,152 @@ describe('a valuation says who is speaking', () => {
 
     const row = db.prepare(`SELECT count(*) AS n FROM valuations`).get() as { n: number };
     expect(row.n).toBe(1);
+  });
+});
+
+/* ===========================================================================
+ * ONE TABLE, TWO KINDS OF CLAIM
+ * ---------------------------------------------------------------------------
+ * `valuations` held both "I reckon this is worth EUR 3,458" and "the holdings
+ * added up to EUR 1,777.50" with no column to tell them apart, and a unique
+ * key on (account_id, date) that let one overwrite the other. A person's own
+ * figure was destroyed by the app's bookkeeping on the day they typed it. See
+ * P24 in AUDIT.md.
+ *
+ * That was found because somebody complained about a caption. This is the
+ * mechanical half of making sure the next one is not.
+ *
+ * WHAT IT CHECKS, AND WHAT IT CANNOT
+ *
+ * It checks the half that is decidable from the schema: where a table has a
+ * column that distinguishes kinds of row *and* a unique key, the discriminator
+ * has to be in the key. A discriminator outside the key is a column that
+ * documents a difference the database then refuses to keep.
+ *
+ * It cannot see the case that actually bit us, because before v20 `valuations`
+ * had no discriminator at all -- there was nothing for a scan to find. Two
+ * writers inserting different kinds of claim into one table is a judgement
+ * about meaning, and the sweep for it in AUDIT.md was done by hand and has to
+ * be redone by hand when a table gains a second writer.
+ * ======================================================================== */
+
+describe('a unique key keeps the distinctions its table draws', () => {
+  /** Columns whose whole job is to say which kind of row this is. */
+  const DISCRIMINATORS = ['kind', 'source', 'trade_type'];
+
+  /**
+   * `fx_rates.source`, and the argument for it.
+   *
+   * A rate for one pair on one date is a single fact: there is one EUR/USD
+   * rate on a given day and `source` records where the figure came from, so
+   * two sources disagreeing is a conflict to settle rather than two facts to
+   * keep. Overwriting replaces a rate with a rate -- unlike `valuations`,
+   * where it replaced somebody's own statement with the app's arithmetic.
+   *
+   * The exemption rests entirely on the second test below: nothing in this
+   * app writes a source other than 'manual', so there is only one kind of
+   * claim in the table today. The moment a rate provider is added that stops
+   * being true, an imported rate will silently overwrite a hand-typed one on
+   * the same day, and this exemption expires.
+   */
+  const EXEMPT: { table: string; column: string; because: string }[] = [
+    {
+      table: 'fx_rates',
+      column: 'source',
+      because: 'one rate per pair per day is one fact; see the second test',
+    },
+  ];
+
+  interface TableShape {
+    name: string;
+    columns: string[];
+  }
+
+  function tables(): TableShape[] {
+    const out: TableShape[] = [];
+    for (const statement of DDL) {
+      const head = /CREATE TABLE IF NOT EXISTS (\w+) \(([\s\S]*)\);?\s*$/.exec(statement);
+      if (!head) continue;
+      const columns: string[] = [];
+      for (const line of head[2]!.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed === '' || trimmed.startsWith('--')) continue;
+        const name = /^(\w+)\s/.exec(trimmed);
+        if (name && !/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)$/i.test(name[1]!)) {
+          columns.push(name[1]!);
+        }
+      }
+      out.push({ name: head[1]!, columns });
+    }
+    return out;
+  }
+
+  /** Every unique index, as the table and the columns it keys on. */
+  function uniqueKeys(): { table: string; columns: string[] }[] {
+    const out: { table: string; columns: string[] }[] = [];
+    for (const statement of DDL) {
+      const m = /CREATE UNIQUE INDEX IF NOT EXISTS \w+\s+ON\s+(\w+)\(([^)]*)\)/.exec(statement);
+      if (!m) continue;
+      out.push({
+        table: m[1]!,
+        columns: m[2]!.split(',').map((c) => c.trim().replace(/\s+(ASC|DESC)$/i, '')),
+      });
+    }
+    return out;
+  }
+
+  it('finds the schema at all', () => {
+    // A scan that parses nothing passes everything.
+    const shapes = tables();
+    expect(shapes.length, 'no CREATE TABLE statements parsed').toBeGreaterThanOrEqual(10);
+    expect(uniqueKeys().length, 'no unique indexes parsed').toBeGreaterThanOrEqual(4);
+    expect(
+      shapes.find((t) => t.name === 'valuations')?.columns,
+      'the parser can see the column this test exists for',
+    ).toContain('kind');
+  });
+
+  it('puts every discriminator in its table’s unique key', () => {
+    const byName = new Map(tables().map((t) => [t.name, t.columns]));
+    const offenders: string[] = [];
+
+    for (const key of uniqueKeys()) {
+      const columns = byName.get(key.table) ?? [];
+      for (const discriminator of DISCRIMINATORS) {
+        if (!columns.includes(discriminator)) continue;
+        if (key.columns.includes(discriminator)) continue;
+        if (EXEMPT.some((e) => e.table === key.table && e.column === discriminator)) continue;
+        offenders.push(
+          `${key.table}.${discriminator} distinguishes kinds of row, but the unique key ` +
+            `(${key.columns.join(', ')}) does not include it — one kind can overwrite another`,
+        );
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  /*
+   * The premise the fx_rates exemption stands on.
+   *
+   * It is exempt because the table only ever holds one kind of claim in
+   * practice. This is what makes that checkable rather than a promise: if
+   * anything starts writing another source, the exemption is void and the
+   * test above has to be satisfied properly instead.
+   */
+  it('holds the fx_rates exemption to its premise', () => {
+    const repo = readFileSync(
+      fileURLToPath(new URL('../repositories/fxRepo.ts', import.meta.url)),
+      'utf8',
+    );
+    const sources = [...repo.matchAll(/source:\s*[^,\n]*?'([a-z_]+)'/g)].map((m) => m[1]);
+
+    expect(
+      [...new Set(sources)],
+      'fx_rates is exempt from the key rule only while every rate is hand-typed. ' +
+        'Something now writes another source, so add `source` to uq_fx_rates_pair_date ' +
+        'or decide which source wins — an imported rate must not silently replace one ' +
+        'somebody typed.',
+    ).toEqual(['manual']);
   });
 });
