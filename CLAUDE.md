@@ -550,6 +550,24 @@ explanation to be safe, the step is wrong. Fix the step, do not write the
 sentence.** If a step cannot be fixed without one, say so rather than writing
 it.
 
+### An exemption carries a test that expires it
+
+Every guard grows exemptions. The problem is not the exemption, it is that
+nobody rechecks the reason — so a list of "known fine" entries accumulates,
+each one true when it was written and none of them re-examined.
+
+**So an exemption carries a second test that fails when its own premise stops
+being true.** `fx_rates.source` is exempt from the discriminator-in-key rule
+because there is only one kind of claim in that table in practice: nothing
+writes a source other than `'manual'`. That is not a promise in a comment, it
+is `schema.test.ts`'s second arm, and the moment anything writes another
+source the arm fails and names what to do instead. The exemption expires by
+itself.
+
+Write the premise down as an assertion, not as prose. If the premise cannot be
+asserted, it is not an exemption — it is a decision, and it belongs in
+`AUDIT.md` with its figures the way P12's contrast pair does.
+
 ### Redo the by-hand sweeps when their subject changes
 
 Two things in `AUDIT.md` were established by hand and cannot be automated,

@@ -1092,6 +1092,61 @@ What makes this a method finding rather than a tidy-up:
 That last heuristic is the useful half, and the sweep below shows it is not
 universal — so it is a place to look first, not a verdict.
 
+### M6. The engine refused to guess, and the interface guessed anyway, two commits later
+
+**Found by the second walk of the same flow. The same wrong assumption, in a
+second layer, after the first had been rewritten specifically to refuse it.**
+
+`reconcileTarget` was rewritten in one commit to stop guessing how much of an
+account's balance was uninvested cash. The argument, written into the function
+and into P24: with an incomplete register the difference between a hand-typed
+figure and what the holdings come to is *either* cash *or* a holding not
+entered yet, both guesses destroy money, and so the engine refuses and says it
+is refusing.
+
+Two commits later the composition screen opened on an account with EUR 3,458
+recorded and nothing entered yet, and announced:
+
+> Legacy ISA will be worth **€3,458.00** — **€3,458.00 in cash**.
+
+That is the guess. Same assumption, same direction, one layer up — the whole
+unexplained balance read as cash. It came from a pre-fill that offered the
+leftover as the cash figure, which is correct and useful *once a holding has
+been taken off it* and is an invention before then.
+
+Nothing caught it. The engine's refusal is a property of the engine: it is
+enforced by `needsReconciling`, tested per branch, and guarded. None of that
+reaches a component that does its own arithmetic on the same two numbers. The
+screen never called the engine to find out whether the difference was
+explainable; it just subtracted.
+
+**The lesson, and it generalises past this flow.** M5 is one rule stated twice
+in prose, diverging because nothing compared the statements. This is the same
+family one level out: **a rule enforced in one layer does not propagate to
+another on its own.** An engine that refuses to guess does not stop a screen
+guessing. A guard on `src/core` says nothing about `src/features`. The rule
+holds exactly where somebody wrote it, and nowhere else.
+
+Three things follow:
+
+- **When an engine is given a refusal, look for every other place that
+  computes the same thing.** The screen and the engine were both deriving
+  "how much of this is cash" from the same two figures. One of them had been
+  taught not to; the other had never been asked.
+- **A rule with a reason is portable; a rule with a mechanism is not.** The
+  reason — *an unexplained difference is not evidence of cash* — is what the
+  screen needed and what the code comment carried. The mechanism,
+  `needsReconciling`, could not cross the layer boundary, and neither could
+  the test.
+- **This class is only reachable by driving the flow.** Both the engine and
+  the screen were internally consistent and individually correct; the defect
+  existed only in the sentence somebody read on screen. No gate here sees
+  that, which is why the walk is now required for any flow rather than
+  recommended.
+
+Recorded beside M5 because the two are one finding at two scales. M5: a rule
+stated twice diverges. M6: a rule stated once does not spread.
+
 ### The sweep M5 produced, and the two more it found
 
 Rules rarely diverge alone, so every subject stated in more than one section of
