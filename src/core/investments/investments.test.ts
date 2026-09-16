@@ -740,3 +740,60 @@ describe('what a holding may be recorded as', () => {
     expect(ASSET_CLASS_NAMES.cash_equivalent).toBe('Cash');
   });
 });
+
+/* ---------------------------------------------------------------------------
+ * The overshoot branch, walked because prices move.
+ *
+ * Somebody typed a figure weeks ago and the holdings have since grown past it.
+ * The screen's cash suggestion has to stop suggesting — walking this found it
+ * standing still instead, leaving a figure offered at an earlier total and
+ * inflating the account by cash the arithmetic no longer supported.
+ *
+ * `describePortfolioSetup` is what says the consequence out loud, so the
+ * figure it names has to be the real overshoot rather than one computed
+ * against stale cash.
+ * ------------------------------------------------------------------------ */
+describe('when the holdings have outgrown the figure that was typed', () => {
+  const euros = (amount: Minor) => `€${(amount / 100).toFixed(2)}`;
+
+  it('names the true overshoot, with the cash gone', () => {
+    // 20 x 132.40 plus 2 x 640.00 = 3,928.00 against 3,458.00 typed.
+    const said = describePortfolioSetup(
+      {
+        accountName: 'Trading 212',
+        holdingCount: 2,
+        holdingsValue: minor(392_800),
+        cash: minor(0),
+        total: minor(392_800),
+        typedValue: minor(345_800),
+      },
+      euros,
+    );
+
+    expect(said).toContain('€470.00 more than the €3458.00 recorded');
+    expect(said).toContain('the account goes up by that much');
+    expect(said, 'no cash clause when there is none').not.toContain('in cash');
+  });
+
+  it('would have named the wrong figure had stale cash survived', () => {
+    // What the defect produced: cash suggested at the one-holding total and
+    // still applied at the two-holding one, so the overshoot read €1,280.
+    const said = describePortfolioSetup(
+      {
+        accountName: 'Trading 212',
+        holdingCount: 2,
+        holdingsValue: minor(392_800),
+        cash: minor(81_000),
+        total: minor(473_800),
+        typedValue: minor(345_800),
+      },
+      euros,
+    );
+
+    // The sentence is honest about whatever it is handed — which is why the
+    // clamp belongs in the screen, and why this test pins the difference
+    // between the two readings rather than trusting one of them.
+    expect(said).toContain('€1280.00 more');
+    expect(said).toContain('€810.00 in cash');
+  });
+});

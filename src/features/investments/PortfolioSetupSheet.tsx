@@ -28,22 +28,24 @@
  * ======================================================================== */
 
 import { useEffect, useMemo, useState } from 'react';
-import { basisPoints, minor, type Minor } from '@/core/money';
+import { minor, type BasisPoints, type Minor } from '@/core/money';
 import type { AccountId } from '@/core/ledger';
 import {
-  ASSET_CLASS_MEANINGS,
-  ASSET_CLASS_NAMES,
-  HOLDABLE_ASSET_CLASSES,
   describePortfolioSetup,
   marketValue,
-  parseQuantity,
   formatQuantity,
   type AssetClass,
 } from '@/core/investments';
 import { addHolding, reconcileWithStatedCash } from '@/data/repositories/investmentsRepo';
 import { useMoney } from '@/app/money/useMoney';
 import { toast } from '@/app/toast';
-import { AmountInput, BottomSheet, Button, Input, Outcome, Select } from '@/design/ui';
+import { AmountInput, BottomSheet, Button, Outcome } from '@/design/ui';
+import {
+  EMPTY_HOLDING_DRAFT,
+  HoldingFields,
+  readHoldingDraft,
+  type HoldingDraft,
+} from './HoldingFields';
 
 /** A holding typed in but not yet written. */
 interface Pending {
@@ -54,23 +56,9 @@ interface Pending {
   quantity1e8: number;
   priceMinor: Minor;
   costBasis: Minor;
-  expenseRatioBp: number;
+  expenseRatioBp: BasisPoints;
 }
 
-const safeQuantity = (text: string): number => {
-  try {
-    return parseQuantity(text);
-  } catch {
-    return 0;
-  }
-};
-
-const safeAmount = (text: string): number => {
-  const cleaned = text.replace(/[^0-9.]/g, '');
-  if (cleaned === '') return 0;
-  const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-};
 
 export function PortfolioSetupSheet({
   open,
@@ -103,13 +91,7 @@ export function PortfolioSetupSheet({
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const [symbol, setSymbol] = useState('');
-  const [name, setName] = useState('');
-  const [assetClass, setAssetClass] = useState<AssetClass>('equity');
-  const [shares, setShares] = useState('');
-  const [priceText, setPriceText] = useState('');
-  const [costText, setCostText] = useState('');
-  const [feeText, setFeeText] = useState('');
+  const [draft, setDraft] = useState<HoldingDraft>(EMPTY_HOLDING_DRAFT);
 
   useEffect(() => {
     if (!open) {
@@ -117,12 +99,7 @@ export function PortfolioSetupSheet({
       setCash(minor(0));
       setCashTouched(false);
       setAdding(false);
-      setSymbol('');
-      setName('');
-      setShares('');
-      setPriceText('');
-      setCostText('');
-      setFeeText('');
+      setDraft(EMPTY_HOLDING_DRAFT);
     }
   }, [open]);
 
@@ -157,37 +134,43 @@ export function PortfolioSetupSheet({
    * an empty register the difference is unexplained, not cash. The leftover
    * only becomes a sensible suggestion once something has been taken off it.
    */
+  /*
+   * Clamped, not skipped, and that distinction was a defect.
+   *
+   * This read `if (!cashTouched && suggestedCash > 0)`, so once the holdings
+   * grew past the typed figure the leftover went negative, the update was
+   * skipped, and a cash figure suggested at an earlier total stayed on screen.
+   * Walked with prices that had risen since the figure was typed: one holding
+   * suggested EUR 810 of cash, a second pushed the holdings EUR 470 over the
+   * figure, and the EUR 810 remained — inflating the account by cash the
+   * arithmetic no longer supported and reporting the overshoot as EUR 1,280
+   * instead of EUR 470.
+   *
+   * A suggestion that stops being true has to go to zero, not stand still.
+   */
   useEffect(() => {
-    if (!cashTouched && suggestedCash > 0) setCash(suggestedCash);
+    if (!cashTouched) setCash(suggestedCash > 0 ? suggestedCash : minor(0));
   }, [cashTouched, suggestedCash]);
 
   const total = minor(holdingsValue + cash);
-  const quantity = safeQuantity(shares);
-  const price = safeAmount(priceText);
-  const rowReady = Boolean(symbol.trim() && name.trim() && quantity > 0 && price > 0);
+  const read = readHoldingDraft(draft);
 
   function addRow(): void {
-    if (!rowReady) return;
+    if (!read.ready) return;
     setPending((rows) => [
       ...rows,
       {
-        key: `${symbol}-${rows.length}`,
-        symbol: symbol.trim().toUpperCase(),
-        name: name.trim(),
-        assetClass,
-        quantity1e8: quantity,
-        priceMinor: minor(price),
-        costBasis: minor(safeAmount(costText)),
-        expenseRatioBp: Math.round(Number(feeText.replace(/[^0-9.]/g, '') || '0') * 100),
+        key: `${read.symbol}-${rows.length}`,
+        symbol: read.symbol,
+        name: read.name,
+        assetClass: read.assetClass,
+        quantity1e8: read.quantity1e8,
+        priceMinor: read.priceMinor,
+        costBasis: read.costBasis,
+        expenseRatioBp: read.expenseRatioBp,
       },
     ]);
-    setSymbol('');
-    setName('');
-    setShares('');
-    setPriceText('');
-    setCostText('');
-    setFeeText('');
-    setAssetClass('equity');
+    setDraft(EMPTY_HOLDING_DRAFT);
     setAdding(false);
   }
 
@@ -202,7 +185,7 @@ export function PortfolioSetupSheet({
           symbol: row.symbol,
           name: row.name,
           assetClass: row.assetClass,
-          expenseRatioBp: basisPoints(row.expenseRatioBp),
+          expenseRatioBp: row.expenseRatioBp,
           quantity1e8: row.quantity1e8,
           costBasis: row.costBasis,
           priceMinor: row.priceMinor,
@@ -272,71 +255,10 @@ export function PortfolioSetupSheet({
 
         {adding ? (
           <div className="flex flex-col gap-3 rounded-lg border border-line px-3 py-3">
-            <div className="grid grid-cols-[7rem_1fr] gap-3">
-              <Input
-                label="Symbol"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                placeholder="VWCE"
-                autoCapitalize="characters"
-              />
-              <Input
-                label="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Vanguard FTSE All-World"
-              />
-            </div>
-
-            <Select
-              label="What kind of thing is it"
-              value={assetClass}
-              onChange={(e) => setAssetClass(e.target.value as AssetClass)}
-              options={HOLDABLE_ASSET_CLASSES.map((value) => ({
-                value,
-                label: ASSET_CLASS_NAMES[value],
-              }))}
-              hint={ASSET_CLASS_MEANINGS[assetClass]}
-            />
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="How many shares"
-                value={shares}
-                onChange={(e) => setShares(e.target.value)}
-                placeholder="15.5"
-                inputMode="decimal"
-              />
-              <Input
-                label="Price per share"
-                value={priceText}
-                onChange={(e) => setPriceText(e.target.value)}
-                placeholder="118.50"
-                inputMode="decimal"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="What it all cost"
-                value={costText}
-                onChange={(e) => setCostText(e.target.value)}
-                placeholder="5500.00"
-                inputMode="decimal"
-                hint="On your statement. Leave it blank if you cannot find it."
-              />
-              <Input
-                label="Yearly fee"
-                value={feeText}
-                onChange={(e) => setFeeText(e.target.value)}
-                placeholder="0.22"
-                inputMode="decimal"
-                hint="A percentage. Blank if you do not know."
-              />
-            </div>
+            <HoldingFields value={draft} onChange={setDraft} />
 
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" disabled={!rowReady} onClick={addRow}>
+              <Button variant="secondary" size="sm" disabled={!read.ready} onClick={addRow}>
                 Add it
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>

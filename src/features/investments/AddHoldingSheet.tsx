@@ -8,23 +8,19 @@
  * ======================================================================== */
 
 import { useEffect, useState } from 'react';
-import { basisPoints, minor } from '@/core/money';
 import type { AccountId, LedgerAccount } from '@/core/ledger';
-import {
-  ASSET_CLASS_MEANINGS,
-  describeHoldingEntry,
-  ASSET_CLASS_NAMES,
-  HOLDABLE_ASSET_CLASSES,
-  formatQuantity,
-  marketValue,
-  parseQuantity,
-  type AssetClass,
-} from '@/core/investments';
+import { describeHoldingEntry, formatQuantity } from '@/core/investments';
 import { addHolding } from '@/data/repositories/investmentsRepo';
 import { useMoney } from '@/app/money/useMoney';
 import { useFx } from '@/app/fx/useFx';
 import { toast } from '@/app/toast';
-import { BottomSheet, Button, Input, Select } from '@/design/ui';
+import { BottomSheet, Button, Select } from '@/design/ui';
+import {
+  EMPTY_HOLDING_DRAFT,
+  HoldingFields,
+  readHoldingDraft,
+  type HoldingDraft,
+} from './HoldingFields';
 
 export function AddHoldingSheet({
   open,
@@ -48,13 +44,7 @@ export function AddHoldingSheet({
   const fx = useFx();
 
   const [accountId, setAccountId] = useState('');
-  const [symbol, setSymbol] = useState('');
-  const [name, setName] = useState('');
-  const [assetClass, setAssetClass] = useState<AssetClass>('equity');
-  const [shares, setShares] = useState('');
-  const [costText, setCostText] = useState('');
-  const [priceText, setPriceText] = useState('');
-  const [feeText, setFeeText] = useState('');
+  const [draft, setDraft] = useState<HoldingDraft>(EMPTY_HOLDING_DRAFT);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -62,13 +52,7 @@ export function AddHoldingSheet({
   }, [open, accountId, accounts]);
 
   function reset() {
-    setSymbol('');
-    setName('');
-    setAssetClass('equity');
-    setShares('');
-    setCostText('');
-    setPriceText('');
-    setFeeText('');
+    setDraft(EMPTY_HOLDING_DRAFT);
   }
 
   function close() {
@@ -76,37 +60,33 @@ export function AddHoldingSheet({
     onClose();
   }
 
-  // Everything is parsed leniently for the preview and strictly on save, so
-  // typing half a number never throws an error at somebody mid-keystroke.
-  const quantity = safeQuantity(shares);
-  const price = safeAmount(priceText);
-  const cost = safeAmount(costText);
-  const feeBp = safePercent(feeText);
-  const value = quantity > 0 && price > 0 ? marketValue(minor(price), quantity) : minor(0);
+  // One reading of the draft, shared with the set-up screen so the two cannot
+  // disagree about what a complete holding is. See `HoldingFields`.
+  const read = readHoldingDraft(draft);
 
   const account = accounts.find((a) => a.id === accountId);
   const firstInAccount = accountId !== '' && !accountsHoldingSomething.has(accountId);
-  const ready = Boolean(accountId && symbol.trim() && name.trim() && quantity > 0);
+  const ready = Boolean(accountId) && read.ready;
 
   async function save() {
     setBusy(true);
     try {
       await addHolding({
         accountId: accountId as AccountId,
-        symbol,
-        name,
-        assetClass,
-        expenseRatioBp: basisPoints(feeBp),
+        symbol: read.symbol,
+        name: read.name,
+        assetClass: read.assetClass,
+        expenseRatioBp: read.expenseRatioBp,
         // A holding in a foreign account is priced in that account's currency
         // — which is what the statement quotes, and the only figure a person
         // could type without doing the conversion in their head first.
         ...(account?.currency ? { currency: account.currency } : {}),
-        quantity1e8: parseQuantity(shares),
-        costBasis: minor(cost),
-        priceMinor: minor(price),
+        quantity1e8: read.quantity1e8,
+        costBasis: read.costBasis,
+        priceMinor: read.priceMinor,
       });
       toast(
-        `${formatQuantity(quantity)} ${symbol.trim().toUpperCase()} recorded in ` +
+        `${formatQuantity(read.quantity1e8)} ${read.symbol} recorded in ` +
           `${account?.name ?? 'your account'}.`,
       );
       close();
@@ -143,71 +123,12 @@ export function AddHoldingSheet({
             : {})}
         />
 
-        <div className="grid grid-cols-[7rem_1fr] gap-3">
-          <Input
-            label="Symbol"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            placeholder="VWCE"
-            autoCapitalize="characters"
-            spellCheck={false}
-          />
-          <Input
-            label="Full name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Vanguard FTSE All-World"
-          />
-        </div>
-
-        <Select
-          label="What kind of thing is it"
-          value={assetClass}
-          onChange={(e) => setAssetClass(e.target.value as AssetClass)}
-          options={HOLDABLE_ASSET_CLASSES.map((cls) => ({
-            value: cls,
-            label: ASSET_CLASS_NAMES[cls],
-          }))}
-          hint={ASSET_CLASS_MEANINGS[assetClass]}
-        />
-
-        <Input
-          label="How many shares"
-          value={shares}
-          onChange={(e) => setShares(e.target.value)}
-          placeholder="15.5"
-          inputMode="decimal"
-          hint="Fractions are fine, up to eight decimal places."
-        />
-
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="Price per share"
-            value={priceText}
-            onChange={(e) => setPriceText(e.target.value)}
-            placeholder="118.50"
-            inputMode="decimal"
-            {...(account?.currency && fx.isForeign(account.currency)
-              ? { hint: `In ${account.currency}, as your statement quotes it.` }
-              : {})}
-          />
-          <Input
-            label="What it all cost"
-            value={costText}
-            onChange={(e) => setCostText(e.target.value)}
-            placeholder="5500.00"
-            inputMode="decimal"
-            hint="The whole position, not per share."
-          />
-        </div>
-
-        <Input
-          label="Yearly fee"
-          value={feeText}
-          onChange={(e) => setFeeText(e.target.value)}
-          placeholder="0.22"
-          inputMode="decimal"
-          hint="The fund's ongoing charge, as a percentage. Leave it blank if you do not know."
+        <HoldingFields
+          value={draft}
+          onChange={setDraft}
+          {...(account?.currency && fx.isForeign(account.currency)
+            ? { priceCurrency: account.currency }
+            : {})}
         />
 
         {/* What this will do, before it does it. */}
@@ -216,10 +137,10 @@ export function AddHoldingSheet({
             {ready
               ? describeHoldingEntry(
                   {
-                    quantity1e8: quantity,
-                    symbol,
-                    marketValue: value,
-                    costBasis: minor(cost),
+                    quantity1e8: read.quantity1e8,
+                    symbol: read.symbol,
+                    marketValue: read.value,
+                    costBasis: read.costBasis,
                     accountName: account?.name ?? 'this account',
                     // The first holding in an account whose worth was typed by
                     // hand replaces that figure rather than adding to it, and
@@ -236,27 +157,3 @@ export function AddHoldingSheet({
   );
 }
 
-/* --- lenient parsing, for the preview only -------------------------------- */
-
-function safeQuantity(input: string): number {
-  try {
-    return parseQuantity(input);
-  } catch {
-    return 0;
-  }
-}
-
-/** A plain decimal to minor units. Returns 0 rather than throwing mid-type. */
-function safeAmount(input: string): number {
-  const cleaned = input.trim().replace(',', '.');
-  if (!/^\d*\.?\d{0,2}$/.test(cleaned) || cleaned === '' || cleaned === '.') return 0;
-  const [whole = '0', fraction = ''] = cleaned.split('.');
-  return Number(`${whole || '0'}${fraction.padEnd(2, '0')}`);
-}
-
-/** A percentage to basis points: `0.22` → 22. */
-function safePercent(input: string): number {
-  const cleaned = input.trim().replace(',', '.');
-  if (!/^\d*\.?\d{0,2}$/.test(cleaned) || cleaned === '' || cleaned === '.') return 0;
-  return Math.round(Number(cleaned) * 100);
-}
